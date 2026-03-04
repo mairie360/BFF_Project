@@ -1,5 +1,5 @@
 {
-  "name": "bff-template",
+  "name": "bff-project",
   "version": "1.0.0",
   "scripts": {
     "start": "ts-node src/index.ts",

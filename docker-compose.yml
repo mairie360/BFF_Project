@@ -1,14 +1,14 @@
 volumes:
   postgres-data:
   redis-data:
-  bff-target:
+  bff-project-target:
 
 networks:
   backend:
 
 x-common-env: &common-env
   HOST: "0.0.0.0"
-  PORT: { port } #change port
+  PORT: 4006 #change port
   REDIS_URL: redis://redis:6379
   DB_TYPE: postgres
   DB_NAME: mairie_360_database
@@ -24,7 +24,7 @@ x-depends-on: &depends-on
     condition: service_healthy
 
 x-healthcheck: &healthcheck
-  test: ["CMD", "curl", "-f", "http://localhost:{port}"] #change port
+  test: ["CMD", "curl", "-f", "http://localhost:4006"] #change port
   interval: 10s
   timeout: 5s
   retries: 5
@@ -34,7 +34,7 @@ x-service: &service-template
   pull_policy: always
   restart: always
   expose:
-    - "{port}" #change port
+    - "4006" #change port
   networks:
     - backend
   healthcheck:
@@ -44,7 +44,7 @@ services:
   postgres:
     image: ghcr.io/mairie360/database:dev-latest
     restart: always
-    container_name: mairie360-db-{bff}-bff #change bff name
+    container_name: mairie360-db-project-bff #change bff name
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
@@ -63,7 +63,7 @@ services:
 
   liquibase:
     image: ghcr.io/mairie360/liquibase-migrations:dev-latest
-    container_name: mairie360-liquibase-{bff}-bff #change bff name
+    container_name: mairie360-liquibase-project-bff #change bff name
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,7 +81,7 @@ services:
 
   redis:
     image: redis:7.4.2-bookworm
-    container_name: mairie360-redis-{bff}-bff #change bff name
+    container_name: mairie360-redis-project-bff #change bff name
     restart: always
     expose:
       - "6379"
@@ -124,8 +124,8 @@ services:
 
   #add other apis if needed
 
-  bff: # change bff name
-    container_name: bff-bff-developpement #change bff name
+  bff-project: # change bff name
+    container_name: bff-project-developpement #change bff name
     build:
       context: .
       dockerfile: development.Dockerfile
@@ -133,17 +133,17 @@ services:
       watch:
         - action: sync
           path: ./src
-          target: /usr/src/{bff}/src #change bff name
+          target: /usr/src/project/src #change bff name
         - action: sync
           path: ./Cargo.toml
-          target: /usr/src/{bff}/Cargo.toml #change bff name
+          target: /usr/src/project/Cargo.toml #change bff name
         - action: sync
           path: ./Cargo.lock
-          target: /usr/src/{bff}/Cargo.lock #change bff name
+          target: /usr/src/project/Cargo.lock #change bff name
     ports:
-      - "{port}:{port}" #change port
+      - "4006:4006" #change port
     volumes:
-      - bff-target:/usr/src/bff/target #change bff name
+      - bff-project-target:/usr/src/project/target #change bff name
     networks:
       - backend
     dns:
@@ -151,7 +151,7 @@ services:
       - 1.1.1.1
     environment:
       <<: *common-env
-      PUBLIC_URL: http://{bff}.development.mairie360.fr #change bff name
+      PUBLIC_URL: http://project.development.mairie360.fr #change bff name
       JWT_SECRET: b"secret"
       JWT_TIMEOUT: 3600
     depends_on:
@@ -160,7 +160,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://{bff}:{port}/health"] #change bff name #change port
+      test: ["CMD", "curl", "-f", "http://project:4006/health"] #change bff name #change port
       interval: 5s
       timeout: 2s
       retries: 3
@@ -179,4 +179,4 @@ services:
       bff: #change bff name
         condition: service_healthy
     extra_hosts:
-      - "{bff}.development.mairie360.fr:127.0.0.1" #change bff name
+      - "project.development.mairie360.fr:127.0.0.1" #change bff name
