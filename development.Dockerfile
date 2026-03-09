@@ -1,20 +1,19 @@
-# Étape 1 : build
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# Étape 2 : run
 FROM node:20-alpine
-# AJOUT DE CURL ICI (Alpine utilise apk)
+
+# Installation de curl pour le healthcheck Docker
 RUN apk add --no-cache curl
 
 WORKDIR /app
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package*.json ./
-RUN npm ci --omit=dev
 
-ENV NODE_ENV=production
-CMD ["node", "dist/index.js"]
+# On copie les fichiers de définition en premier pour le cache Docker
+COPY package*.json tsconfig.json ./
+
+# Installation complète (avec devDependencies pour ts-node-dev)
+RUN npm install
+
+# On copie le reste du code source
+COPY . .
+
+# --respawn: redémarre même si le script plante
+# --transpile-only: skip le check de types pour aller plus vite en dev
+CMD ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/index.ts"]

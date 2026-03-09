@@ -1,5 +1,6 @@
 import express from 'express';
 import healthRouter from './routes/health';
+import checkApis from './routes/check_apis';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,6 +15,7 @@ if (!PORT) {
 }
 
 app.use('/health', healthRouter);
+app.use('/check_apis', checkApis);
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
