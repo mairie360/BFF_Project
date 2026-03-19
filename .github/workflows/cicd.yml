@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@main
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@mair-56-setup-open-api-gen
     with:
       package_name: bff-project #change bff name
       node_version: 20

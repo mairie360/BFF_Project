@@ -2,11 +2,18 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+
+# [MODIFICATION] On monte le secret npmrc au moment du npm ci
+RUN npm config set @mairie360:registry https://npm.pkg.github.coma
+RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
+    npm ci
+
 COPY . .
 RUN npm run build
-# On ne garde que les dépendances de prod pour le runtime
-RUN npm ci --omit=dev --ignore-scripts
+
+# [MODIFICATION] Idem pour l'install de prod
+RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
+    npm ci --omit=dev --ignore-scripts
 
 # --- Étape 2 : Runtime ---
 FROM node:20-alpine
