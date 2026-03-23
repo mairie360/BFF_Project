@@ -1,4 +1,4 @@
-name: BFF Project CICD #change bff name
+name: BFF Project CICD
 
 on:
   push:
@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@mair-56-setup-open-api-gen
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.2.1
     with:
-      package_name: bff-project #change bff name
+      package_name: bff-project
       node_version: 20
     secrets: inherit
