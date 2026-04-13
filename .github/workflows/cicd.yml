@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.4.8
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.4.9
     with:
       package_name: bff-project
       node_version: 20
