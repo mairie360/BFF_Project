@@ -13,7 +13,7 @@
     "@asteasolutions/zod-to-openapi": "8.5.0",
     "@mairie360/project-api-openapi": "0.3.0",
     "@mairie360/core-api-openapi": "0.4.0",
-    "axios": "1.15.0",
+    "axios": "1.15.1",
     "dotenv": "17.4.2",
     "express": "5.2.1",
     "next-swagger-doc": "0.4.1",
