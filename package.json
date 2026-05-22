@@ -18,7 +18,7 @@
     "express": "5.2.1",
     "next-swagger-doc": "0.4.1",
     "openapi-fetch": "0.17.0",
-    "swagger-jsdoc": "6.2.8",
+    "swagger-jsdoc": "6.3.0",
     "swagger-ui-express": "5.0.1",
     "swagger-ui-react": "5.32.6",
     "zod": "4.4.3"
