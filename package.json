@@ -13,14 +13,14 @@
     "@asteasolutions/zod-to-openapi": "8.5.0",
     "@mairie360/project-api-openapi": "0.3.0",
     "@mairie360/core-api-openapi": "0.4.0",
-    "axios": "1.18.0",
+    "axios": "1.18.1",
     "dotenv": "17.4.2",
     "express": "5.2.1",
     "next-swagger-doc": "0.4.1",
     "openapi-fetch": "0.17.0",
     "swagger-jsdoc": "6.3.0",
     "swagger-ui-express": "5.0.1",
-    "swagger-ui-react": "5.32.6",
+    "swagger-ui-react": "5.32.7",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -29,8 +29,8 @@
     "@types/supertest": "6.0.3",
     "@types/swagger-jsdoc": "6.0.4",
     "@types/swagger-ui-express": "4.1.8",
-    "@typescript-eslint/eslint-plugin": "8.61.1",
-    "@typescript-eslint/parser": "8.61.1",
+    "@typescript-eslint/eslint-plugin": "8.62.0",
+    "@typescript-eslint/parser": "8.62.0",
     "eslint": "9.39.4",
     "jest": "30.4.2",
     "openapi-typescript-codegen": "0.31.0",
@@ -38,6 +38,6 @@
     "ts-jest": "29.4.11",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.61.1"
+    "typescript-eslint": "8.62.0"
   }
 }
