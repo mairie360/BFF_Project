@@ -7,3 +7,4 @@ dist/
 coverage/
 src/services/generated/
 openapi.json
+dist_pkg/
