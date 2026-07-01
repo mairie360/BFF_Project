@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
+import { registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
-  registry,
-  ProjectIdParams,
-  ProjectDetailsResponse,
-  ApiError,
-} from '../../openapi-registry';
+  buildProjectResponseFromState,
+  fetchProjectBundle,
+  handleUnknownError,
+  parsePublicId,
+  sendValidationError,
+} from './project_helpers';
 
 const router = Router();
 
@@ -39,10 +41,38 @@ registry.registerPath({
   },
 });
 
-router.get('/:projectId', (req: Request, res: Response) => {
-  res.status(501).json({
-    error: 'Not implemented',
-  });
+router.get('/:projectId', async (req: Request, res: Response) => {
+  const paramsResult = ProjectIdParams.safeParse(req.params);
+
+  if (!paramsResult.success) {
+    return sendValidationError(res, paramsResult.error.issues);
+  }
+
+  const projectId = parsePublicId(paramsResult.data.projectId);
+
+  if (projectId === null) {
+    return sendValidationError(res, [
+      {
+        code: 'invalid_format',
+        path: ['projectId'],
+        message: 'projectId must end with a numeric identifier',
+      },
+    ]);
+  }
+
+  try {
+    const bundle = await fetchProjectBundle(projectId);
+
+    return res.status(200).json(
+      buildProjectResponseFromState({
+        project: bundle.project,
+        tasks: bundle.tasks,
+        users: bundle.users,
+      }),
+    );
+  } catch (error) {
+    return handleUnknownError(res, error);
+  }
 });
 
 export default router;

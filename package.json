@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "ts-node src/index.ts",
+    "mock:project-api": "ts-node scripts/mock-project-api.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
@@ -11,7 +12,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "8.5.0",
-    "@mairie360/project-api-openapi": "0.3.0",
+    "@mairie360/project-api-openapi": "0.0.0-dev.ef5f0292da3178b9d533e127dd995670fd3a17ad",
     "@mairie360/core-api-openapi": "0.4.0",
     "axios": "1.18.1",
     "dotenv": "17.4.2",
