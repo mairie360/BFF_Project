@@ -17,8 +17,14 @@ import deleteTaskRouter from './routes/Project/delete_task';
 
 dotenv.config();
 
+
 const app = express();
 app.use(express.json());
+
+app.get('/__debug', (_req, res) => {
+  res.json({ from: 'express-ok' });
+});
+
 
 const swaggerOptions: swaggerJsdoc.Options = {
   definition: {
@@ -30,7 +36,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT ?? 3000}`,
+        url: `http://${process.env.HOST ?? 'localhost'}:${process.env.PORT ?? 3000}`,
         description: 'Serveur local',
       },
     ],
@@ -59,5 +65,22 @@ app.use('/projects', createTaskRouter);
 app.use('/projects', modifyTaskRouter);
 app.use('/projects', modifyTaskStatusRouter);
 app.use('/projects', deleteTaskRouter);
+
+console.log("STACK ROUTES:");
+const router = (app as unknown as {
+  router?: { stack?: Array<any> };
+  _router?: { stack?: Array<any> };
+}).router ?? (app as unknown as { _router?: { stack?: Array<any> } })._router;
+
+console.log(
+  (router?.stack ?? [])
+    .filter((l: any) => l.route)
+    .map((l: any) => ({
+      path: l.route.path,
+      methods: l.route.methods
+    }))
+);
+
+
 
 export default app;

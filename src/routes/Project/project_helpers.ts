@@ -26,6 +26,8 @@ import {
   ProjectTask as ProjectTaskSchema,
 } from '../../openapi-registry';
 
+console.log(`Project helpers initialized`);
+
 export type BffProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
 export type BffPerson = z.infer<typeof PersonSchema>;
@@ -157,7 +159,7 @@ function extractMessage(error: unknown): string {
 }
 
 function mapStatusCode(status: number): number {
-  if (status === 400 || status === 404) {
+  if (status === 400 || status === 401 || status === 403 || status === 404) {
     return status;
   }
 
@@ -171,6 +173,14 @@ function mapStatusCode(status: number): number {
 function mapErrorCode(status: number): string {
   if (status === 400) {
     return 'BAD_REQUEST';
+  }
+
+  if (status === 401) {
+    return 'UNAUTHORIZED';
+  }
+
+  if (status === 403) {
+    return 'FORBIDDEN';
   }
 
   if (status === 404) {
@@ -233,6 +243,7 @@ async function unwrap<T>(request: Promise<ClientResult<T>>): Promise<T> {
 
 export async function fetchProjects(): Promise<ProjetView[]> {
   const result = await unwrap<GetProjectsResultView>(projectClient.GET('/v1/projects/', {}));
+  console.log(projectClient);
   return result.projects;
 }
 
