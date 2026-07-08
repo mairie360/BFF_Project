@@ -1,9 +1,8 @@
 // src/clients/coreClient.ts
-import createClient from "openapi-fetch";
-import type { paths } from "@mairie360/core-api-openapi"; 
+import createClient from 'openapi-fetch';
 
-const coreClient = createClient<paths>({ 
-    baseUrl: process.env.CORE_API_URL 
+const coreClient = createClient<Record<string, any>>({
+    baseUrl: process.env.CORE_API_URL,
 });
 
 export default coreClient;

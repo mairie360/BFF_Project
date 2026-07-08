@@ -2,6 +2,10 @@ import { Router } from 'express';
 import axios from 'axios';
 import { CheckApiResponse, CheckApiResponseSchema } from '../views/check_api_view';
 import { registry } from '../openapi-registry';
+import { url } from 'zod';
+import dotenv from 'dotenv';
+dotenv.config();
+
 
 const router = Router();
 
@@ -42,9 +46,10 @@ router.get('/', async (_, res) => {
       core_api: core_is_reachable ? 'Connected' : 'Unreachable',
       project_api: project_is_reachable ? 'Connected' : 'Unreachable'
     };
-    res.status(200).json(result);
+    res.status(200).json(result + ' ' + `${CORE_FULL_URL}/health` + ' and ' + `${PROJECT_FULL_URL}/health`);
   } catch (error) {
     res.status(502).json({
+      url: `${CORE_FULL_URL}/health` + ' and ' + `${PROJECT_FULL_URL}/health`,
       status: 'Error',
       core_api: 'Unreachable',
       project_api: 'Unreachable',

@@ -1,9 +1,6 @@
-import {Router, Request, Response} from 'express';
-import {
-    registry,
-    ProjectTaskParams,
-    ApiError,
-} from '../../openapi-registry';
+import { Router, Request, Response } from 'express';
+import { registry, ProjectTaskParams, ApiError } from '../../openapi-registry';
+import { deleteTaskOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 
 const router = Router();
 
@@ -33,10 +30,32 @@ registry.registerPath({
     },
 });
 
-router.delete('/:projectId/tasks/:taskId', (req: Request, res: Response) => {
-    res.status(501).json({
-        error: 'Not implemented',
-    });
+router.delete('/:projectId/tasks/:taskId', async (req: Request, res: Response) => {
+    const paramsResult = ProjectTaskParams.safeParse(req.params);
+
+    if (!paramsResult.success) {
+        return sendValidationError(res, paramsResult.error.issues);
+    }
+
+    const projectId = parsePublicId(paramsResult.data.projectId);
+    const taskId = parsePublicId(paramsResult.data.taskId);
+
+    if (projectId === null || taskId === null) {
+        return sendValidationError(res, [
+            {
+                code: 'invalid_format',
+                path: ['projectId', 'taskId'],
+                message: 'projectId and taskId must end with numeric identifiers',
+            },
+        ]);
+    }
+
+    try {
+        await deleteTaskOnApi(projectId, taskId);
+        return res.status(204).send();
+    } catch (error) {
+        return handleUnknownError(res, error);
+    }
 });
 
 export default router;
