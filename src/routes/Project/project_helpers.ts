@@ -1,6 +1,6 @@
-import type { Response } from 'express';
-import { z } from 'zod';
-import projectClient from '../../clients/projectClient';
+import type { Response } from "express";
+import { z } from "zod";
+import projectClient from "../../clients/projectClient";
 import type {
   CreateProjectResultView,
   CreateProjectView,
@@ -17,14 +17,17 @@ import type {
   TaskStatus as ApiTaskStatus,
   TaskView,
   User,
-} from '@mairie360/project-api-openapi/model';
+} from "@mairie360/project-api-openapi/model";
 import {
   Person as PersonSchema,
   ProjectListItem as ProjectListItemSchema,
   ProjectPriority as ProjectPrioritySchema,
   ProjectStatus as ProjectStatusSchema,
   ProjectTask as ProjectTaskSchema,
-} from '../../openapi-registry';
+} from "../../openapi-registry";
+
+import { DEFAULT_JWT_TOKEN } from "../../config/token";
+import { AxiosError } from "axios";
 
 console.log(`Project helpers initialized`);
 
@@ -53,11 +56,18 @@ export interface BffCreateProjectInput {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
-  taskItems?: Array<Pick<TaskInputLike, 'title' | 'status' | 'priority' | 'assigneeIds' | 'labels' | 'dueDate'>>;
+  taskItems?: Array<
+    Pick<
+      TaskInputLike,
+      "title" | "status" | "priority" | "assigneeIds" | "labels" | "dueDate"
+    >
+  >;
 }
 
-export interface BffUpdateProjectInput extends Partial<Omit<BffCreateProjectInput, 'taskItems'>> {
-  taskItems?: BffCreateProjectInput['taskItems'];
+export interface BffUpdateProjectInput extends Partial<
+  Omit<BffCreateProjectInput, "taskItems">
+> {
+  taskItems?: BffCreateProjectInput["taskItems"];
 }
 
 export interface BffCreateTaskInput extends TaskInputLike {
@@ -83,64 +93,65 @@ class UpstreamApiError extends Error {
     public readonly details: unknown[] = [],
   ) {
     super(message);
-    this.name = 'UpstreamApiError';
+    this.name = "UpstreamApiError";
   }
 }
 
 const projectStatusLabelMap: Record<BffProjectStatus, string> = {
-  todo: 'À faire',
-  'in-progress': 'En cours',
-  review: 'En revue',
-  done: 'Terminé',
+  todo: "À faire",
+  "in-progress": "En cours",
+  review: "En revue",
+  done: "Terminé",
 };
 
 const projectPriorityLabelMap: Record<BffProjectPriority, string> = {
-  high: 'Haute',
-  medium: 'Moyenne',
-  low: 'Basse',
+  high: "Haute",
+  medium: "Moyenne",
+  low: "Basse",
 };
 
 const backendProjectStatusToBffMap: Record<string, BffProjectStatus> = {
-  Active: 'in-progress',
-  Suspended: 'review',
-  Completed: 'done',
-  Error: 'todo',
+  Active: "in-progress",
+  Suspended: "review",
+  Completed: "done",
+  Error: "todo",
 };
 
 const bffProjectStatusToBackendMap: Record<BffProjectStatus, string> = {
-  todo: 'Error',
-  'in-progress': 'Active',
-  review: 'Suspended',
-  done: 'Completed',
+  todo: "Error",
+  "in-progress": "Active",
+  review: "Suspended",
+  done: "Completed",
 };
 
 const backendTaskStatusToBffMap: Record<string, BffProjectStatus> = {
-  Todo: 'todo',
-  InProgress: 'in-progress',
-  Completed: 'done',
-  Error: 'review',
+  Todo: "todo",
+  InProgress: "in-progress",
+  Completed: "done",
+  Error: "review",
 };
 
 const bffTaskStatusToBackendMap: Record<BffProjectStatus, ApiTaskStatus> = {
-  todo: 'Todo',
-  'in-progress': 'InProgress',
-  review: 'Error',
-  done: 'Completed',
+  todo: "Todo",
+  "in-progress": "InProgress",
+  review: "Error",
+  done: "Completed",
 };
 
 const backendTaskPriorityToBffMap: Record<string, BffProjectPriority> = {
-  Low: 'low',
-  Medium: 'medium',
-  High: 'high',
-  Urgent: 'high',
-  Error: 'medium',
+  Low: "low",
+  Medium: "medium",
+  High: "high",
+  Urgent: "high",
+  Error: "medium",
 };
 
-const bffTaskPriorityToBackendMap: Record<BffProjectPriority, ApiTaskPriority> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-};
+const bffTaskPriorityToBackendMap: Record<BffProjectPriority, ApiTaskPriority> =
+  {
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+  };
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -151,11 +162,11 @@ function extractMessage(error: unknown): string {
     return error.message;
   }
 
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return error;
   }
 
-  return 'Upstream request failed';
+  return "Upstream request failed";
 }
 
 function mapStatusCode(status: number): number {
@@ -172,26 +183,26 @@ function mapStatusCode(status: number): number {
 
 function mapErrorCode(status: number): string {
   if (status === 400) {
-    return 'BAD_REQUEST';
+    return "BAD_REQUEST";
   }
 
   if (status === 401) {
-    return 'UNAUTHORIZED';
+    return "UNAUTHORIZED";
   }
 
   if (status === 403) {
-    return 'FORBIDDEN';
+    return "FORBIDDEN";
   }
 
   if (status === 404) {
-    return 'NOT_FOUND';
+    return "NOT_FOUND";
   }
 
   if (status >= 500) {
-    return 'BAD_GATEWAY';
+    return "BAD_GATEWAY";
   }
 
-  return 'INTERNAL_SERVER_ERROR';
+  return "INTERNAL_SERVER_ERROR";
 }
 
 function isUpstreamApiError(error: unknown): error is UpstreamApiError {
@@ -214,17 +225,32 @@ function sendError(
   });
 }
 
-export function sendValidationError(res: Response, details: unknown[]): Response {
-  return sendError(res, 400, 'BAD_REQUEST', 'Validation failed', details);
+export function sendValidationError(
+  res: Response,
+  details: unknown[],
+): Response {
+  return sendError(res, 400, "BAD_REQUEST", "Validation failed", details);
 }
 
 export function sendRouteError(res: Response, error: unknown): Response {
   if (isUpstreamApiError(error)) {
     const status = mapStatusCode(error.status);
-    return sendError(res, status, mapErrorCode(status), error.message, error.details);
+    return sendError(
+      res,
+      status,
+      mapErrorCode(status),
+      error.message,
+      error.details,
+    );
   }
 
-  return sendError(res, 500, 'INTERNAL_SERVER_ERROR', extractMessage(error), []);
+  return sendError(
+    res,
+    500,
+    "INTERNAL_SERVER_ERROR",
+    extractMessage(error),
+    [],
+  );
 }
 
 async function unwrap<T>(request: Promise<ClientResult<T>>): Promise<T> {
@@ -241,39 +267,53 @@ async function unwrap<T>(request: Promise<ClientResult<T>>): Promise<T> {
   return result.data as T;
 }
 
-export async function fetchProjects(): Promise<ProjetView[]> {
-  const result = await unwrap<GetProjectsResultView>(projectClient.GET('/v1/projects/', {}));
-  console.log(projectClient);
-  return result.projects;
+export async function fetchProjects(incomingRequestToken?: string) {
+  const token = incomingRequestToken || DEFAULT_JWT_TOKEN;
+  console.log("token: ", token);
+
+  try {
+    const authHeader = token && token !== "undefined"
+      ? (token.startsWith("Bearer ") ? token : `Bearer ${token}`)
+      : undefined;
+
+    console.log("Tentative d'appel à projectClient.getProjects()...");
+
+    const response = await projectClient.getProjects({
+      timeout: 2000, // <-- REQUIS : Force Axios à abandonner au bout de 2s si ça stagne
+      headers: authHeader ? { Authorization: authHeader } : {},
+    });
+
+    console.log("test3 - Succès !");
+    return response.data;
+
+  } catch (error) {
+    // CE LOG VA TOUT T'EXPLIQUER
+    console.error("❌ ERREUR CAPTURÉE DANS FETCHPROJECTS :");
+    console.error("Message :", error.message);
+    console.error("Code erreur :", error.code);
+    if (error.response) {
+      console.error("Statut HTTP renvoyé par l'API :", error.response.status);
+      console.error("Data renvoyée par l'API :", error.response.data);
+    }
+    throw error;
+  }
 }
 
-export async function fetchProject(projectId: number): Promise<GetProjectResultView> {
-  return unwrap(
-    projectClient.GET('/v1/projects/{projectId}/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-    }),
-  );
+export async function fetchProject(
+  projectId: number,
+): Promise<GetProjectResultView> {
+  return (await projectClient.getProject(projectId)).data;
 }
 
 export async function fetchProjectUsers(projectId: number): Promise<User[]> {
-  const result = await unwrap<GetProjectUsersResultView>(
-    projectClient.GET('/v1/projects/{projectId}/users/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-    }),
-  );
+  const result = (await projectClient.getProjectUsers(projectId)).data;
 
   return result.users;
 }
 
-export async function fetchProjectUsersOrEmpty(projectId: number): Promise<User[]> {
+export async function fetchProjectUsersOrEmpty(
+  projectId: number,
+): Promise<User[]> {
   try {
     return await fetchProjectUsers(projectId);
   } catch {
@@ -281,16 +321,10 @@ export async function fetchProjectUsersOrEmpty(projectId: number): Promise<User[
   }
 }
 
-export async function fetchProjectTasks(projectId: number): Promise<TaskView[]> {
-  const result = await unwrap<GetTasksResultView>(
-    projectClient.GET('/v1/projects/{projectId}/tasks/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-    }),
-  );
+export async function fetchProjectTasks(
+  projectId: number,
+): Promise<TaskView[]> {
+  const result = (await projectClient.getProjectTasks(projectId)).data;
 
   return result.tasks;
 }
@@ -300,7 +334,10 @@ export async function fetchProjectBundle(projectId: number): Promise<{
   tasks: TaskView[];
   users: User[];
 }> {
-  const [project, users] = await Promise.all([fetchProject(projectId), fetchProjectUsersOrEmpty(projectId)]);
+  const [project, users] = await Promise.all([
+    fetchProject(projectId),
+    fetchProjectUsersOrEmpty(projectId),
+  ]);
 
   return {
     project: {
@@ -314,76 +351,52 @@ export async function fetchProjectBundle(projectId: number): Promise<{
   };
 }
 
-export async function createProjectOnApi(body: CreateProjectView): Promise<CreateProjectResultView> {
-  return unwrap(projectClient.POST('/v1/projects/', { body }));
+export async function createProjectOnApi(
+  body: CreateProjectView,
+): Promise<CreateProjectResultView> {
+  return (await projectClient.createProject(body)).data;
 }
 
-export async function createTaskOnApi(projectId: number, body: CreateTaskView): Promise<CreateTaskResultView> {
-  return unwrap(
-    projectClient.POST('/v1/projects/{projectId}/tasks/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-      body,
-    }),
-  );
-}
-
-export async function patchProjectOnApi(
+export async function createTaskOnApi(
   projectId: number,
-  body: Partial<CreateProjectView> & Record<string, unknown>,
-): Promise<unknown> {
-  return unwrap(
-    projectClient.PATCH('/v1/projects/{projectId}/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-      body: body as never,
-    }),
-  );
+  body: CreateTaskView,
+): Promise<CreateTaskResultView> {
+  return (await projectClient.createTask(projectId, body)).data;
 }
+
+// export async function patchProjectOnApi(
+//   projectId: number,
+//   body: Partial<CreateProjectView> & Record<string, unknown>,
+// ): Promise<unknown> {
+//   return unwrap(
+//     projectClient.PATCH("/v1/projects/{projectId}/", {
+//       params: {
+//         path: {
+//           projectId,
+//         },
+//       },
+//       body: body as never,
+//     }),
+//   );
+// }
 
 export async function deleteProjectOnApi(projectId: number): Promise<void> {
-  await unwrap(
-    projectClient.DELETE('/v1/projects/{projectId}/', {
-      params: {
-        path: {
-          projectId,
-        },
-      },
-    }),
-  );
+  return (await projectClient.deleteProject(projectId)).data;
 }
 
-export async function patchTaskOnApi(projectId: number, taskId: number, body: PatchTaskView): Promise<void> {
-  await unwrap(
-    projectClient.PATCH('/v1/projects/{projectId}/tasks/{taskId}/', {
-      params: {
-        path: {
-          projectId,
-          taskId,
-        },
-      },
-      body,
-    }),
-  );
+export async function patchTaskOnApi(
+  projectId: number,
+  taskId: number,
+  body: PatchTaskView,
+): Promise<void> {
+  return (await projectClient.patchTask(projectId, taskId, body)).data;
 }
 
-export async function deleteTaskOnApi(projectId: number, taskId: number): Promise<void> {
-  await unwrap(
-    projectClient.DELETE('/v1/projects/{projectId}/tasks/{taskId}/', {
-      params: {
-        path: {
-          projectId,
-          taskId,
-        },
-      },
-    }),
-  );
+export async function deleteTaskOnApi(
+  projectId: number,
+  taskId: number,
+): Promise<void> {
+  return (await projectClient.deleteTask(projectId, taskId)).data;
 }
 
 export function parsePublicId(value: string | undefined): number | null {
@@ -413,7 +426,11 @@ export function userPublicId(userId: number): string {
   return `user-${userId}`;
 }
 
-export function mapPerson(user?: User | null, fallbackId = 'user-0', fallbackName = 'Inconnu'): BffPerson {
+export function mapPerson(
+  user?: User | null,
+  fallbackId = "user-0",
+  fallbackName = "Inconnu",
+): BffPerson {
   if (!user) {
     return {
       id: fallbackId,
@@ -434,14 +451,16 @@ export function mapPeople(users: User[] | undefined | null): BffPerson[] {
 }
 
 export function mapProjectStatus(status: string): BffProjectStatus {
-  return backendProjectStatusToBffMap[status] ?? 'todo';
+  return backendProjectStatusToBffMap[status] ?? "todo";
 }
 
 export function mapTaskStatus(status: string): BffProjectStatus {
-  return backendTaskStatusToBffMap[status] ?? 'todo';
+  return backendTaskStatusToBffMap[status] ?? "todo";
 }
 
-export function mapTaskStatusToBackend(status: BffProjectStatus): ApiTaskStatus {
+export function mapTaskStatusToBackend(
+  status: BffProjectStatus,
+): ApiTaskStatus {
   return bffTaskStatusToBackendMap[status];
 }
 
@@ -458,7 +477,7 @@ export function mapProjectPriorityLabel(priority: BffProjectPriority): string {
 }
 
 export function mapTaskPriority(priority: string): BffProjectPriority {
-  return backendTaskPriorityToBffMap[priority] ?? 'medium';
+  return backendTaskPriorityToBffMap[priority] ?? "medium";
 }
 
 export function mapTaskPriorityLabel(priority: BffProjectPriority): string {
@@ -467,11 +486,11 @@ export function mapTaskPriorityLabel(priority: BffProjectPriority): string {
 
 function priorityWeight(priority: BffProjectPriority): number {
   switch (priority) {
-    case 'high':
+    case "high":
       return 3;
-    case 'medium':
+    case "medium":
       return 2;
-    case 'low':
+    case "low":
       return 1;
     default:
       return 0;
@@ -480,14 +499,14 @@ function priorityWeight(priority: BffProjectPriority): number {
 
 export function deriveProjectPriority(tasks: TaskView[]): BffProjectPriority {
   if (tasks.length === 0) {
-    return 'medium';
+    return "medium";
   }
 
   const highest = [...tasks]
     .map((task) => mapTaskPriority(task.priority))
     .sort((left, right) => priorityWeight(right) - priorityWeight(left))[0];
 
-  return highest ?? 'medium';
+  return highest ?? "medium";
 }
 
 export function deriveProjectProgress(tasks: TaskView[]): number {
@@ -495,44 +514,52 @@ export function deriveProjectProgress(tasks: TaskView[]): number {
     return 0;
   }
 
-  const completed = tasks.filter((task) => mapTaskStatus(task.status) === 'done').length;
+  const completed = tasks.filter(
+    (task) => mapTaskStatus(task.status) === "done",
+  ).length;
   return Math.round((completed / tasks.length) * 100);
 }
 
 export function deriveProjectStatus(tasks: TaskView[]): BffProjectStatus {
   if (tasks.length === 0) {
-    return 'todo';
+    return "todo";
   }
 
-  const completed = tasks.filter((task) => mapTaskStatus(task.status) === 'done').length;
+  const completed = tasks.filter(
+    (task) => mapTaskStatus(task.status) === "done",
+  ).length;
 
   if (completed === tasks.length) {
-    return 'done';
+    return "done";
   }
 
   if (completed > 0) {
-    return 'in-progress';
+    return "in-progress";
   }
 
-  return 'todo';
+  return "todo";
 }
 
-export function deriveBackendProjectStatus(tasks: TaskView[]): ProjetView['status'] {
+export function deriveBackendProjectStatus(
+  tasks: TaskView[],
+): ProjetView["status"] {
   if (tasks.length === 0) {
-    return 'Active';
+    return "Active";
   }
 
-  const completed = tasks.filter((task) => mapTaskStatus(task.status) === 'done').length;
+  const completed = tasks.filter(
+    (task) => mapTaskStatus(task.status) === "done",
+  ).length;
 
   if (completed === tasks.length) {
-    return 'Completed';
+    return "Completed";
   }
 
   if (completed > 0) {
-    return 'Active';
+    return "Active";
   }
 
-  return 'Active';
+  return "Active";
 }
 
 export function deriveProjectDueDate(tasks: TaskView[]): string {
@@ -540,15 +567,25 @@ export function deriveProjectDueDate(tasks: TaskView[]): string {
     return nowIso();
   }
 
-  const sorted = [...tasks].sort((left, right) => left.due_date.localeCompare(right.due_date));
+  const sorted = [...tasks].sort((left, right) =>
+    left.due_date.localeCompare(right.due_date),
+  );
   return sorted[0]?.due_date ?? nowIso();
 }
 
-export function mapProjectToDto(project: ProjetView, tasks: TaskView[], users: User[]): BffProjectListItem {
+export function mapProjectToDto(
+  project: ProjetView,
+  tasks: TaskView[],
+  users: User[],
+): BffProjectListItem {
   const status = mapProjectStatus(project.status);
   const priority = deriveProjectPriority(tasks);
-  const responsible = users.length > 0 ? mapPerson(users[0]) : mapPerson(null, projectPublicId(project.id), project.name);
-  const assignees = users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
+  const responsible =
+    users.length > 0
+      ? mapPerson(users[0])
+      : mapPerson(null, projectPublicId(project.id), project.name);
+  const assignees =
+    users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
 
   return {
     id: projectPublicId(project.id),
@@ -566,7 +603,8 @@ export function mapProjectToDto(project: ProjetView, tasks: TaskView[], users: U
     createdAt: nowIso(),
     tasks: {
       total: tasks.length,
-      completed: tasks.filter((task) => mapTaskStatus(task.status) === 'done').length,
+      completed: tasks.filter((task) => mapTaskStatus(task.status) === "done")
+        .length,
     },
     permissions: {
       canView: true,
@@ -580,11 +618,13 @@ export function mapProjectToDto(project: ProjetView, tasks: TaskView[], users: U
 
 export function mapTaskToDto(task: TaskView, users: User[]): BffProjectTask {
   const status = mapTaskStatus(task.status);
-  const responsibleUser = users.find((user) => user.id === task.assigned_to) ?? users[0] ?? null;
+  const responsibleUser =
+    users.find((user) => user.id === task.assigned_to) ?? users[0] ?? null;
   const responsible = responsibleUser
     ? mapPerson(responsibleUser)
     : mapPerson(null, taskPublicId(task.id), task.title);
-  const assignees = users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
+  const assignees =
+    users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
   const priority = mapTaskPriority(task.priority);
 
   return {
@@ -598,14 +638,16 @@ export function mapTaskToDto(task: TaskView, users: User[]): BffProjectTask {
     priorityLabel: mapTaskPriorityLabel(priority),
     labels: [],
     dueDate: task.due_date,
-    completed: status === 'done',
+    completed: status === "done",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
 }
 
 export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
-  const assignedTo = task.responsibleId ? parsePublicId(task.responsibleId) : null;
+  const assignedTo = task.responsibleId
+    ? parsePublicId(task.responsibleId)
+    : null;
 
   return {
     name: task.title,
@@ -621,25 +663,29 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   };
 }
 
-export function mapProjectCreateBodyToBackend(body: BffCreateProjectInput): CreateProjectView {
+export function mapProjectCreateBodyToBackend(
+  body: BffCreateProjectInput,
+): CreateProjectView {
   return {
     name: body.title,
     description: body.description,
   };
 }
 
-export function mapProjectUpdateBodyToBackend(body: BffUpdateProjectInput): Partial<CreateProjectView> & Record<string, unknown> {
+export function mapProjectUpdateBodyToBackend(
+  body: BffUpdateProjectInput,
+): Partial<CreateProjectView> & Record<string, unknown> {
   const backendBody: Partial<CreateProjectView> & Record<string, unknown> = {};
 
-  if (typeof body.title === 'string') {
+  if (typeof body.title === "string") {
     backendBody.name = body.title;
   }
 
-  if (typeof body.description === 'string') {
+  if (typeof body.description === "string") {
     backendBody.description = body.description;
   }
 
-  if (typeof body.responsibleId === 'string') {
+  if (typeof body.responsibleId === "string") {
     backendBody.group_id = parsePublicId(body.responsibleId);
   }
 
@@ -695,7 +741,7 @@ export function defaultProjectSummary(projects: BffProjectListItem[]): {
 } {
   const projectsByStatus: Record<string, number> = {
     todo: 0,
-    'in-progress': 0,
+    "in-progress": 0,
     review: 0,
     done: 0,
   };
@@ -707,8 +753,10 @@ export function defaultProjectSummary(projects: BffProjectListItem[]): {
   };
 
   for (const project of projects) {
-    projectsByStatus[project.status] = (projectsByStatus[project.status] ?? 0) + 1;
-    projectsByPriority[project.priority] = (projectsByPriority[project.priority] ?? 0) + 1;
+    projectsByStatus[project.status] =
+      (projectsByStatus[project.status] ?? 0) + 1;
+    projectsByPriority[project.priority] =
+      (projectsByPriority[project.priority] ?? 0) + 1;
   }
 
   return {
@@ -724,10 +772,17 @@ export function buildKanbanColumns(projects: BffProjectListItem[]): Array<{
   projectIds: string[];
   count: number;
 }> {
-  const statuses: BffProjectStatus[] = ['todo', 'in-progress', 'review', 'done'];
+  const statuses: BffProjectStatus[] = [
+    "todo",
+    "in-progress",
+    "review",
+    "done",
+  ];
 
   return statuses.map((status) => {
-    const projectsForStatus = projects.filter((project) => project.status === status);
+    const projectsForStatus = projects.filter(
+      (project) => project.status === status,
+    );
 
     return {
       status,
@@ -738,14 +793,22 @@ export function buildKanbanColumns(projects: BffProjectListItem[]): Array<{
   });
 }
 
-export function paginateProjects(projects: BffProjectListItem[], page: number, limit: number): BffProjectListItem[] {
+export function paginateProjects(
+  projects: BffProjectListItem[],
+  page: number,
+  limit: number,
+): BffProjectListItem[] {
   const currentPage = Math.max(page, 1);
   const currentLimit = Math.max(limit, 1);
   const start = (currentPage - 1) * currentLimit;
   return projects.slice(start, start + currentLimit);
 }
 
-export function buildPagination(total: number, page: number, limit: number): {
+export function buildPagination(
+  total: number,
+  page: number,
+  limit: number,
+): {
   page: number;
   limit: number;
   total: number;
@@ -761,7 +824,9 @@ export function buildPagination(total: number, page: number, limit: number): {
   };
 }
 
-export function buildProjectResponseOverridesFromCreateBody(body: BffCreateProjectInput): Partial<BffProjectListItem> {
+export function buildProjectResponseOverridesFromCreateBody(
+  body: BffCreateProjectInput,
+): Partial<BffProjectListItem> {
   return {
     title: body.title,
     description: body.description,
@@ -770,109 +835,142 @@ export function buildProjectResponseOverridesFromCreateBody(body: BffCreateProje
     priority: body.priority,
     priorityLabel: mapProjectPriorityLabel(body.priority),
     responsible: mapPerson(null, body.responsibleId, body.responsibleId),
-    assignees: body.assigneeIds.map((assigneeId) => mapPerson(null, assigneeId, assigneeId)),
+    assignees: body.assigneeIds.map((assigneeId) =>
+      mapPerson(null, assigneeId, assigneeId),
+    ),
     labels: body.labels,
     dueDate: body.dueDate,
     tasks: {
       total: body.taskItems?.length ?? 0,
-      completed: body.taskItems?.filter((task) => task.status === 'done').length ?? 0,
+      completed:
+        body.taskItems?.filter((task) => task.status === "done").length ?? 0,
     },
-    progress: body.taskItems && body.taskItems.length > 0
-      ? Math.round((body.taskItems.filter((task) => task.status === 'done').length / body.taskItems.length) * 100)
-      : 0,
+    progress:
+      body.taskItems && body.taskItems.length > 0
+        ? Math.round(
+            (body.taskItems.filter((task) => task.status === "done").length /
+              body.taskItems.length) *
+              100,
+          )
+        : 0,
   };
 }
 
-export function buildProjectResponseOverridesFromUpdateBody(body: BffUpdateProjectInput): Partial<BffProjectListItem> {
+export function buildProjectResponseOverridesFromUpdateBody(
+  body: BffUpdateProjectInput,
+): Partial<BffProjectListItem> {
   const override: Partial<BffProjectListItem> = {};
 
-  if (typeof body.title === 'string') {
+  if (typeof body.title === "string") {
     override.title = body.title;
   }
 
-  if (typeof body.description === 'string') {
+  if (typeof body.description === "string") {
     override.description = body.description;
   }
 
-  if (typeof body.status === 'string') {
+  if (typeof body.status === "string") {
     override.status = body.status;
     override.statusLabel = mapProjectStatusLabel(body.status);
   }
 
-  if (typeof body.priority === 'string') {
+  if (typeof body.priority === "string") {
     override.priority = body.priority;
     override.priorityLabel = mapProjectPriorityLabel(body.priority);
   }
 
-  if (typeof body.responsibleId === 'string') {
-    override.responsible = mapPerson(null, body.responsibleId, body.responsibleId);
+  if (typeof body.responsibleId === "string") {
+    override.responsible = mapPerson(
+      null,
+      body.responsibleId,
+      body.responsibleId,
+    );
   }
 
   if (Array.isArray(body.assigneeIds)) {
-    override.assignees = body.assigneeIds.map((assigneeId) => mapPerson(null, assigneeId, assigneeId));
+    override.assignees = body.assigneeIds.map((assigneeId) =>
+      mapPerson(null, assigneeId, assigneeId),
+    );
   }
 
   if (Array.isArray(body.labels)) {
     override.labels = body.labels;
   }
 
-  if (typeof body.dueDate === 'string') {
+  if (typeof body.dueDate === "string") {
     override.dueDate = body.dueDate;
   }
 
   if (Array.isArray(body.taskItems)) {
     override.tasks = {
       total: body.taskItems.length,
-      completed: body.taskItems.filter((task) => task.status === 'done').length,
+      completed: body.taskItems.filter((task) => task.status === "done").length,
     };
 
-    override.progress = body.taskItems.length === 0
-      ? 0
-      : Math.round((body.taskItems.filter((task) => task.status === 'done').length / body.taskItems.length) * 100);
+    override.progress =
+      body.taskItems.length === 0
+        ? 0
+        : Math.round(
+            (body.taskItems.filter((task) => task.status === "done").length /
+              body.taskItems.length) *
+              100,
+          );
   }
 
   return override;
 }
 
-export function buildTaskResponseOverridesFromCreateBody(body: BffCreateTaskInput): Partial<BffProjectTask> {
+export function buildTaskResponseOverridesFromCreateBody(
+  body: BffCreateTaskInput,
+): Partial<BffProjectTask> {
   return {
     title: body.title,
     status: body.status,
     statusLabel: mapTaskStatusLabel(body.status),
     responsible: mapPerson(null, body.responsibleId, body.responsibleId),
-    assignees: body.assigneeIds.map((assigneeId) => mapPerson(null, assigneeId, assigneeId)),
+    assignees: body.assigneeIds.map((assigneeId) =>
+      mapPerson(null, assigneeId, assigneeId),
+    ),
     priority: body.priority,
     priorityLabel: mapTaskPriorityLabel(body.priority),
     labels: body.labels,
     dueDate: body.dueDate,
-    completed: body.status === 'done',
+    completed: body.status === "done",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
 }
 
-export function buildTaskResponseOverridesFromUpdateBody(body: BffUpdateTaskInput): Partial<BffProjectTask> {
+export function buildTaskResponseOverridesFromUpdateBody(
+  body: BffUpdateTaskInput,
+): Partial<BffProjectTask> {
   const override: Partial<BffProjectTask> = {};
 
-  if (typeof body.title === 'string') {
+  if (typeof body.title === "string") {
     override.title = body.title;
   }
 
-  if (typeof body.status === 'string') {
+  if (typeof body.status === "string") {
     override.status = body.status;
     override.statusLabel = mapTaskStatusLabel(body.status);
-    override.completed = body.status === 'done';
+    override.completed = body.status === "done";
   }
 
-  if (typeof body.responsibleId === 'string') {
-    override.responsible = mapPerson(null, body.responsibleId, body.responsibleId);
+  if (typeof body.responsibleId === "string") {
+    override.responsible = mapPerson(
+      null,
+      body.responsibleId,
+      body.responsibleId,
+    );
   }
 
   if (Array.isArray(body.assigneeIds)) {
-    override.assignees = body.assigneeIds.map((assigneeId) => mapPerson(null, assigneeId, assigneeId));
+    override.assignees = body.assigneeIds.map((assigneeId) =>
+      mapPerson(null, assigneeId, assigneeId),
+    );
   }
 
-  if (typeof body.priority === 'string') {
+  if (typeof body.priority === "string") {
     override.priority = body.priority;
     override.priorityLabel = mapTaskPriorityLabel(body.priority);
   }
@@ -881,7 +979,7 @@ export function buildTaskResponseOverridesFromUpdateBody(body: BffUpdateTaskInpu
     override.labels = body.labels;
   }
 
-  if (typeof body.dueDate === 'string') {
+  if (typeof body.dueDate === "string") {
     override.dueDate = body.dueDate;
   }
 

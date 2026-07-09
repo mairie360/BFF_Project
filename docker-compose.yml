@@ -127,16 +127,10 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:3000/health"] # <--- Doit être 3000
-    #   interval: 5s
-    #   timeout: 2s
-    #   retries: 3
-    #   start_period: 10s
 
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:dev-28bfb97
+    image: ghcr.io/mairie360/project-api:dev-89c9730
     ports:
       - "3001:3001"
     networks:
@@ -162,12 +156,6 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:3001/health"] # <--- Doit être 3001
-    #   interval: 5s
-    #   timeout: 2s
-    #   retries: 3
-    #   start_period: 10s
 
   #add other apis if needed
 
@@ -199,11 +187,9 @@ services:
       CORE_API_PORT: 3000
       PROJECT_API_URL: "project-api"
       PROJECT_API_PORT: 3001
+      PROJECT_API_BASE_PATH: "http://project-api:3001"
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
-    # depends_on:
-    # core:
-    #   condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
       interval: 10s

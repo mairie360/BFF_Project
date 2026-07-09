@@ -2,7 +2,7 @@
   "name": "bff-project",
   "version": "1.0.0",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "tsx src/index.ts",
     "mock:project-api": "ts-node scripts/mock-project-api.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
@@ -14,7 +14,7 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "8.5.0",
     "@mairie360/core-api-openapi": "1.0.0",
-    "@mairie360/project-api-openapi": "0.0.0-dev.28bfb97a32defcdefbbf9165793f8f3c9a0da484",
+    "@mairie360/project-api-openapi": "0.0.0-dev.53cffd68d44dafd03dbea21bb83690d1c97dcf28",
     "axios": "1.18.1",
     "dotenv": "17.4.2",
     "express": "5.2.1",

@@ -7,7 +7,7 @@ import {
     handleUnknownError,
     mapProjectUpdateBodyToBackend,
     parsePublicId,
-    patchProjectOnApi,
+    // patchProjectOnApi,
     sendValidationError,
 } from './project_helpers';
 
@@ -88,9 +88,9 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     try {
         const backendPayload = mapProjectUpdateBodyToBackend(bodyResult.data);
 
-        if (Object.keys(backendPayload).length > 0) {
-            await patchProjectOnApi(projectId, backendPayload);
-        }
+        // if (Object.keys(backendPayload).length > 0) {
+        //     await patchProjectOnApi(projectId, backendPayload);
+        // }
 
         const bundle = await fetchProjectBundle(projectId);
 

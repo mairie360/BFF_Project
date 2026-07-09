@@ -1,5 +1,10 @@
-import { Router, Request, Response } from 'express';
-import { registry, ProjectsPageResponse, ProjectsPageQuery, ApiError } from '../../openapi-registry';
+import { Router, Request, Response } from "express";
+import {
+  registry,
+  ProjectsPageResponse,
+  ProjectsPageQuery,
+  ApiError,
+} from "../../openapi-registry";
 import {
   buildKanbanColumns,
   buildPagination,
@@ -11,17 +16,17 @@ import {
   mapProjectToDto,
   paginateProjects,
   sendValidationError,
-} from './project_helpers';
+} from "./project_helpers";
 
 const router = Router();
 
 registry.registerPath({
-  method: 'get',
-  path: '/projects-page',
-  tags: ['Projects'],
-  summary: 'Charge la page projets',
+  method: "get",
+  path: "/projects-page",
+  tags: ["Projects"],
+  summary: "Charge la page projets",
   description:
-    'Retourne les projets, les filtres, les options et les données Kanban nécessaires à l’affichage de la page.',
+    "Retourne les projets, les filtres, les options et les données Kanban nécessaires à l’affichage de la page.",
 
   request: {
     query: ProjectsPageQuery,
@@ -29,18 +34,18 @@ registry.registerPath({
 
   responses: {
     200: {
-      description: 'Page projets chargée avec succès',
+      description: "Page projets chargée avec succès",
       content: {
-        'application/json': {
+        "application/json": {
           schema: ProjectsPageResponse,
         },
       },
     },
 
     500: {
-      description: 'Erreur serveur',
+      description: "Erreur serveur",
       content: {
-        'application/json': {
+        "application/json": {
           schema: ApiError,
         },
       },
@@ -48,21 +53,29 @@ registry.registerPath({
   },
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
+  console.log("test");
   const queryResult = ProjectsPageQuery.safeParse(req.query);
 
   if (!queryResult.success) {
+    console.error("Fail to parse project page query");
     return sendValidationError(res, queryResult.error.issues);
   }
 
+  // console.log(queryResult);
   try {
-    const projects = await fetchProjects();
+    const projects = await fetchProjects(req.headers.authorization);
+    console.log(projects);
     const bundles = await Promise.all(
-      projects.map(async (project) => {
+      projects.projects.map(async (project) => {
         const projectBundle = await fetchProjectBundle(project.id);
 
         return {
-          project: mapProjectToDto(projectBundle.project, projectBundle.tasks, projectBundle.users),
+          project: mapProjectToDto(
+            projectBundle.project,
+            projectBundle.tasks,
+            projectBundle.users,
+          ),
           users: projectBundle.users,
         };
       }),
@@ -75,13 +88,16 @@ router.get('/', async (req: Request, res: Response) => {
       const search = queryResult.data.q?.toLowerCase().trim();
       const matchesSearch = !search
         ? true
-        : project.title.toLowerCase().includes(search) || project.description.toLowerCase().includes(search);
-      const matchesStatus = !queryResult.data.status || queryResult.data.status === 'all'
-        ? true
-        : project.status === queryResult.data.status;
-      const matchesPriority = !queryResult.data.priority || queryResult.data.priority === 'all'
-        ? true
-        : project.priority === queryResult.data.priority;
+        : project.title.toLowerCase().includes(search) ||
+          project.description.toLowerCase().includes(search);
+      const matchesStatus =
+        !queryResult.data.status || queryResult.data.status === "all"
+          ? true
+          : project.status === queryResult.data.status;
+      const matchesPriority =
+        !queryResult.data.priority || queryResult.data.priority === "all"
+          ? true
+          : project.priority === queryResult.data.priority;
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
@@ -92,31 +108,31 @@ router.get('/', async (req: Request, res: Response) => {
 
     return res.status(200).json({
       page: {
-        title: 'Projects',
-        subtitle: 'Vue consolidée des projets',
-        defaultView: queryResult.data.view ?? 'kanban',
+        title: "Projects",
+        subtitle: "Vue consolidée des projets",
+        defaultView: queryResult.data.view ?? "kanban",
         views: [
-          { value: 'kanban', label: 'Kanban' },
-          { value: 'grid', label: 'Grille' },
-          { value: 'table', label: 'Tableau' },
+          { value: "kanban", label: "Kanban" },
+          { value: "grid", label: "Grille" },
+          { value: "table", label: "Tableau" },
         ],
       },
       filters: {
         search: queryResult.data.q ?? null,
-        status: queryResult.data.status ?? 'all',
-        priority: queryResult.data.priority ?? 'all',
+        status: queryResult.data.status ?? "all",
+        priority: queryResult.data.priority ?? "all",
         statuses: [
-          { label: 'Toutes', value: 'all' },
-          { label: 'À faire', value: 'todo' },
-          { label: 'En cours', value: 'in-progress' },
-          { label: 'En revue', value: 'review' },
-          { label: 'Terminées', value: 'done' },
+          { label: "Toutes", value: "all" },
+          { label: "À faire", value: "todo" },
+          { label: "En cours", value: "in-progress" },
+          { label: "En revue", value: "review" },
+          { label: "Terminées", value: "done" },
         ],
         priorities: [
-          { label: 'Toutes', value: 'all' },
-          { label: 'Haute', value: 'high' },
-          { label: 'Moyenne', value: 'medium' },
-          { label: 'Basse', value: 'low' },
+          { label: "Toutes", value: "all" },
+          { label: "Haute", value: "high" },
+          { label: "Moyenne", value: "medium" },
+          { label: "Basse", value: "low" },
         ],
       },
       options: {
@@ -131,6 +147,8 @@ router.get('/', async (req: Request, res: Response) => {
       pagination: buildPagination(filteredProjects.length, page, limit),
     });
   } catch (error) {
+    // console.error(error);
+    return res;
     return handleUnknownError(res, error);
   }
 });
