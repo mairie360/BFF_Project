@@ -1,19 +1,19 @@
 FROM node:20-alpine
 
-# Installation de curl pour le healthcheck Docker
+# Define the build argument
+ARG NODE_AUTH_TOKEN
+
 RUN apk add --no-cache curl
 
 WORKDIR /app
 
-# On copie les fichiers de définition en premier pour le cache Docker
-COPY package*.json tsconfig.json ./
+# Copy files first
+COPY package*.json tsconfig.json .npmrc ./
 
-# Installation complète (avec devDependencies pour ts-node-dev)
-RUN npm install
+# Replace the placeholder in .npmrc with the actual token, then install
+RUN sed -i "s|\${NODE_AUTH_TOKEN}|${NODE_AUTH_TOKEN}|g" .npmrc && \
+    npm install
 
-# On copie le reste du code source
 COPY . .
 
-# --respawn: redémarre même si le script plante
-# --transpile-only: skip le check de types pour aller plus vite en dev
 CMD ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/index.ts"]

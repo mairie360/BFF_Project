@@ -6,6 +6,10 @@ volumes:
 networks:
   backend:
 
+secrets:
+  npmrc:
+    file: .npmrc
+
 x-common-env: &common-env
   HOST: "0.0.0.0"
   PORT: 4001
@@ -42,9 +46,9 @@ x-service: &service-template
 
 services:
   postgres:
-    image: ghcr.io/mairie360/database:dev-latest
+    image: ghcr.io/mairie360/database:1.0.0
     restart: always
-    container_name: mairie360-db-project-bff #change bff name
+    container_name: mairie360-db-project-api
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
@@ -52,7 +56,7 @@ services:
     expose:
       - "5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     networks:
       - backend
     healthcheck:
@@ -62,8 +66,8 @@ services:
       retries: 5
 
   liquibase:
-    image: ghcr.io/mairie360/liquibase-migrations:dev-latest
-    container_name: mairie360-liquibase-project-bff #change bff name
+    image: ghcr.io/mairie360/liquibase-migrations:1.0.0
+    container_name: mairie360-liquibase-project-api
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +76,7 @@ services:
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/mairie_360_database
       LIQUIBASE_COMMAND_USERNAME: ${DB_USER:-postgres}
       LIQUIBASE_COMMAND_PASSWORD: ${DB_PASSWORD:-password}
-      LIQUIBASE_SEARCH_PATH: /liquibase/changelog
+      LIQUIBASE_SEARCH_PATH: /migrations
     command: >
       --changelog-file=changelog.xml
       update
@@ -97,7 +101,7 @@ services:
 
   core:
     container_name: core-project-bff-developpement
-    image: ghcr.io/mairie360/core-api:dev-latest
+    image: ghcr.io/mairie360/core-api:1.0.0
     ports:
       - "3000:3000"
     networks:
@@ -129,10 +133,10 @@ services:
     #   timeout: 2s
     #   retries: 3
     #   start_period: 10s
-      
+
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:dev-latest
+    image: ghcr.io/mairie360/project-api:dev-28bfb97
     ports:
       - "3001:3001"
     networks:
@@ -164,7 +168,7 @@ services:
     #   timeout: 2s
     #   retries: 3
     #   start_period: 10s
-  
+
   #add other apis if needed
 
   bff-project:
@@ -172,6 +176,10 @@ services:
     build:
       context: .
       dockerfile: development.Dockerfile
+      args:
+        - NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
+      secrets:
+        - npmrc
     # Mode synchronisation en temps réel (Docker Compose V2)
     develop:
       watch:
@@ -187,15 +195,15 @@ services:
     environment:
       <<: *common-env
       # IMPORTANT : On utilise le nom du service Docker pour communiquer
-      CORE_API_URL: "core" 
+      CORE_API_URL: "core"
       CORE_API_PORT: 3000
-      PROJECT_API_URL: "project-api" 
+      PROJECT_API_URL: "project-api"
       PROJECT_API_PORT: 3001
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
     # depends_on:
-      # core:
-      #   condition: service_healthy
+    # core:
+    #   condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
       interval: 10s
