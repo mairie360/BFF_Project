@@ -2,7 +2,7 @@
   "name": "bff-project",
   "version": "1.0.0",
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "tsx watch src/index.ts",
     "mock:project-api": "ts-node scripts/mock-project-api.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
