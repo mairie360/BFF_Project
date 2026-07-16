@@ -1,18 +1,14 @@
 FROM node:20-alpine
 
-# Define the build argument
-ARG NODE_AUTH_TOKEN
-
 RUN apk add --no-cache curl
 
 WORKDIR /app
 
-# Copy files first
-COPY package*.json tsconfig.json .npmrc ./
+COPY package*.json tsconfig.json ./
 
-# Replace the placeholder in .npmrc with the actual token, then install
-RUN sed -i "s|\${NODE_AUTH_TOKEN}|${NODE_AUTH_TOKEN}|g" .npmrc && \
-    npm install
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=true \
+    --mount=type=secret,id=npm_token,required=true \
+    NODE_AUTH_TOKEN="$(cat /run/secrets/npm_token)" npm install
 
 COPY . .
 

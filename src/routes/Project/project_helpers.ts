@@ -1,15 +1,13 @@
 import type { Response } from "express";
+import axios from "axios";
 import { z } from "zod";
-import projectClient from "../../clients/projectClient";
+import projectClient, { projectApiAxios } from "../../clients/projectClient";
 import type {
   CreateProjectResultView,
   CreateProjectView,
   CreateTaskResultView,
   CreateTaskView,
   GetProjectResultView,
-  GetProjectUsersResultView,
-  GetProjectsResultView,
-  GetTasksResultView,
   PatchTaskView,
   ProjetView,
   TaskFieldType,
@@ -25,11 +23,21 @@ import {
   ProjectStatus as ProjectStatusSchema,
   ProjectTask as ProjectTaskSchema,
 } from "../../openapi-registry";
-
-import { DEFAULT_JWT_TOKEN } from "../../config/token";
-import { AxiosError } from "axios";
-
-console.log(`Project helpers initialized`);
+import type { ProjectUserContext } from "../../auth/project-user";
+import {
+  createTaskRecord,
+  deleteProjectRecord,
+  deleteTaskRecord,
+  getProjectBundleFromDatabase,
+  getProjectPermissions,
+  getTaskPermissions,
+  isProjectDatabaseAccessEnabled,
+  listVisibleProjectRows,
+  syncProjectMembers,
+  updateTaskRecord,
+  type ProjectPermissions,
+  type TaskPermissions,
+} from "../../repositories/projectRepository";
 
 export type BffProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
@@ -74,17 +82,11 @@ export interface BffCreateTaskInput extends TaskInputLike {
   responsibleId: string;
 }
 
-export interface BffUpdateTaskInput extends Partial<BffCreateTaskInput> {}
+export type BffUpdateTaskInput = Partial<BffCreateTaskInput>;
 
 export interface BffUpdateTaskStatusInput {
   status: BffProjectStatus;
 }
-
-type ClientResult<T> = {
-  data?: T;
-  error?: unknown;
-  response: globalThis.Response;
-};
 
 class UpstreamApiError extends Error {
   constructor(
@@ -115,13 +117,6 @@ const backendProjectStatusToBffMap: Record<string, BffProjectStatus> = {
   Suspended: "review",
   Completed: "done",
   Error: "todo",
-};
-
-const bffProjectStatusToBackendMap: Record<BffProjectStatus, string> = {
-  todo: "Error",
-  "in-progress": "Active",
-  review: "Suspended",
-  done: "Completed",
 };
 
 const backendTaskStatusToBffMap: Record<string, BffProjectStatus> = {
@@ -244,6 +239,18 @@ export function sendRouteError(res: Response, error: unknown): Response {
     );
   }
 
+  if (axios.isAxiosError(error)) {
+    const upstreamStatus = error.response?.status ?? 502;
+    const status = mapStatusCode(upstreamStatus);
+    const responseBody = error.response?.data as { message?: unknown } | undefined;
+    const message =
+      (typeof responseBody?.message === "string" && responseBody.message) ||
+      error.message ||
+      "Project API unavailable";
+
+    return sendError(res, status, mapErrorCode(status), message, []);
+  }
+
   return sendError(
     res,
     500,
@@ -253,50 +260,14 @@ export function sendRouteError(res: Response, error: unknown): Response {
   );
 }
 
-async function unwrap<T>(request: Promise<ClientResult<T>>): Promise<T> {
-  const result = await request;
-
-  if (!result.response.ok || result.error) {
-    throw new UpstreamApiError(
-      result.response.status || 502,
-      extractMessage(result.error ?? result.response.statusText),
-      result.error ? [result.error] : [],
-    );
-  }
-
-  return result.data as T;
+export async function fetchProjects() {
+  return (await projectClient.getProjects()).data;
 }
 
-export async function fetchProjects(incomingRequestToken?: string) {
-  const token = incomingRequestToken || DEFAULT_JWT_TOKEN;
-  console.log("token: ", token);
-
-  try {
-    const authHeader = token && token !== "undefined"
-      ? (token.startsWith("Bearer ") ? token : `Bearer ${token}`)
-      : undefined;
-
-    console.log("Tentative d'appel à projectClient.getProjects()...");
-
-    const response = await projectClient.getProjects({
-      timeout: 2000, // <-- REQUIS : Force Axios à abandonner au bout de 2s si ça stagne
-      headers: authHeader ? { Authorization: authHeader } : {},
-    });
-
-    console.log("test3 - Succès !");
-    return response.data;
-
-  } catch (error) {
-    // CE LOG VA TOUT T'EXPLIQUER
-    console.error("❌ ERREUR CAPTURÉE DANS FETCHPROJECTS :");
-    console.error("Message :", error.message);
-    console.error("Code erreur :", error.code);
-    if (error.response) {
-      console.error("Statut HTTP renvoyé par l'API :", error.response.status);
-      console.error("Data renvoyée par l'API :", error.response.data);
-    }
-    throw error;
-  }
+export async function fetchProjectsForUser(user: ProjectUserContext) {
+  const visibleProjects = await listVisibleProjectRows(user);
+  if (visibleProjects) return { projects: visibleProjects };
+  return fetchProjects();
 }
 
 export async function fetchProject(
@@ -334,9 +305,16 @@ export async function fetchProjectBundle(projectId: number): Promise<{
   tasks: TaskView[];
   users: User[];
 }> {
-  const [project, users] = await Promise.all([
+  if (isProjectDatabaseAccessEnabled()) {
+    const databaseBundle = await getProjectBundleFromDatabase(projectId);
+    if (!databaseBundle) throw new Error('Projet introuvable.');
+    return databaseBundle;
+  }
+
+  const [project, users, tasks] = await Promise.all([
     fetchProject(projectId),
     fetchProjectUsersOrEmpty(projectId),
+    fetchProjectTasks(projectId),
   ]);
 
   return {
@@ -344,9 +322,9 @@ export async function fetchProjectBundle(projectId: number): Promise<{
       id: projectId,
       name: project.name,
       description: project.description,
-      status: deriveBackendProjectStatus(project.tasks),
+      status: deriveBackendProjectStatus(tasks),
     },
-    tasks: project.tasks,
+    tasks,
     users,
   };
 }
@@ -354,34 +332,83 @@ export async function fetchProjectBundle(projectId: number): Promise<{
 export async function createProjectOnApi(
   body: CreateProjectView,
 ): Promise<CreateProjectResultView> {
-  return (await projectClient.createProject(body)).data;
+  const result = (await projectClient.createProject(body)).data;
+
+  if (!result || !Number.isInteger(result.project_id) || result.project_id <= 0) {
+    throw new Error('Project_API a retourné une réponse invalide lors de la création du projet.');
+  }
+
+  return result;
+}
+
+export async function patchProjectOnApi(
+  projectId: number,
+  body: Partial<CreateProjectView> & Record<string, unknown>,
+): Promise<void> {
+  await projectApiAxios.patch(`/api/v1/projects/${projectId}/`, body);
+}
+
+export async function syncProjectUsersOnApi(projectId: number, userIds: string[]): Promise<void> {
+  const desiredUserIds = new Set(
+    userIds
+      .map((userId) => parsePublicId(userId))
+      .filter((userId): userId is number => userId !== null),
+  );
+
+  if (desiredUserIds.size === 0) return;
+
+  if (isProjectDatabaseAccessEnabled()) {
+    await syncProjectMembers(projectId, Array.from(desiredUserIds));
+    return;
+  }
+
+  const currentUsers = await fetchProjectUsersOrEmpty(projectId);
+  const currentUserIds = new Set(currentUsers.map((user) => user.id));
+
+  await Promise.all([
+    ...Array.from(desiredUserIds)
+      .filter((userId) => !currentUserIds.has(userId))
+      .map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })),
+    ...currentUsers
+      .filter((user) => !desiredUserIds.has(user.id))
+      .map((user) =>
+        projectApiAxios.delete(`/api/v1/projects/${projectId}/users/${user.id}/`),
+      ),
+  ]);
 }
 
 export async function createTaskOnApi(
   projectId: number,
   body: CreateTaskView,
 ): Promise<CreateTaskResultView> {
-  return (await projectClient.createTask(projectId, body)).data;
+  if (isProjectDatabaseAccessEnabled()) {
+    return {
+      task_id: await createTaskRecord(projectId, {
+        title: body.name,
+        status: body.status,
+        priority: body.priority,
+        dueDate: body.due_date,
+        assignedTo: body.assigned_to,
+        fields: body.fields,
+      }),
+      name: body.name,
+      description: body.description,
+    };
+  }
+
+  const result = (await projectClient.createTask(projectId, body)).data;
+  if (!result || !Number.isInteger(result.task_id) || result.task_id <= 0) {
+    throw new Error('Project_API a retourné une réponse invalide lors de la création de la tâche.');
+  }
+  return result;
 }
 
-// export async function patchProjectOnApi(
-//   projectId: number,
-//   body: Partial<CreateProjectView> & Record<string, unknown>,
-// ): Promise<unknown> {
-//   return unwrap(
-//     projectClient.PATCH("/v1/projects/{projectId}/", {
-//       params: {
-//         path: {
-//           projectId,
-//         },
-//       },
-//       body: body as never,
-//     }),
-//   );
-// }
-
 export async function deleteProjectOnApi(projectId: number): Promise<void> {
-  return (await projectClient.deleteProject(projectId)).data;
+  if (isProjectDatabaseAccessEnabled()) {
+    await deleteProjectRecord(projectId);
+    return;
+  }
+  await projectClient.deleteProject(projectId);
 }
 
 export async function patchTaskOnApi(
@@ -389,14 +416,28 @@ export async function patchTaskOnApi(
   taskId: number,
   body: PatchTaskView,
 ): Promise<void> {
-  return (await projectClient.patchTask(projectId, taskId, body)).data;
+  if (isProjectDatabaseAccessEnabled()) {
+    await updateTaskRecord(projectId, taskId, {
+      title: body.name,
+      status: body.status,
+      priority: body.priority,
+      dueDate: body.due_date,
+      assignedTo: body.assigned_to,
+    });
+    return;
+  }
+  await projectClient.patchTask(projectId, taskId, body);
 }
 
 export async function deleteTaskOnApi(
   projectId: number,
   taskId: number,
 ): Promise<void> {
-  return (await projectClient.deleteTask(projectId, taskId)).data;
+  if (isProjectDatabaseAccessEnabled()) {
+    await deleteTaskRecord(projectId, taskId);
+    return;
+  }
+  await projectClient.deleteTask(projectId, taskId);
 }
 
 export function parsePublicId(value: string | undefined): number | null {
@@ -577,6 +618,15 @@ export function mapProjectToDto(
   project: ProjetView,
   tasks: TaskView[],
   users: User[],
+  permissions: ProjectPermissions = {
+    canView: true,
+    canEdit: true,
+    canDuplicate: true,
+    canDelete: true,
+    canCreateTask: true,
+    canAssignMembers: true,
+    canClose: true,
+  },
 ): BffProjectListItem {
   const status = mapProjectStatus(project.status);
   const priority = deriveProjectPriority(tasks);
@@ -606,25 +656,28 @@ export function mapProjectToDto(
       completed: tasks.filter((task) => mapTaskStatus(task.status) === "done")
         .length,
     },
-    permissions: {
-      canView: true,
-      canEdit: true,
-      canDuplicate: true,
-      canDelete: true,
-      canCreateTask: true,
-    },
+    permissions,
   };
 }
 
-export function mapTaskToDto(task: TaskView, users: User[]): BffProjectTask {
+export function mapTaskToDto(
+  task: TaskView,
+  users: User[],
+  permissions: TaskPermissions = {
+    canView: true,
+    canEdit: true,
+    canDelete: true,
+    canUpdateStatus: true,
+    canComment: true,
+  },
+): BffProjectTask {
   const status = mapTaskStatus(task.status);
   const responsibleUser =
     users.find((user) => user.id === task.assigned_to) ?? users[0] ?? null;
   const responsible = responsibleUser
     ? mapPerson(responsibleUser)
     : mapPerson(null, taskPublicId(task.id), task.title);
-  const assignees =
-    users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
+  const assignees = task.assigned_to ? [responsible] : [];
   const priority = mapTaskPriority(task.priority);
 
   return {
@@ -641,6 +694,7 @@ export function mapTaskToDto(task: TaskView, users: User[]): BffProjectTask {
     completed: status === "done",
     createdAt: nowIso(),
     updatedAt: nowIso(),
+    permissions,
   };
 }
 
@@ -661,6 +715,18 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
       ...task.labels.map((label) => ({ Select: label })),
     ] as TaskFieldType[],
   };
+}
+
+export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskView {
+  const body: PatchTaskView = {};
+
+  if (typeof task.title === "string") body.name = task.title;
+  if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
+  if (typeof task.priority === "string") body.priority = bffTaskPriorityToBackendMap[task.priority];
+  if (typeof task.responsibleId === "string") body.assigned_to = parsePublicId(task.responsibleId);
+  if (typeof task.dueDate === "string") body.due_date = task.dueDate;
+
+  return body;
 }
 
 export function mapProjectCreateBodyToBackend(
@@ -696,10 +762,11 @@ export function buildProjectResponseFromState(options: {
   project: ProjetView;
   tasks: TaskView[];
   users: User[];
+  permissions?: ProjectPermissions;
   override?: Partial<BffProjectListItem>;
 }): BffProjectListItem {
   return {
-    ...mapProjectToDto(options.project, options.tasks, options.users),
+    ...mapProjectToDto(options.project, options.tasks, options.users, options.permissions),
     ...options.override,
   };
 }
@@ -707,17 +774,28 @@ export function buildProjectResponseFromState(options: {
 export function buildTaskResponseFromState(options: {
   task: TaskView;
   users: User[];
+  permissions?: TaskPermissions;
   override?: Partial<BffProjectTask>;
 }): BffProjectTask {
   return {
-    ...mapTaskToDto(options.task, options.users),
+    ...mapTaskToDto(options.task, options.users, options.permissions),
     ...options.override,
   };
 }
 
-export function collectMembers(usersByProject: User[][]): BffPerson[] {
+export function collectMembers(usersByProject: User[][]): Array<{
+  label: string;
+  value: string;
+  name: string;
+  avatarUrl: string | null;
+}> {
   const seen = new Set<string>();
-  const members: BffPerson[] = [];
+  const members: Array<{
+    label: string;
+    value: string;
+    name: string;
+    avatarUrl: string | null;
+  }> = [];
 
   for (const users of usersByProject) {
     for (const user of users) {
@@ -727,7 +805,12 @@ export function collectMembers(usersByProject: User[][]): BffPerson[] {
       }
 
       seen.add(member.id);
-      members.push(member);
+      members.push({
+        label: member.name,
+        value: member.id,
+        name: member.name,
+        avatarUrl: member.avatarUrl,
+      });
     }
   }
 
@@ -834,10 +917,6 @@ export function buildProjectResponseOverridesFromCreateBody(
     statusLabel: mapProjectStatusLabel(body.status),
     priority: body.priority,
     priorityLabel: mapProjectPriorityLabel(body.priority),
-    responsible: mapPerson(null, body.responsibleId, body.responsibleId),
-    assignees: body.assigneeIds.map((assigneeId) =>
-      mapPerson(null, assigneeId, assigneeId),
-    ),
     labels: body.labels,
     dueDate: body.dueDate,
     tasks: {
@@ -879,20 +958,6 @@ export function buildProjectResponseOverridesFromUpdateBody(
     override.priorityLabel = mapProjectPriorityLabel(body.priority);
   }
 
-  if (typeof body.responsibleId === "string") {
-    override.responsible = mapPerson(
-      null,
-      body.responsibleId,
-      body.responsibleId,
-    );
-  }
-
-  if (Array.isArray(body.assigneeIds)) {
-    override.assignees = body.assigneeIds.map((assigneeId) =>
-      mapPerson(null, assigneeId, assigneeId),
-    );
-  }
-
   if (Array.isArray(body.labels)) {
     override.labels = body.labels;
   }
@@ -927,10 +992,6 @@ export function buildTaskResponseOverridesFromCreateBody(
     title: body.title,
     status: body.status,
     statusLabel: mapTaskStatusLabel(body.status),
-    responsible: mapPerson(null, body.responsibleId, body.responsibleId),
-    assignees: body.assigneeIds.map((assigneeId) =>
-      mapPerson(null, assigneeId, assigneeId),
-    ),
     priority: body.priority,
     priorityLabel: mapTaskPriorityLabel(body.priority),
     labels: body.labels,
@@ -956,20 +1017,6 @@ export function buildTaskResponseOverridesFromUpdateBody(
     override.completed = body.status === "done";
   }
 
-  if (typeof body.responsibleId === "string") {
-    override.responsible = mapPerson(
-      null,
-      body.responsibleId,
-      body.responsibleId,
-    );
-  }
-
-  if (Array.isArray(body.assigneeIds)) {
-    override.assignees = body.assigneeIds.map((assigneeId) =>
-      mapPerson(null, assigneeId, assigneeId),
-    );
-  }
-
   if (typeof body.priority === "string") {
     override.priority = body.priority;
     override.priorityLabel = mapTaskPriorityLabel(body.priority);
@@ -989,4 +1036,31 @@ export function buildTaskResponseOverridesFromUpdateBody(
 
 export function handleUnknownError(res: Response, error: unknown): Response {
   return sendRouteError(res, error);
+}
+
+export async function buildProjectDtoForUser(
+  user: ProjectUserContext,
+  project: ProjetView,
+  tasks: TaskView[],
+  users: User[],
+): Promise<BffProjectListItem> {
+  return mapProjectToDto(
+    project,
+    tasks,
+    users,
+    await getProjectPermissions(user, project.id),
+  );
+}
+
+export async function buildTaskDtoForUser(
+  user: ProjectUserContext,
+  projectId: number,
+  task: TaskView,
+  users: User[],
+): Promise<BffProjectTask> {
+  return mapTaskToDto(
+    task,
+    users,
+    await getTaskPermissions(user, projectId, task.id, task.assigned_to),
+  );
 }

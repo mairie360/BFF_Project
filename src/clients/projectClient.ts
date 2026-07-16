@@ -1,10 +1,22 @@
+import 'dotenv/config';
 import axios from "axios";
 import { getProjectApi } from "@mairie360/project-api-openapi/endpoints/projectApi";
-import { DEFAULT_JWT_TOKEN } from "../config/token"; // <-- Importation de ton fichier TS
+import { getAuthorizationHeader } from "../auth/token";
+
+function getProjectApiBaseUrl(): string {
+  const explicitBaseUrl = process.env.PROJECT_API_BASE_PATH?.trim();
+  if (explicitBaseUrl) return explicitBaseUrl.replace(/\/+$/, "");
+
+  const configuredHost = (process.env.PROJECT_API_URL ?? "localhost").trim().replace(/\/+$/, "");
+  const host = /^https?:\/\//i.test(configuredHost) ? configuredHost : `http://${configuredHost}`;
+  const configuredPort = process.env.PROJECT_API_PORT?.trim();
+
+  return configuredPort && !new URL(host).port ? `${host}:${configuredPort}` : host;
+}
 
 // 1. Créer l'instance Axios dédiée au service distant
-const apiClientInstance = axios.create({
-  baseURL: process.env.PROJECT_API_BASE_PATH || "http://localhost:8080",
+export const projectApiAxios = axios.create({
+  baseURL: getProjectApiBaseUrl(),
   timeout: 5000,
   headers: {
     "Content-Type": "application/json",
@@ -12,19 +24,14 @@ const apiClientInstance = axios.create({
 });
 
 // Intercepteur pour injecter automatiquement le token
-apiClientInstance.interceptors.request.use(
+projectApiAxios.interceptors.request.use(
   (config) => {
-    const currentAuth = config.headers.Authorization;
-
-    // Si aucun token n'est fourni par l'appel Orval, on met celui par défaut
-    if (!currentAuth && DEFAULT_JWT_TOKEN) {
-      config.headers.Authorization = DEFAULT_JWT_TOKEN.startsWith("Bearer ")
-        ? DEFAULT_JWT_TOKEN
-        : `Bearer ${DEFAULT_JWT_TOKEN}`;
+    const authorization = getAuthorizationHeader();
+    if (!config.headers.Authorization && authorization) {
+      config.headers.Authorization = authorization;
     }
 
-    console.log("Requête sortante vers :", config.baseURL + "" + config.url);
-    return config; // <-- TRÈS IMPORTANT : Si cette ligne manque, Axios bloque !
+    return config;
   },
   (error) => {
     return Promise.reject(error);
@@ -32,8 +39,6 @@ apiClientInstance.interceptors.request.use(
 );
 
 // 2. Injecter l'instance dans le code généré par Orval
-const projectClient = getProjectApi(apiClientInstance);
-
-console.log("Project API Base Path:", process.env.PROJECT_API_BASE_PATH);
+const projectClient = getProjectApi(projectApiAxios);
 
 export default projectClient;

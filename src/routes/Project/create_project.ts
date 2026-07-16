@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
-  buildProjectResponseFromState,
   buildProjectResponseOverridesFromCreateBody,
-  buildTaskResponseFromState,
+  buildProjectDtoForUser,
+  buildTaskDtoForUser,
   createProjectOnApi,
   createTaskOnApi,
   fetchProjectBundle,
@@ -11,7 +11,14 @@ import {
   mapProjectCreateBodyToBackend,
   mapTaskInputToBackend,
   sendValidationError,
+  syncProjectUsersOnApi,
 } from './project_helpers';
+import { requireAssignableUsers, requireManagerRole } from './project_access';
+import {
+  appendTaskHistory,
+  createProjectRecord,
+  isProjectDatabaseAccessEnabled,
+} from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -61,7 +68,21 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   try {
-    const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
+    const user = requireManagerRole(res);
+    if (!user) return;
+    if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
+    const createdProject = isProjectDatabaseAccessEnabled()
+      ? {
+          project_id: await createProjectRecord(user.id, {
+            title: bodyResult.data.title,
+            description: bodyResult.data.description,
+          }),
+        }
+      : await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
+    await syncProjectUsersOnApi(createdProject.project_id, [
+      bodyResult.data.responsibleId,
+      ...bodyResult.data.assigneeIds,
+    ]);
 
     if (Array.isArray(bodyResult.data.taskItems)) {
       for (const task of bodyResult.data.taskItems) {
@@ -80,21 +101,21 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const bundle = await fetchProjectBundle(createdProject.project_id);
-    const projectResponse = buildProjectResponseFromState({
-      project: bundle.project,
-      tasks: bundle.tasks,
-      users: bundle.users,
-      override: buildProjectResponseOverridesFromCreateBody(bodyResult.data),
-    });
+    await Promise.all(bundle.tasks.map((task) =>
+      appendTaskHistory(createdProject.project_id, task.id, user, 'task_created', `Tâche « ${task.title} » créée.`),
+    ));
+    const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);
+    const projectResponse = {
+      ...baseProject,
+      ...buildProjectResponseOverridesFromCreateBody(bodyResult.data),
+      permissions: baseProject.permissions,
+    };
 
     return res.status(201).json({
       project: projectResponse,
-      taskItems: bundle.tasks.map((task) =>
-        buildTaskResponseFromState({
-          task,
-          users: bundle.users,
-        }),
-      ),
+      taskItems: await Promise.all(bundle.tasks.map((task) =>
+        buildTaskDtoForUser(user, createdProject.project_id, task, bundle.users),
+      )),
     });
   } catch (error) {
     return handleUnknownError(res, error);
@@ -102,4 +123,3 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 export default router;
-

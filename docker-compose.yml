@@ -1,14 +1,18 @@
 volumes:
-  postgres-data:
   redis-data:
   bff-project-target:
 
 networks:
   backend:
+  user_backend:
+    external: true
+    name: ${USER_BACKEND_NETWORK:-bff_user_backend}
 
 secrets:
   npmrc:
     file: .npmrc
+  npm_token:
+    environment: NODE_AUTH_TOKEN
 
 x-common-env: &common-env
   HOST: "0.0.0.0"
@@ -17,13 +21,11 @@ x-common-env: &common-env
   DB_TYPE: postgres
   DB_NAME: mairie_360_database
   DB_USER: postgres
-  DB_HOST: postgres
+  DB_HOST: ${SHARED_DB_HOST:-mairie360-db-bff-user}
   DB_PASSWORD: password
   DB_PORT: 5432
 
 x-depends-on: &depends-on
-  postgres:
-    condition: service_healthy
   redis:
     condition: service_healthy
 
@@ -45,44 +47,6 @@ x-service: &service-template
   #   <<: *healthcheck
 
 services:
-  postgres:
-    image: ghcr.io/mairie360/database:1.0.0
-    restart: always
-    container_name: mairie360-db-project-api
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      POSTGRES_DB: mairie_360_database
-    expose:
-      - "5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  liquibase:
-    image: ghcr.io/mairie360/liquibase-migrations:1.0.0
-    container_name: mairie360-liquibase-project-api
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      <<: *common-env
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/mairie_360_database
-      LIQUIBASE_COMMAND_USERNAME: ${DB_USER:-postgres}
-      LIQUIBASE_COMMAND_PASSWORD: ${DB_PASSWORD:-password}
-      LIQUIBASE_SEARCH_PATH: /migrations
-    command: >
-      --changelog-file=changelog.xml
-      update
-    networks:
-      - backend
-
   redis:
     image: redis:8.4.0-bookworm
     container_name: mairie360-redis-project-bff #change bff name
@@ -99,34 +63,34 @@ services:
       timeout: 5s
       retries: 5
 
-  core:
-    container_name: core-project-bff-developpement
-    image: ghcr.io/mairie360/core-api:1.0.0
-    ports:
-      - "3000:3000"
-    networks:
-      - backend
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    environment:
-      HOST: "0.0.0.0"
-      PORT: 3000
-      REDIS_URL: redis://redis:6379
-      DB_TYPE: postgres
-      DB_NAME: mairie_360_database
-      DB_USER: postgres
-      DB_HOST: postgres
-      DB_PASSWORD: password
-      DB_PORT: 5432
-      PUBLIC_URL: http://core.development.mairie360.fr
-      JWT_SECRET: b"secret"
-      JWT_TIMEOUT: 3600
-    depends_on:
-      liquibase:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
+  # core:
+  #   container_name: core-project-bff-developpement
+  #   image: ghcr.io/mairie360/core-api:1.0.0
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - backend
+  #   dns:
+  #     - 8.8.8.8
+  #     - 1.1.1.1
+  #   environment:
+  #     HOST: "0.0.0.0"
+  #     PORT: 3000
+  #     REDIS_URL: redis://redis:6379
+  #     DB_TYPE: postgres
+  #     DB_NAME: mairie_360_database
+  #     DB_USER: postgres
+  #     DB_HOST: postgres
+  #     DB_PASSWORD: password
+  #     DB_PORT: 5432
+  #     PUBLIC_URL: http://core.development.mairie360.fr
+  #     JWT_SECRET: b"secret"
+  #     JWT_TIMEOUT: 3600
+  #   depends_on:
+  #     liquibase:
+  #       condition: service_completed_successfully
+  #     redis:
+  #       condition: service_healthy
 
   project-api:
     container_name: project-api-bff-project-developpement
@@ -135,6 +99,7 @@ services:
       - "3001:3001"
     networks:
       - backend
+      - user_backend
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -145,15 +110,13 @@ services:
       DB_TYPE: postgres
       DB_NAME: mairie_360_database
       DB_USER: postgres
-      DB_HOST: postgres
+      DB_HOST: ${SHARED_DB_HOST:-mairie360-db-bff-user}
       DB_PASSWORD: password
       DB_PORT: 5432
       PUBLIC_URL: http://project.development.mairie360.fr
       JWT_SECRET: b"secret"
       JWT_TIMEOUT: 3600
     depends_on:
-      liquibase:
-        condition: service_completed_successfully
       redis:
         condition: service_healthy
 
@@ -164,10 +127,9 @@ services:
     build:
       context: .
       dockerfile: development.Dockerfile
-      args:
-        - NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
       secrets:
         - npmrc
+        - npm_token
     # Mode synchronisation en temps réel (Docker Compose V2)
     develop:
       watch:
@@ -180,14 +142,16 @@ services:
       - "4001:4001"
     networks:
       - backend
+      - user_backend
     environment:
       <<: *common-env
       # IMPORTANT : On utilise le nom du service Docker pour communiquer
-      CORE_API_URL: "core"
+      CORE_API_URL: "core-bff-user-developpement"
       CORE_API_PORT: 3000
       PROJECT_API_URL: "project-api"
       PROJECT_API_PORT: 3001
       PROJECT_API_BASE_PATH: "http://project-api:3001"
+      USER_BFF_URL: "http://bff-user-developpement:4000"
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
     healthcheck:

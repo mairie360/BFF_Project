@@ -2,14 +2,15 @@ import { Router, Request, Response } from 'express';
 import { registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     createTaskOnApi,
+    buildTaskDtoForUser,
+    fetchProjectBundle,
     handleUnknownError,
     mapTaskInputToBackend,
-    mapTaskPriorityLabel,
-    mapTaskStatusLabel,
     parsePublicId,
     sendValidationError,
-    taskPublicId,
 } from './project_helpers';
+import { requireAssignableUsers, requireProjectManagement } from './project_access';
+import { appendTaskHistory } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -86,6 +87,9 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
     }
 
     try {
+        const user = await requireProjectManagement(res, projectId);
+        if (!user) return;
+        if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
         const createdTask = await createTaskOnApi(
             projectId,
             mapTaskInputToBackend({
@@ -99,31 +103,14 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
             }),
         );
 
-        const now = new Date().toISOString();
+        await appendTaskHistory(projectId, createdTask.task_id, user, 'task_created', `Tâche « ${bodyResult.data.title} » créée.`);
+        const bundle = await fetchProjectBundle(projectId);
+        const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
+        if (!task) {
+            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Task not found after creation', details: [] } });
+        }
 
-        return res.status(201).json({
-            id: taskPublicId(createdTask.task_id),
-            title: bodyResult.data.title,
-            status: bodyResult.data.status,
-            statusLabel: mapTaskStatusLabel(bodyResult.data.status),
-            responsible: {
-                id: bodyResult.data.responsibleId,
-                name: bodyResult.data.responsibleId,
-                avatarUrl: null,
-            },
-            assignees: bodyResult.data.assigneeIds.map((assigneeId) => ({
-                id: assigneeId,
-                name: assigneeId,
-                avatarUrl: null,
-            })),
-            priority: bodyResult.data.priority,
-            priorityLabel: mapTaskPriorityLabel(bodyResult.data.priority),
-            labels: bodyResult.data.labels,
-            dueDate: bodyResult.data.dueDate,
-            completed: bodyResult.data.status === 'done',
-            createdAt: now,
-            updatedAt: now,
-        });
+        return res.status(201).json(await buildTaskDtoForUser(user, projectId, task, bundle.users));
     } catch (error) {
         return handleUnknownError(res, error);
     }

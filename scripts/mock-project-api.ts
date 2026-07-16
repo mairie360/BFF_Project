@@ -29,6 +29,20 @@ interface MockProject {
 
 const app = express();
 app.use(express.json());
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/api/v1/')) req.url = req.url.slice('/api'.length);
+  next();
+});
+
+app.use('/v1/projects', (req, res, next) => {
+  const requiredToken = process.env.MOCK_PROJECT_API_TOKEN;
+  const acceptedTokens = new Set([requiredToken, 'user-token', 'manager-token'].filter(Boolean).map((token) => `Bearer ${token}`));
+  if (requiredToken && !acceptedTokens.has(req.header('authorization') ?? '')) {
+    return res.status(401).json({ message: 'Missing or invalid bearer token' });
+  }
+
+  return next();
+});
 
 const PORT = Number(process.env.PROJECT_API_PORT ?? 4010);
 
