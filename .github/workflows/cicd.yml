@@ -13,5 +13,6 @@ jobs:
     uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.7.5
     with:
       package_name: bff-project
+      cicd_version: v1.7.5
       node_version: 20
     secrets: inherit
