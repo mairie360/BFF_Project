@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # [MODIFICATION] On monte le secret npmrc au moment du npm ci
-RUN npm config set @mairie360:registry https://npm.pkg.github.coma
+RUN npm config set @mairie360:registry https://npm.pkg.github.com
 RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
     npm ci
 
