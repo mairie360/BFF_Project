@@ -14,7 +14,10 @@ import {
     mapTaskStatus,
     parsePublicId,
     sendValidationError,
+    syncProjectUsersOnApi,
 } from './project_helpers';
+import { requireProjectManagement } from './project_access';
+import { createProjectRecord, isProjectDatabaseAccessEnabled } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -69,18 +72,30 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
     }
 
     try {
+        const user = await requireProjectManagement(res, projectId);
+        if (!user) return;
         const sourceBundle = await fetchProjectBundle(projectId);
-        const createdProject = await createProjectOnApi(
-            mapProjectCreateBodyToBackend({
+        const duplicateBody = {
                 title: sourceBundle.project.name,
                 description: sourceBundle.project.description,
-                status: 'todo',
-                priority: 'medium',
+                status: 'todo' as const,
+                priority: 'medium' as const,
                 responsibleId: sourceBundle.users[0] ? `user-${sourceBundle.users[0].id}` : `project-${projectId}`,
                 assigneeIds: sourceBundle.users.map((user) => `user-${user.id}`),
                 labels: [],
                 dueDate: new Date().toISOString(),
-            }),
+            };
+        const createdProject = isProjectDatabaseAccessEnabled()
+            ? {
+                project_id: await createProjectRecord(user.id, {
+                    title: duplicateBody.title,
+                    description: duplicateBody.description,
+                }),
+            }
+            : await createProjectOnApi(mapProjectCreateBodyToBackend(duplicateBody));
+        await syncProjectUsersOnApi(
+            createdProject.project_id,
+            sourceBundle.users.map((member) => `user-${member.id}`),
         );
 
         for (const task of sourceBundle.tasks) {

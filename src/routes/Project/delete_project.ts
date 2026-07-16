@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { registry, ProjectIdParams, ApiError } from '../../openapi-registry';
 import { deleteProjectOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
+import { requireProjectManagement } from './project_access';
 
 const router = Router();
 
@@ -50,6 +51,8 @@ router.delete('/:projectId', async (req: Request, res: Response) => {
     }
 
     try {
+        const user = await requireProjectManagement(res, projectId);
+        if (!user) return;
         await deleteProjectOnApi(projectId);
         return res.status(204).send();
     } catch (error) {

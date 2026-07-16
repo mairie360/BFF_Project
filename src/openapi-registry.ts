@@ -61,6 +61,8 @@ export const ProjectListItem = z.object({
         canDuplicate: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut dupliquer le projet', example: false }),
         canDelete: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut supprimer le projet', example: false }),
         canCreateTask: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut créer des tâches dans le projet', example: true }),
+        canAssignMembers: z.boolean(),
+        canClose: z.boolean(),
     }).openapi({ description: 'Les permissions de l\'utilisateur sur le projet' }),
 }).openapi({
     description: 'Un projet pour les vues de type carte, table ou kanban',
@@ -82,6 +84,13 @@ export const ProjectTask = z.object({
     completed: z.boolean().openapi({ description: 'Indique si la tâche est complétée', example: false }),
     createdAt: z.string().openapi({ description: 'La date de création de la tâche au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
     updatedAt: z.string().optional().openapi({ description: 'La date de dernière mise à jour de la tâche au format ISO 8601', example: '2024-01-15T15:30:00Z' }),
+    permissions: z.object({
+      canView: z.boolean(),
+      canEdit: z.boolean(),
+      canDelete: z.boolean(),
+      canUpdateStatus: z.boolean(),
+      canComment: z.boolean(),
+    }),
 }).openapi({
     description: 'Une tâche associée à un projet',
 });
@@ -132,6 +141,10 @@ export const ProjectsPageQuery = z.object({
   priority: z
     .enum(['all', 'high', 'medium', 'low'])
     .optional(),
+
+  dueBefore: z.string().optional(),
+
+  dueAfter: z.string().optional(),
 
   view: ViewMode.optional(),
 
@@ -233,6 +246,41 @@ registry.register(
   UpdateTaskStatusBody,
 );
 
+export const CloseProjectBody = z.object({
+  status: z.enum(['done', 'review']).default('done'),
+});
+
+export const TaskCommentBody = z.object({
+  message: z.string().trim().min(1).max(2_000),
+});
+
+export const TaskComment = z.object({
+  id: z.string(),
+  message: z.string(),
+  author: z.object({ id: z.string(), name: z.string() }),
+  createdAt: z.string(),
+});
+
+export const TaskHistoryEntry = z.object({
+  id: z.string(),
+  action: z.string(),
+  label: z.string(),
+  author: z.object({ id: z.string(), name: z.string() }),
+  createdAt: z.string(),
+  changes: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const TaskCollaborationResponse = z.object({
+  comments: z.array(TaskComment),
+  history: z.array(TaskHistoryEntry),
+});
+
+registry.register('CloseProjectBody', CloseProjectBody);
+registry.register('TaskCommentBody', TaskCommentBody);
+registry.register('TaskComment', TaskComment);
+registry.register('TaskHistoryEntry', TaskHistoryEntry);
+registry.register('TaskCollaborationResponse', TaskCollaborationResponse);
+
 // =====================
 // PROJECT DETAILS RESPONSE
 // =====================
@@ -253,6 +301,15 @@ registry.register(
 // =====================
 
 export const ProjectsPageResponse = z.object({
+  access: z.object({
+    role: z.enum(['Admin', 'Maire', 'Responsable', 'User', 'Guest']),
+    scope: z.enum(['all', 'team', 'assigned']),
+    canCreateProject: z.boolean(),
+    canManageProjects: z.boolean(),
+    canManageTasks: z.boolean(),
+    canUpdateAssignedTaskStatus: z.boolean(),
+    canCommentTasks: z.boolean(),
+  }),
   page: z.object({
     title: z.string(),
     subtitle: z.string(),
@@ -353,4 +410,3 @@ export const ApiError = z.object({
 });
 
 registry.register('ApiError', ApiError);
-

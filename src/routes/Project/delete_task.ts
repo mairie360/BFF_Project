@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { registry, ProjectTaskParams, ApiError } from '../../openapi-registry';
 import { deleteTaskOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
+import { requireTaskManagement } from './project_access';
 
 const router = Router();
 
@@ -51,6 +52,8 @@ router.delete('/:projectId/tasks/:taskId', async (req: Request, res: Response) =
     }
 
     try {
+        const user = await requireTaskManagement(res, projectId, taskId);
+        if (!user) return;
         await deleteTaskOnApi(projectId, taskId);
         return res.status(204).send();
     } catch (error) {

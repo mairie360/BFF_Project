@@ -1,12 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
-  buildProjectResponseFromState,
+  buildProjectDtoForUser,
+  buildTaskDtoForUser,
   fetchProjectBundle,
   handleUnknownError,
   parsePublicId,
   sendValidationError,
 } from './project_helpers';
+import { requireProjectView } from './project_access';
 
 const router = Router();
 
@@ -61,19 +63,20 @@ router.get('/:projectId', async (req: Request, res: Response) => {
   }
 
   try {
+    const user = await requireProjectView(res, projectId);
+    if (!user) return;
     const bundle = await fetchProjectBundle(projectId);
+    const taskItems = (await Promise.all(
+      bundle.tasks.map(async (task) => buildTaskDtoForUser(user, projectId, task, bundle.users)),
+    )).filter((task) => task.permissions.canView);
 
-    return res.status(200).json(
-      buildProjectResponseFromState({
-        project: bundle.project,
-        tasks: bundle.tasks,
-        users: bundle.users,
-      }),
-    );
+    return res.status(200).json({
+      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+      taskItems,
+    });
   } catch (error) {
     return handleUnknownError(res, error);
   }
 });
 
 export default router;
-

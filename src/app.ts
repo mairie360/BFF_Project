@@ -14,16 +14,17 @@ import createTaskRouter from './routes/Project/create_task';
 import modifyTaskRouter from './routes/Project/modify_task';
 import modifyTaskStatusRouter from './routes/Project/modify_task_status';
 import deleteTaskRouter from './routes/Project/delete_task';
+import closeProjectRouter from './routes/Project/close_project';
+import taskCollaborationRouter from './routes/Project/task_collaboration';
+import { requireBearerToken, tokenContextMiddleware } from './auth/token';
+import { projectUserContextMiddleware } from './auth/project-user';
 
 dotenv.config();
 
 
 const app = express();
 app.use(express.json());
-
-app.get('/__debug', (_req, res) => {
-  res.json({ from: 'express-ok' });
-});
+app.use(tokenContextMiddleware);
 
 
 const swaggerOptions: swaggerJsdoc.Options = {
@@ -55,6 +56,8 @@ app.get('/swagger.json', (_req, res) => {
 
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
+app.use(['/projects-page', '/projects'], requireBearerToken);
+app.use(['/projects-page', '/projects'], projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);
@@ -65,22 +68,7 @@ app.use('/projects', createTaskRouter);
 app.use('/projects', modifyTaskRouter);
 app.use('/projects', modifyTaskStatusRouter);
 app.use('/projects', deleteTaskRouter);
-
-console.log("STACK ROUTES:");
-const router = (app as unknown as {
-  router?: { stack?: Array<any> };
-  _router?: { stack?: Array<any> };
-}).router ?? (app as unknown as { _router?: { stack?: Array<any> } })._router;
-
-console.log(
-  (router?.stack ?? [])
-    .filter((l: any) => l.route)
-    .map((l: any) => ({
-      path: l.route.path,
-      methods: l.route.methods
-    }))
-);
-
-
+app.use('/projects', closeProjectRouter);
+app.use('/projects', taskCollaborationRouter);
 
 export default app;

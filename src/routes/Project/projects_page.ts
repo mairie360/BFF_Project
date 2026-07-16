@@ -7,16 +7,18 @@ import {
 } from "../../openapi-registry";
 import {
   buildKanbanColumns,
+  buildProjectDtoForUser,
   buildPagination,
   collectMembers,
   defaultProjectSummary,
   fetchProjectBundle,
-  fetchProjects,
+  fetchProjectsForUser,
   handleUnknownError,
-  mapProjectToDto,
   paginateProjects,
   sendValidationError,
 } from "./project_helpers";
+import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
+import { listAssignableUsers } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -54,24 +56,23 @@ registry.registerPath({
 });
 
 router.get("/", async (req: Request, res: Response) => {
-  console.log("test");
   const queryResult = ProjectsPageQuery.safeParse(req.query);
 
   if (!queryResult.success) {
-    console.error("Fail to parse project page query");
     return sendValidationError(res, queryResult.error.issues);
   }
 
   // console.log(queryResult);
   try {
-    const projects = await fetchProjects(req.headers.authorization);
-    console.log(projects);
+    const user = getProjectUserContext(res);
+    const projects = await fetchProjectsForUser(user);
     const bundles = await Promise.all(
       projects.projects.map(async (project) => {
         const projectBundle = await fetchProjectBundle(project.id);
 
         return {
-          project: mapProjectToDto(
+          project: await buildProjectDtoForUser(
+            user,
             projectBundle.project,
             projectBundle.tasks,
             projectBundle.users,
@@ -82,7 +83,10 @@ router.get("/", async (req: Request, res: Response) => {
     );
 
     const mappedProjects = bundles.map((bundle) => bundle.project);
-    const members = collectMembers(bundles.map((bundle) => bundle.users));
+    const assignableUsers = await listAssignableUsers(user);
+    const members = assignableUsers
+      ? collectMembers([assignableUsers])
+      : collectMembers(bundles.map((bundle) => bundle.users));
 
     const filteredProjects = mappedProjects.filter((project) => {
       const search = queryResult.data.q?.toLowerCase().trim();
@@ -98,8 +102,13 @@ router.get("/", async (req: Request, res: Response) => {
         !queryResult.data.priority || queryResult.data.priority === "all"
           ? true
           : project.priority === queryResult.data.priority;
+      const dueBefore = queryResult.data.dueBefore ? new Date(queryResult.data.dueBefore).getTime() : null;
+      const dueAfter = queryResult.data.dueAfter ? new Date(queryResult.data.dueAfter).getTime() : null;
+      const projectDueDate = new Date(project.dueDate).getTime();
+      const matchesDueBefore = dueBefore === null || projectDueDate <= dueBefore;
+      const matchesDueAfter = dueAfter === null || projectDueDate >= dueAfter;
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && matchesDueBefore && matchesDueAfter;
     });
 
     const page = queryResult.data.page ?? 1;
@@ -107,8 +116,17 @@ router.get("/", async (req: Request, res: Response) => {
     const pagedProjects = paginateProjects(filteredProjects, page, limit);
 
     return res.status(200).json({
+      access: {
+        role: user.role,
+        scope: isGlobalProjectRole(user.role) ? 'all' : user.role === 'Responsable' ? 'team' : 'assigned',
+        canCreateProject: canManageProjects(user.role),
+        canManageProjects: canManageProjects(user.role),
+        canManageTasks: canManageProjects(user.role),
+        canUpdateAssignedTaskStatus: true,
+        canCommentTasks: true,
+      },
       page: {
-        title: "Projects",
+        title: "Projets",
         subtitle: "Vue consolidée des projets",
         defaultView: queryResult.data.view ?? "kanban",
         views: [
@@ -147,8 +165,6 @@ router.get("/", async (req: Request, res: Response) => {
       pagination: buildPagination(filteredProjects.length, page, limit),
     });
   } catch (error) {
-    // console.error(error);
-    return res;
     return handleUnknownError(res, error);
   }
 });

@@ -1,15 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
-    buildProjectResponseFromState,
     buildProjectResponseOverridesFromUpdateBody,
+    buildProjectDtoForUser,
+    buildTaskDtoForUser,
     fetchProjectBundle,
     handleUnknownError,
     mapProjectUpdateBodyToBackend,
+    patchProjectOnApi,
     parsePublicId,
-    // patchProjectOnApi,
     sendValidationError,
+    syncProjectUsersOnApi,
 } from './project_helpers';
+import { requireAssignableUsers, requireProjectManagement } from './project_access';
+import { isProjectDatabaseAccessEnabled, updateProjectRecord } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -86,22 +90,39 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     }
 
     try {
+        const user = await requireProjectManagement(res, projectId);
+        if (!user) return;
+        const requestedUserIds = [
+            ...(bodyResult.data.responsibleId ? [bodyResult.data.responsibleId] : []),
+            ...(bodyResult.data.assigneeIds ?? []),
+        ];
+        if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
         const backendPayload = mapProjectUpdateBodyToBackend(bodyResult.data);
 
-        // if (Object.keys(backendPayload).length > 0) {
-        //     await patchProjectOnApi(projectId, backendPayload);
-        // }
+        if (isProjectDatabaseAccessEnabled()) {
+            await updateProjectRecord(projectId, bodyResult.data);
+        } else if (Object.keys(backendPayload).length > 0) {
+            await patchProjectOnApi(projectId, backendPayload);
+        }
+
+        const desiredUserIds = requestedUserIds;
+        if (desiredUserIds.length > 0) {
+            await syncProjectUsersOnApi(projectId, desiredUserIds);
+        }
 
         const bundle = await fetchProjectBundle(projectId);
+        const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);
 
-        return res.status(200).json(
-            buildProjectResponseFromState({
-                project: bundle.project,
-                tasks: bundle.tasks,
-                users: bundle.users,
-                override: buildProjectResponseOverridesFromUpdateBody(bodyResult.data),
-            }),
-        );
+        return res.status(200).json({
+            project: {
+                ...baseProject,
+                ...buildProjectResponseOverridesFromUpdateBody(bodyResult.data),
+                permissions: baseProject.permissions,
+            },
+            taskItems: await Promise.all(bundle.tasks.map((task) =>
+                buildTaskDtoForUser(user, projectId, task, bundle.users),
+            )),
+        });
     } catch (error) {
         return handleUnknownError(res, error);
     }

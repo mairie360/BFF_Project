@@ -1,13 +1,16 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectStatus, ApiError } from '../../openapi-registry';
+import { registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     fetchProjectBundle,
     handleUnknownError,
+    buildTaskDtoForUser,
     mapTaskStatusToBackend,
     patchTaskOnApi,
     parsePublicId,
     sendValidationError,
 } from './project_helpers';
+import { requireTaskStatusUpdate } from './project_access';
+import { appendTaskHistory } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -34,7 +37,7 @@ registry.registerPath({
             description: 'Statut de la tâche mis à jour avec succès',
             content: {
                 'application/json': {
-                    schema: ProjectStatus,
+                    schema: ProjectTask,
                 },
             },
         },
@@ -97,12 +100,38 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
                 },
             });
         }
+        const user = await requireTaskStatusUpdate(
+            res,
+            projectId,
+            taskId,
+            task.assigned_to,
+        );
+        if (!user) return;
 
         await patchTaskOnApi(projectId, taskId, {
             status: mapTaskStatusToBackend(bodyResult.data.status),
         });
+        await appendTaskHistory(
+            projectId,
+            taskId,
+            user,
+            'status_changed',
+            `Statut de « ${task.title} » modifié en ${bodyResult.data.status}.`,
+            { status: { from: task.status, to: bodyResult.data.status } },
+        );
 
-        return res.status(200).json(bodyResult.data.status);
+        const updatedBundle = await fetchProjectBundle(projectId);
+        const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);
+
+        if (!updatedTask) {
+            return res.status(404).json({
+                error: { code: 'NOT_FOUND', message: 'Task not found after update', details: [] },
+            });
+        }
+
+        return res.status(200).json(
+            await buildTaskDtoForUser(user, projectId, updatedTask, updatedBundle.users),
+        );
     } catch (error) {
         return handleUnknownError(res, error);
     }

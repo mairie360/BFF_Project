@@ -2,7 +2,6 @@ import { Router } from 'express';
 import axios from 'axios';
 import { CheckApiResponse, CheckApiResponseSchema } from '../views/check_api_view';
 import { registry } from '../openapi-registry';
-import { url } from 'zod';
 import dotenv from 'dotenv';
 dotenv.config();
 
