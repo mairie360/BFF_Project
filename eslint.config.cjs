@@ -13,7 +13,8 @@ module.exports = [
       'eslint.config.cjs',
       '.eslintrc.js',
       'jest.config.ts',
-      'scripts/export-swagger.ts'
+      'scripts/export-swagger.ts',
+      'next.config.js'
     ],
   },
   js.configs.recommended,
