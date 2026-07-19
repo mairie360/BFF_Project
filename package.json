@@ -12,7 +12,7 @@
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "8.5.0",
+    "@asteasolutions/zod-to-openapi": "9.1.0",
     "@mairie360/core-api-openapi": "1.0.0",
     "@mairie360/project-api-openapi": "0.0.0-dev.89c97300f8477aa18475319a9706b06dba002816",
     "axios": "1.18.1",
