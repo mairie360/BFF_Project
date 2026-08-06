@@ -21,7 +21,7 @@ x-common-env: &common-env
   DB_TYPE: postgres
   DB_NAME: mairie_360_database
   DB_USER: postgres
-  DB_HOST: ${SHARED_DB_HOST:-mairie360-db-bff-user}
+  DB_HOST: ${SHARED_DB_HOST:-postgres}
   DB_PASSWORD: password
   DB_PORT: 5432
 
@@ -110,7 +110,7 @@ services:
       DB_TYPE: postgres
       DB_NAME: mairie_360_database
       DB_USER: postgres
-      DB_HOST: ${SHARED_DB_HOST:-mairie360-db-bff-user}
+      DB_HOST: ${SHARED_DB_HOST:-postgres}
       DB_PASSWORD: password
       DB_PORT: 5432
       PUBLIC_URL: http://project.development.mairie360.fr
