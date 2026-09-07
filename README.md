@@ -1,39 +1,25 @@
-# Bff_Template_Repo
+# BFF_Project
 
-Contrat des routes et données, synchronisation BFF/web et limites de disponibilité : [CONTRACT.md](CONTRACT.md).
+Prepare projects, tasks and collaboration information for tracking municipal work. The BFF builds responses for list, table and Kanban views using the session’s permissions.
 
-## 🏗️ Dépôt Modèle pour Backend for Frontend (BFF)
+Préparer les projets, tâches et informations de collaboration pour le suivi du travail municipal. Le BFF construit des réponses adaptées aux vues liste, tableau et Kanban, avec les permissions de la session.
 
-Ce dépôt sert de point de départ pour créer une application BFF (Backend for Frontend) destinée à interagir avec différents microservices.
+## Documentation
 
----
+| Language / Langue | Module | Technical / Technique |
+| --- | --- | --- |
+| English | [Module overview](docs/en/module.md) | [Technical documentation](docs/en/technical.md) |
+| Français | [Présentation du module](docs/fr/module.md) | [Documentation technique](docs/fr/technical.md) |
 
-## ✨ Fonctionnalités
+The guides describe the implemented module, its current limitations, local setup, routes, data, verification and CI/CD.
 
-- Serveur basé sur **Express.js**
-- Développement en **TypeScript** pour une meilleure sécurité et expérience
-- Gestion des variables d’environnement avec **dotenv**
-- Route de vérification de santé (health check) intégrée
-- Support **Docker** pour la conteneurisation
-- Gestion basique des erreurs
+Les guides décrivent le module implémenté, ses limites actuelles, le démarrage local, les routes, les données, les vérifications et la CI/CD.
 
----
+## Contracts and background / Contrats et compléments
 
-## ⚠️ Important
+- [CONTRACT.md](CONTRACT.md)
+- [contracts/openapi.json](contracts/openapi.json)
 
-Avant de lancer l’application, pensez à définir la variable d’environnement `PORT`.
+`BACKEND.md`, when present, includes proposed backend requirements; use the guides and versioned OpenAPI contract to identify current behavior.
 
-Créez un fichier `.env` à la racine du projet avec le contenu suivant :
-
-```env
-PORT=3000
-```
-
-## 🚀 Démarrage Rapide
-
-```bash
-# Construire l'image Docker
-docker build -t bff-template .
-
-# Lancer le conteneur
-docker run -p 3000:3000 --env-file .env bff-template
+`BACKEND.md`, lorsqu’il est présent, contient des besoins backend proposés; consulter les guides et le contrat OpenAPI versionné pour identifier le comportement actuel.
