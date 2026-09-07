@@ -8,6 +8,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "openapi:extract": "tsx scripts/export-swagger.ts",
+    "pretest": "tsc --project tsconfig.test.json",
     "test": "jest",
     "dev": "tsx watch src/index.ts",
     "contracts:generate": "npm run openapi:extract && node scripts/contracts.mjs --generate",
