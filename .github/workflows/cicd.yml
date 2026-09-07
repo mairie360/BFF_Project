@@ -2,6 +2,7 @@ name: BFF Project CICD
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -10,9 +11,9 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.11.0
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.13.2
     with:
       package_name: bff-project
-      cicd_version: v1.7.5
-      node_version: 20
+      cicd_version: v1.13.2
+      node_version: "22"
     secrets: inherit
