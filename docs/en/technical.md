@@ -2,8 +2,6 @@
 
 [Module overview](module.md) · [Français](../fr/technical.md) · [README](../../README.md)
 
-Documentation of the versioned code as of 7 September 2026, based on `d7dd4cb30e26`. Commands below describe checks to run; they do not certify a remote deployment.
-
 ## Architecture and request handling
 
 Express 5.2.1 server written in TypeScript. Zod schemas and their OpenAPI registry describe exchanged objects; routers adapt upstream services to interface needs.

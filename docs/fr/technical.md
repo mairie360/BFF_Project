@@ -2,8 +2,6 @@
 
 [Présentation du module](module.md) · [English](../en/technical.md) · [README](../../README.md)
 
-Documentation du code versionné au 7 septembre 2026, basée sur `d7dd4cb30e26`. Les commandes ci-dessous décrivent les vérifications à effectuer; elles ne certifient pas un déploiement distant.
-
 ## Architecture et traitement des requêtes
 
 Serveur Express 5.2.1 écrit en TypeScript. Les schémas Zod et leur registre OpenAPI décrivent les objets échangés; les routeurs adaptent les services amont aux besoins des interfaces.
