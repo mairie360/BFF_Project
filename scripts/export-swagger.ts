@@ -1,32 +1,17 @@
-import fs from 'fs';
-import path from 'path';
-import { OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
-import { registry } from '../src/openapi-registry';
+import fs from 'node:fs';
+import path from 'node:path';
+import { openApiDocument } from '../src/openapi';
 
-// Important : Il faut importer les routes pour qu'elles s'enregistrent dans le `registry`
-function importAll(r: string[]) {
-  r.forEach(file => {
-    require(path.resolve(__dirname, '../src/routes', file));
-  });
+const serialized = JSON.stringify(openApiDocument, null, 2) + '\n';
+const output = path.resolve(process.cwd(), 'contracts/openapi.json');
+if (process.argv.includes('--check')) {
+  if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8') !== serialized) {
+    throw new Error('The exported BFF contract is stale. Run npm run contracts:generate.');
+  }
+} else {
+fs.mkdirSync(path.dirname(output), { recursive: true });
+fs.writeFileSync(output, serialized);
+// Preserve the artifact path consumed by the OpenAPI publishing workflow.
+fs.writeFileSync(path.resolve(process.cwd(), 'openapi.json'), serialized);
 }
-
-const routeFiles = fs.readdirSync(path.join(__dirname, '../src/routes')).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
-routeFiles.forEach(file => {
-  require(path.resolve(__dirname, '../src/routes', file));
-});
-
-const generator = new OpenApiGeneratorV3(registry.definitions);
-
-const openApiDocument = generator.generateDocument({
-  openapi: '3.0.0',
-  info: {
-    title: 'BFF User API',
-    version: '1.0.0',
-    description: 'Contrat généré automatiquement via Zod',
-  },
-});
-
-const outputPath = path.join(process.cwd(), 'openapi.json');
-fs.writeFileSync(outputPath, JSON.stringify(openApiDocument, null, 2));
-
-console.log('✅ openapi.json a été généré avec succès !');
+console.log(`Exported ${Object.keys(openApiDocument.paths ?? {}).length} paths to ${output}`);

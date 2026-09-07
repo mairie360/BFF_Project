@@ -102,7 +102,8 @@ function getTaskOr404(project: MockProject, taskId: number, res: Response): Mock
   return task;
 }
 
-function parseId(value: string | undefined): number | null {
+function parseId(value: string | string[] | undefined): number | null {
+  if (typeof value !== 'string') return null;
   if (!value) {
     return null;
   }

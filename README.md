@@ -1,5 +1,7 @@
 # Bff_Template_Repo
 
+Contrat des routes et données, synchronisation BFF/web et limites de disponibilité : [CONTRACT.md](CONTRACT.md).
+
 ## 🏗️ Dépôt Modèle pour Backend for Frontend (BFF)
 
 Ce dépôt sert de point de départ pour créer une application BFF (Backend for Frontend) destinée à interagir avec différents microservices.

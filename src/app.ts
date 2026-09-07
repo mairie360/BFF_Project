@@ -1,6 +1,6 @@
+import { openApiDocument as swaggerSpec } from './openapi';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
 import checkApis from './routes/check_apis';
@@ -27,29 +27,9 @@ app.use(express.json());
 app.use(tokenContextMiddleware);
 
 
-const swaggerOptions: swaggerJsdoc.Options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'BFF API',
-      version: '1.0.0',
-      description: 'Documentation du BFF gérant la vérification des services',
-    },
-    servers: [
-      {
-        url: `http://${process.env.HOST ?? 'localhost'}:${process.env.PORT ?? 3000}`,
-        description: 'Serveur local',
-      },
-    ],
-  },
-  apis: ['./src/routes/**/*.ts'],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.get('/swagger.json', (_req, res) => {
+app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
