@@ -14,7 +14,8 @@ module.exports = [
       '.eslintrc.js',
       'jest.config.ts',
       'scripts/export-swagger.ts',
-      'next.config.js'
+      'next.config.js',
+      'load-test.js'
     ],
   },
   js.configs.recommended,
