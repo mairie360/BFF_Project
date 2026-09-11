@@ -28,6 +28,11 @@ Single test: `npx jest tests/projects.test.ts` or `npx jest -t "returns a projec
 Note `npx jest` skips the `pretest` typecheck — run `npm test` (or `tsc -p tsconfig.test.json`) to catch type errors.
 CI runs tests with `--runInBand`.
 
+Isolated Docker Compose stacks (not yet wired into a GitHub workflow) cover load and DAST testing against
+a real Postgres + Core API + BFF User + Project API stack: `./performance_test.sh` (k6, thresholds in
+`load-test.js`) and `./security_test.sh` (OWASP ZAP against `/openapi.json`, alerts allow-listed in
+`.zap/rules.tsv`). Both need `NODE_AUTH_TOKEN` exported for the local image build.
+
 `PORT` env var is **required** — `src/index.ts` exits if it is unset.
 
 ### Contracts (run after any route/schema change)
