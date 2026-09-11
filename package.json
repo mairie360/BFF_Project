@@ -29,6 +29,9 @@
     "swagger-ui-react": "5.32.15",
     "zod": "4.5.4"
   },
+  "overrides": {
+    "js-yaml": "4.3.2"
+  },
   "devDependencies": {
     "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
