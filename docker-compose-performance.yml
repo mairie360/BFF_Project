@@ -1,0 +1,257 @@
+# Stack de test de performance ISOLÉE pour le BFF Project.
+#
+#   ./performance_test.sh          (local)
+#   docker compose -f docker-compose-performance.yml up --build \
+#       --abort-on-container-exit --exit-code-from k6-perf-test   (CI)
+#
+# k6-perf-test sort en échec si un seuil de load-test.js est dépassé.
+# Le BFF Project appelle BFF User pour résoudre la session (/me) : la stack
+# embarque donc, comme celle de BFF User, Core API + BFF User en plus de
+# Project API. TARGET_IMAGE (optionnel) : image BFF pré-construite à tester au
+# lieu du build local. NODE_AUTH_TOKEN doit être exporté pour le build local
+# (lecture des packages @mairie360/*).
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  backend:
+
+secrets:
+  npmrc:
+    file: ./.npmrc
+  npm_token:
+    environment: NODE_AUTH_TOKEN
+
+x-db-env: &db-env
+  DB_TYPE: postgres
+  DB_NAME: mairie_360_database
+  DB_USER: postgres
+  DB_PASSWORD: password
+  DB_HOST: postgres
+  DB_PORT: 5432
+
+services:
+  postgres:
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-a50c7b2}
+    container_name: bff-project-perf-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mairie_360_database
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  liquibase:
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-a50c7b2}
+    container_name: bff-project-perf-liquibase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/mairie_360_database
+      LIQUIBASE_COMMAND_USERNAME: postgres
+      LIQUIBASE_COMMAND_PASSWORD: password
+      LIQUIBASE_SEARCH_PATH: /migrations
+    command: >
+      --changelog-file=changelog.xml
+      update
+    networks:
+      - backend
+
+  seeder:
+    image: postgres:18-alpine
+    container_name: bff-project-perf-seeder
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./init-test.sql:/init-test.sql:ro
+    environment:
+      PGPASSWORD: password
+    command: >
+      sh -c "psql -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
+    networks:
+      - backend
+
+  redis:
+    image: redis:8.4.0-bookworm
+    container_name: bff-project-perf-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  core-api:
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-4048375}
+    container_name: bff-project-perf-core-api
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      PUBLIC_URL: http://core-api:3000
+      JWT_SECRET: b"secret"
+      JWT_TIMEOUT: 3600
+    expose:
+      - "3000"
+    networks:
+      - backend
+    # L'image publiée est "distroless" (ni shell ni curl) : la disponibilité est
+    # sondée depuis le conteneur core-api-ready ci-dessous.
+
+  core-api-ready:
+    image: curlimages/curl:latest
+    container_name: bff-project-perf-core-api-ready
+    depends_on:
+      core-api:
+        condition: service_started
+    command: >
+      sh -c 'until curl -fsS http://core-api:3000/health >/dev/null; do
+      echo "waiting for core-api..."; sleep 2; done; echo "core-api ready"'
+    networks:
+      - backend
+
+  project-api:
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:dev-89c9730}
+    container_name: bff-project-perf-project-api
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      PUBLIC_URL: http://project-api:3001
+      JWT_SECRET: b"secret"
+      JWT_TIMEOUT: 3600
+    expose:
+      - "3001"
+    networks:
+      - backend
+    # L'image publiée est "distroless" (ni shell ni curl) : la disponibilité est
+    # sondée depuis le conteneur project-api-ready ci-dessous.
+
+  project-api-ready:
+    image: curlimages/curl:latest
+    container_name: bff-project-perf-project-api-ready
+    depends_on:
+      project-api:
+        condition: service_started
+    command: >
+      sh -c 'until curl -fsS http://project-api:3001/health >/dev/null; do
+      echo "waiting for project-api..."; sleep 2; done; echo "project-api ready"'
+    networks:
+      - backend
+
+  bff-user:
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-latest}
+    container_name: bff-project-perf-bff-user
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      core-api-ready:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: 'b"secret"'
+      CORE_API_URL: http://core-api:3000
+    expose:
+      - "4000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  bff-project:
+    image: ${TARGET_IMAGE:-bff-project:perf}
+    container_name: bff-project-perf-bff
+    build:
+      context: .
+      dockerfile: development.Dockerfile
+      secrets:
+        - npmrc
+        - npm_token
+    # Pas de "tsx watch" sous charge : on lance le serveur directement.
+    command: ["npx", "tsx", "src/index.ts"]
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      project-api-ready:
+        condition: service_completed_successfully
+      bff-user:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 4001
+      CORE_API_URL: core-api
+      CORE_API_PORT: 3000
+      PROJECT_API_URL: project-api
+      PROJECT_API_PORT: 3001
+      PROJECT_API_BASE_PATH: http://project-api:3001
+      USER_BFF_URL: http://bff-user:4000
+    expose:
+      - "4001"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  k6-perf-test:
+    image: grafana/k6:latest
+    container_name: bff-project-perf-k6
+    depends_on:
+      bff-project:
+        condition: service_healthy
+    volumes:
+      - ./load-test.js:/load-test.js:ro
+    environment:
+      BASE_URL: http://bff-project:4001
+      JWT_SECRET: b"secret"
+      PERF_USER_ID: "2"
+    command: ["run", "/load-test.js"]
+    networks:
+      - backend

@@ -1,0 +1,267 @@
+# Stack de test de sécurité dynamique (DAST) ISOLÉE pour le BFF Project.
+#
+#   ./security_test.sh            (local)
+#   docker compose -f docker-compose-security.yml up --build \
+#       --abort-on-container-exit --exit-code-from security-scan   (CI)
+#
+# security-scan (OWASP ZAP) importe /openapi.json, rejoue chaque opération avec
+# un JWT valide (replacer) et sort en échec sur toute alerte WARN/FAIL non
+# neutralisée dans .zap/rules.tsv (les alertes informatives y sont passées à IGNORE).
+# Le BFF Project appelle BFF User pour résoudre la session (/me) : la stack
+# embarque donc, comme celle de BFF User, Core API + BFF User en plus de
+# Project API. NODE_AUTH_TOKEN doit être exporté pour le build local (lecture
+# des packages @mairie360/*).
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  backend:
+
+secrets:
+  npmrc:
+    file: ./.npmrc
+  npm_token:
+    environment: NODE_AUTH_TOKEN
+
+x-db-env: &db-env
+  DB_TYPE: postgres
+  DB_NAME: mairie_360_database
+  DB_USER: postgres
+  DB_PASSWORD: password
+  DB_HOST: postgres
+  DB_PORT: 5432
+
+services:
+  postgres:
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-a50c7b2}
+    container_name: bff-project-sec-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mairie_360_database
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  liquibase:
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-a50c7b2}
+    container_name: bff-project-sec-liquibase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/mairie_360_database
+      LIQUIBASE_COMMAND_USERNAME: postgres
+      LIQUIBASE_COMMAND_PASSWORD: password
+      LIQUIBASE_SEARCH_PATH: /migrations
+    command: >
+      --changelog-file=changelog.xml
+      update
+    networks:
+      - backend
+
+  seeder:
+    image: postgres:18-alpine
+    container_name: bff-project-sec-seeder
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+    volumes:
+      - ./init-test.sql:/init-test.sql:ro
+    environment:
+      PGPASSWORD: password
+    command: >
+      sh -c "psql -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
+    networks:
+      - backend
+
+  redis:
+    image: redis:8.4.0-bookworm
+    container_name: bff-project-sec-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  core-api:
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-4048375}
+    container_name: bff-project-sec-core-api
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      PUBLIC_URL: http://core-api:3000
+      JWT_SECRET: b"secret"
+      JWT_TIMEOUT: 3600
+    expose:
+      - "3000"
+    networks:
+      - backend
+    # L'image publiée est "distroless" (ni shell ni curl) : la disponibilité est
+    # sondée depuis le conteneur core-api-ready ci-dessous.
+
+  core-api-ready:
+    image: curlimages/curl:latest
+    container_name: bff-project-sec-core-api-ready
+    depends_on:
+      core-api:
+        condition: service_started
+    command: >
+      sh -c 'until curl -fsS http://core-api:3000/health >/dev/null; do
+      echo "waiting for core-api..."; sleep 2; done; echo "core-api ready"'
+    networks:
+      - backend
+
+  project-api:
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:dev-89c9730}
+    container_name: bff-project-sec-project-api
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      PUBLIC_URL: http://project-api:3001
+      JWT_SECRET: b"secret"
+      JWT_TIMEOUT: 3600
+    expose:
+      - "3001"
+    networks:
+      - backend
+    # L'image publiée est "distroless" (ni shell ni curl) : la disponibilité est
+    # sondée depuis le conteneur project-api-ready ci-dessous.
+
+  project-api-ready:
+    image: curlimages/curl:latest
+    container_name: bff-project-sec-project-api-ready
+    depends_on:
+      project-api:
+        condition: service_started
+    command: >
+      sh -c 'until curl -fsS http://project-api:3001/health >/dev/null; do
+      echo "waiting for project-api..."; sleep 2; done; echo "project-api ready"'
+    networks:
+      - backend
+
+  bff-user:
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-latest}
+    container_name: bff-project-sec-bff-user
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      core-api-ready:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: 'b"secret"'
+      CORE_API_URL: http://core-api:3000
+    expose:
+      - "4000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  bff-project:
+    image: ${TARGET_IMAGE:-bff-project:security}
+    container_name: bff-project-sec-bff
+    build:
+      context: .
+      dockerfile: development.Dockerfile
+      secrets:
+        - npmrc
+        - npm_token
+    command: ["npx", "tsx", "src/index.ts"]
+    depends_on:
+      seeder:
+        condition: service_completed_successfully
+      project-api-ready:
+        condition: service_completed_successfully
+      bff-user:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 4001
+      CORE_API_URL: core-api
+      CORE_API_PORT: 3000
+      PROJECT_API_URL: project-api
+      PROJECT_API_PORT: 3001
+      PROJECT_API_BASE_PATH: http://project-api:3001
+      USER_BFF_URL: http://bff-user:4000
+    expose:
+      - "4001"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  security-scan:
+    image: zaproxy/zap-stable
+    container_name: bff-project-sec-zap
+    depends_on:
+      bff-project:
+        condition: service_healthy
+    volumes:
+      - ./.zap/rules.tsv:/zap/wrk/rules.tsv:ro
+    # -c rules.tsv : les alertes informatives sont passées à IGNORE, toute autre
+    #   alerte (WARN/FAIL) fait sortir zap-api-scan.py en code != 0.
+    # -z ... replacer : injecte un JWT HS256 statique (sub=2, role=user, exp=2100,
+    #   signé avec JWT_SECRET=b"secret", le même que core-api/bff-user) sur chaque
+    #   requête pour scanner les routes authentifiées /projects*.
+    command:
+      - zap-api-scan.py
+      - -t
+      - http://bff-project:4001/openapi.json
+      - -f
+      - openapi
+      - -c
+      - rules.tsv
+      - -z
+      - "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6InVzZXIiLCJleHAiOjQxMDI0NDQ4MDB9.qjXr3pV4v8hvkbv_ufmNqaPqhDTbOGfTUeEXxa1z70U"
+    networks:
+      - backend
