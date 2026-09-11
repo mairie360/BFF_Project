@@ -35,7 +35,7 @@ x-db-env: &db-env
 
 services:
   postgres:
-    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-a50c7b2}
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:1.0.0}
     container_name: bff-project-sec-db
     environment:
       POSTGRES_USER: postgres
@@ -54,7 +54,7 @@ services:
       retries: 10
 
   liquibase:
-    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-a50c7b2}
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:1.0.0}
     container_name: bff-project-sec-liquibase
     depends_on:
       postgres:
@@ -101,7 +101,7 @@ services:
       retries: 5
 
   core-api:
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-4048375}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:1.1.0}
     container_name: bff-project-sec-core-api
     depends_on:
       liquibase:
@@ -139,7 +139,7 @@ services:
       - backend
 
   project-api:
-    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:dev-89c9730}
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:0.4.0}
     container_name: bff-project-sec-project-api
     depends_on:
       liquibase:
