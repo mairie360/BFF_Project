@@ -38,7 +38,9 @@ npm run contracts:check      # fails if either is stale (this is what CI enforce
 ```
 
 Type generation is pinned to `openapi-typescript@7.10.1` (invoked via `npm exec` in `scripts/contracts.mjs`).
-`npm run contracts:sync` then propagates the contract into each associated web service; ship those branches together.
+`contracts:sync` is not a script in *this* repo — it's run from each associated web service's own copy of
+`contracts.mjs` (pointed at this BFF's exported `openapi.json` via `BFF_CONTRACT_DIR`) to pull the contract in;
+ship those branches together.
 
 ### Private dependencies
 
