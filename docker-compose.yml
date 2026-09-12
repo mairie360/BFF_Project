@@ -94,7 +94,7 @@ services:
 
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:0.4.0
+    image: ghcr.io/mairie360/project-api:0.4.1
     ports:
       - "3001:3001"
     networks:

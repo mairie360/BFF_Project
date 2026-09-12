@@ -100,7 +100,7 @@ services:
       retries: 5
 
   core-api:
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:1.1.0}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:1.1.1}
     container_name: bff-project-perf-core-api
     depends_on:
       liquibase:
@@ -138,7 +138,7 @@ services:
       - backend
 
   project-api:
-    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:0.4.0}
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:0.4.1}
     container_name: bff-project-perf-project-api
     depends_on:
       liquibase:
