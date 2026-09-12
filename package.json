@@ -5,6 +5,7 @@
     "start": "tsx watch src/index.ts",
     "mock:project-api": "ts-node scripts/mock-project-api.ts",
     "build": "tsc",
+    "postbuild": "npm run openapi:extract",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "openapi:extract": "tsx scripts/export-swagger.ts",
@@ -30,6 +31,7 @@
     "zod": "4.6.2"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
     "@types/pg": "8.23.1",
@@ -39,13 +41,14 @@
     "@typescript-eslint/eslint-plugin": "8.70.0",
     "@typescript-eslint/parser": "8.70.0",
     "eslint": "10.10.0",
+    "globals": "17.12.0",
     "jest": "30.5.1",
     "openapi-typescript-codegen": "0.31.0",
     "supertest": "7.2.2",
     "ts-jest": "29.4.12",
     "ts-node": "10.9.2",
     "tsx": "4.23.13",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.70.0"
   },
   "overrides": {
