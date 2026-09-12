@@ -49,6 +49,6 @@
     "typescript-eslint": "8.70.0"
   },
   "overrides": {
-    "js-yaml": "4.3.2"
+    "js-yaml": "5.4.1"
   }
 }
