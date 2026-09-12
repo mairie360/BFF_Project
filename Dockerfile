@@ -1,5 +1,5 @@
 # --- Étape 1 : Builder ---
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN --mount=type=secret,id=npmrc,target=/app/.npmrc npm ci
@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # --- Étape 2 : Runtime ---
-FROM node:20-alpine
+FROM node:24-alpine
 ENV NODE_ENV=production
 RUN apk add --no-cache curl
 
