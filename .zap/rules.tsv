@@ -7,3 +7,4 @@
 10112	IGNORE	Session Management Response Identified
 90005	IGNORE	Sec-Fetch-* Headers Not Present (API, non applicable)
 100000	IGNORE	Server Error transitoire quand un upstream de la stack de test isolee n'est pas encore pret
+100001	OUTOFSCOPE	.*/docs/?.*
