@@ -11,10 +11,12 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.15.1
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v2.3.0
     with:
       package_name: bff-project
-      cicd_version: v1.14.1
       node_version: "22"
-      openapi_spec_path: openapi.json
-    secrets: inherit
+      cicd_version: v2.3.0
+      openapi_spec_path: contracts/openapi.json
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}

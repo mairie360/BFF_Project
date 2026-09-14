@@ -1,5 +1,22 @@
-.env
 .git
-.npmrc
+.gitignore
+.github
+.idea
+.vscode
+
 node_modules
-npm-debug.log*
+dist
+coverage
+*.log
+
+.env
+.env.*
+!.env.example
+.npmrc
+
+# Stacks de test isolées (non nécessaires à l'image)
+.zap
+load-test.js
+init-test.sql
+docker-compose*.yml
+*_test.sh

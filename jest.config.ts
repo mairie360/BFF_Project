@@ -7,4 +7,7 @@ export default {
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.ts'],
   transformIgnorePatterns: ['node_modules/(?!@mairie360/project-api-openapi/)'],
+  collectCoverage: true,
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  coverageReporters: ['text-summary', 'lcov'],
 };

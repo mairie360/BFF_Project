@@ -1,5 +1,17 @@
 {
   "extends": [
     "github>mairie360/renovate-config"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Garde cicd_version aligné avec le tag mairie360/CICD utilisé par le workflow réutilisable",
+      "fileMatch": ["^\\.github/workflows/cicd\\.yml$"],
+      "matchStrings": [
+        "cicd_version:\\s*[\"']?(?<currentValue>v?\\d+\\.\\d+\\.\\d+)[\"']?"
+      ],
+      "depNameTemplate": "mairie360/CICD",
+      "datasourceTemplate": "github-tags"
+    }
   ]
 }
