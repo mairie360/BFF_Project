@@ -7,14 +7,12 @@ import type {
   CreateProjectView,
   CreateTaskResultView,
   CreateTaskView,
-  GetProjectResultView,
-  PatchTaskView,
+  DynamicTaskField,
   ProjetView,
-  TaskFieldType,
   TaskPriority as ApiTaskPriority,
   TaskStatus as ApiTaskStatus,
   TaskView,
-  User,
+  User as ApiUser,
 } from "@mairie360/project-api-openapi/model";
 import {
   Person as PersonSchema,
@@ -44,6 +42,18 @@ export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
 export type BffPerson = z.infer<typeof PersonSchema>;
 export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
+
+// Project_API 0.4.1 n'expose plus que l'id ; le nom vient de la base quand elle est accessible.
+export type User = ApiUser & { name?: string };
+
+// Project_API 0.4.1 ne publie plus PATCH /tasks/{task_id} : payload conservé pour le mode base de données.
+export interface PatchTaskView {
+  name?: string;
+  status?: ApiTaskStatus;
+  priority?: ApiTaskPriority;
+  assigned_to?: number | null;
+  due_date?: string;
+}
 
 export interface TaskInputLike {
   title: string;
@@ -165,7 +175,7 @@ function extractMessage(error: unknown): string {
 }
 
 function mapStatusCode(status: number): number {
-  if (status === 400 || status === 401 || status === 403 || status === 404) {
+  if (status === 400 || status === 401 || status === 403 || status === 404 || status === 501) {
     return status;
   }
 
@@ -191,6 +201,10 @@ function mapErrorCode(status: number): string {
 
   if (status === 404) {
     return "NOT_FOUND";
+  }
+
+  if (status === 501) {
+    return "NOT_IMPLEMENTED";
   }
 
   if (status >= 500) {
@@ -270,10 +284,11 @@ export async function fetchProjectsForUser(user: ProjectUserContext) {
   return fetchProjects();
 }
 
-export async function fetchProject(
-  projectId: number,
-): Promise<GetProjectResultView> {
-  return (await projectClient.getProject(projectId)).data;
+function disabledOnApi(feature: string): UpstreamApiError {
+  return new UpstreamApiError(
+    501,
+    `${feature} n'est pas disponible via Project_API ; activez PROJECT_DB_ACCESS.`,
+  );
 }
 
 export async function fetchProjectUsers(projectId: number): Promise<User[]> {
@@ -311,22 +326,8 @@ export async function fetchProjectBundle(projectId: number): Promise<{
     return databaseBundle;
   }
 
-  const [project, users, tasks] = await Promise.all([
-    fetchProject(projectId),
-    fetchProjectUsersOrEmpty(projectId),
-    fetchProjectTasks(projectId),
-  ]);
-
-  return {
-    project: {
-      id: projectId,
-      name: project.name,
-      description: project.description,
-      status: deriveBackendProjectStatus(tasks),
-    },
-    tasks,
-    users,
-  };
+  // GET /api/v1/projects/{project_id}/ est désactivé dans Project_API 0.4.1.
+  throw disabledOnApi("La lecture d'un projet");
 }
 
 export async function createProjectOnApi(
@@ -426,7 +427,8 @@ export async function patchTaskOnApi(
     });
     return;
   }
-  await projectClient.patchTask(projectId, taskId, body);
+  // PATCH /api/v1/projects/{project_id}/tasks/{task_id}/ est désactivé dans Project_API 0.4.1.
+  throw disabledOnApi("La modification d'une tâche");
 }
 
 export async function deleteTaskOnApi(
@@ -482,7 +484,7 @@ export function mapPerson(
 
   return {
     id: userPublicId(user.id),
-    name: user.name,
+    name: user.name ?? fallbackName,
     avatarUrl: null,
   };
 }
@@ -711,9 +713,19 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
     description: null,
     due_date: task.dueDate,
     fields: [
-      { Date: task.dueDate },
-      ...task.labels.map((label) => ({ Select: label })),
-    ] as TaskFieldType[],
+      {
+        label: "Date",
+        task_type: "date",
+        fields_options: [{ option: task.dueDate, is_selected: true }],
+      },
+      ...task.labels.map(
+        (label): DynamicTaskField => ({
+          label,
+          task_type: "select",
+          fields_options: [{ option: label, is_selected: true }],
+        }),
+      ),
+    ],
   };
 }
 

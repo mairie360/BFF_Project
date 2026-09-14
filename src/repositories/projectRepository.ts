@@ -390,6 +390,7 @@ export async function getProjectBundleFromDatabase(projectId: number): Promise<{
       priority: taskPriorityFromDatabase(task.priority),
       due_date: databaseDateToIso(task.due_date),
       assigned_to: task.assigned_to,
+      fields: [],
     })),
     users: userResult.rows,
   };

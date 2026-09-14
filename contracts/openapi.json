@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "BFF Project API",
+    "title": "bff_project",
     "version": "1.0.0"
   },
   "components": {

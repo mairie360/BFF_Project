@@ -23,6 +23,12 @@ dotenv.config();
 
 
 const app = express();
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  next();
+});
 app.use(express.json());
 app.use(tokenContextMiddleware);
 
@@ -50,5 +56,15 @@ app.use('/projects', modifyTaskStatusRouter);
 app.use('/projects', deleteTaskRouter);
 app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
+
+app.use((_req, res) => {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: 'Route not found',
+      details: [],
+    },
+  });
+});
 
 export default app;
