@@ -176,7 +176,7 @@ services:
       - backend
 
   bff-user:
-    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-latest}
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:0.3.0}
     container_name: bff-project-perf-bff-user
     depends_on:
       seeder:
@@ -245,6 +245,8 @@ services:
     container_name: bff-project-perf-k6
     depends_on:
       bff-project:
+        condition: service_healthy
+      bff-user:
         condition: service_healthy
     volumes:
       - ./load-test.js:/load-test.js:ro
