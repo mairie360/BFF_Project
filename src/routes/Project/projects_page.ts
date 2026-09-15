@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import {
+  apiErrorResponses,
   registry,
   ProjectsPageResponse,
   ProjectsPageQuery,
@@ -35,6 +36,7 @@ registry.registerPath({
   },
 
   responses: {
+    ...apiErrorResponses(400, 401, 500, 501, 502),
     200: {
       description: "Page projets chargée avec succès",
       content: {

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
   buildProjectDtoForUser,
   buildTaskDtoForUser,
@@ -23,6 +23,7 @@ registry.registerPath({
   },
 
   responses: {
+    ...apiErrorResponses(400, 401, 404, 500, 501, 502),
     200: {
       description: 'Projet trouvé',
       content: {

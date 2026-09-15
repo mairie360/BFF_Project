@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     createTaskOnApi,
     buildTaskDtoForUser,
@@ -7,6 +7,7 @@ import {
     handleUnknownError,
     mapTaskInputToBackend,
     parsePublicId,
+    requireDatabaseAccess,
     sendValidationError,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
@@ -33,6 +34,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         201: {
             description: 'Tâche créée avec succès',
             content: {
@@ -90,6 +92,8 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         const user = await requireProjectManagement(res, projectId);
         if (!user) return;
         if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
+        // À retirer quand Project_API republiera GET /projects/{project_id}/ : la tâche créée doit être relue.
+        requireDatabaseAccess("La création d'une tâche");
         const createdTask = await createTaskOnApi(
             projectId,
             mapTaskInputToBackend({

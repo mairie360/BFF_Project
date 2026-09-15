@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
     buildProjectResponseFromState,
     buildProjectResponseOverridesFromCreateBody,
@@ -32,6 +32,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         201: {
             description: 'Projet dupliqué avec succès',
             content: {

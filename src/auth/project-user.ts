@@ -153,7 +153,12 @@ export async function loadProjectUserContext(): Promise<ProjectUserContext> {
     throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
   }
 
-  const body = (await response.json()) as UserBffResponse;
+  let body: UserBffResponse;
+  try {
+    body = (await response.json()) as UserBffResponse;
+  } catch {
+    throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
+  }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
   const explicitId = Number(body.user?.id);
@@ -198,7 +203,8 @@ export async function projectUserContextMiddleware(
     return next();
   } catch (error) {
     const status = error instanceof ProjectIdentityError ? error.status : 502;
-    const message = error instanceof Error ? error.message : 'Le contexte utilisateur est indisponible.';
+    // Seuls les messages de ProjectIdentityError sont destinés au client.
+    const message = error instanceof ProjectIdentityError ? error.message : 'Le contexte utilisateur est indisponible.';
     return res.status(status).json({
       error: {
         code: status === 401 ? 'UNAUTHORIZED' : 'BAD_GATEWAY',

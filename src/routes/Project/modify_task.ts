@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectTaskParams, UpdateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectTaskParams, UpdateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     fetchProjectBundle,
     handleUnknownError,
@@ -33,6 +33,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         200: {
             description: 'Tâche mise à jour avec succès',
             content: {
