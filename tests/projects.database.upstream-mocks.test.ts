@@ -201,6 +201,61 @@ describe('Project BFF in database mode with contract-driven BFF User and Project
       expect(repository.getTaskCollaboration).toHaveBeenCalledWith(1, 2);
     });
 
+    test('GET /projects-page combines the priority and due date filters', async () => {
+      signIn(admin);
+      jest.mocked(repository.listVisibleProjectRows).mockResolvedValue([projetView(1), projetView(2), projetView(3)]);
+      jest.mocked(repository.getProjectBundleFromDatabase).mockImplementation(async (id) => ({
+        1: projectBundle(projetView(1), [taskView(1, { priority: 'High', due_date: '2026-10-15T00:00:00.000Z' })]),
+        2: projectBundle(projetView(2), [taskView(2, { priority: 'High', due_date: '2027-03-01T00:00:00.000Z' })]),
+        3: projectBundle(projetView(3), [taskView(3, { priority: 'Low', due_date: '2026-10-20T00:00:00.000Z' })]),
+      })[id] ?? null);
+
+      const response = await as(request(app).get('/projects-page?status=all&priority=high&dueAfter=2026-10-01&dueBefore=2026-10-31'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects-page', response);
+      expect(response.body.projects.map((project: { id: string }) => project.id)).toEqual(['project-1']);
+    });
+
+    test('builds the user context from a loosely shaped /me body', async () => {
+      // Formes tolérées par project-user.ts mais absentes du contrat SessionResponse de BFF User.
+      userBff.on('get', '/me', { outOfContract: true, body: {
+        user: { id: '5', name: '  Jeanne Dupont ', email: 5, role: 42 },
+        groups: ['  Voirie ', { id: 'x', name: 'Écoles' }, { id: 4, name: ' ' }, null, 3],
+      } });
+      jest.mocked(repository.listVisibleProjectRows).mockResolvedValue([]);
+
+      const response = await request(app).get('/projects-page').set('Authorization', bearer(5));
+
+      expect(response.status).toBe(200);
+      expect(repository.listVisibleProjectRows).toHaveBeenCalledWith({
+        id: 5, name: 'Jeanne Dupont', email: '', role: 'Guest', roles: ['Guest'], groups: [{ name: 'Voirie' }, { name: 'Écoles' }],
+      });
+    });
+
+    test('names a user without name from its id and ignores a non-list groups field', async () => {
+      userBff.on('get', '/me', { outOfContract: true, body: { user: {}, groups: 'Voirie' } });
+      jest.mocked(repository.listVisibleProjectRows).mockResolvedValue([]);
+
+      const response = await request(app).get('/projects-page').set('Authorization', bearer(7));
+
+      expect(response.status).toBe(200);
+      expect(repository.listVisibleProjectRows).toHaveBeenCalledWith({ id: 7, name: 'Utilisateur 7', email: '', role: 'Guest', roles: ['Guest'], groups: [] });
+    });
+
+    test.each([
+      ['a token that is not a JWT', 'Bearer header.payload'],
+      ['a JWT whose payload is not JSON', 'Bearer aGVhZGVy.bm90LWpzb24.signature'],
+    ])('answers 401 when /me has no user id and the session carries %s', async (_label, authorization) => {
+      userBff.on('get', '/me', { outOfContract: true, body: { user: {} } });
+
+      const response = await request(app).get('/projects-page').set('Authorization', authorization);
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Impossible d’identifier l’utilisateur connecté.', details: [] });
+      expect(repository.listVisibleProjectRows).not.toHaveBeenCalled();
+    });
+
     test('hides database error details behind a generic 500', async () => {
       signIn(admin);
       const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -386,6 +441,78 @@ describe('Project BFF in database mode with contract-driven BFF User and Project
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects/project-1/tasks/task-2/comments', response);
       expect(repository.addTaskComment).toHaveBeenCalledWith(1, 2, userContext(alice), 'Fait.');
+    });
+  });
+
+  describe('request validation and permissions', () => {
+    const writeCalls = () => [
+      repository.createProjectRecord, repository.createTaskRecord, repository.updateProjectRecord, repository.updateTaskRecord,
+      repository.deleteProjectRecord, repository.deleteTaskRecord, repository.setProjectClosed, repository.addTaskComment,
+    ].flatMap((write): unknown[] => jest.mocked(write).mock.calls);
+
+    test.each([
+      ['get', '/projects-page?status=archived', undefined],
+      ['post', '/projects', { title: 'Sans description' }],
+      ['patch', '/projects/project-1', { priority: 'urgent' }],
+      ['patch', '/projects/project-x', { title: 'Voirie' }],
+      ['patch', '/projects/project-1/close', { status: 'cancelled' }],
+      ['patch', '/projects/project-x/close', {}],
+      ['post', '/projects/project-x/duplicate', {}],
+      ['delete', '/projects/project-x', undefined],
+      ['post', '/projects/project-1/tasks', { title: 'Sans statut' }],
+      ['post', '/projects/project-x/tasks', { title: 'Réserver', status: 'todo', priority: 'high', responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+      ['patch', '/projects/project-1/tasks/task-2', { status: 'archived' }],
+      ['patch', '/projects/project-1/tasks/task-x', { title: 'Renommée' }],
+      ['patch', '/projects/project-1/tasks/task-2/status', { status: 'archived' }],
+      ['patch', '/projects/project-1/tasks/task-x/status', { status: 'done' }],
+      ['delete', '/projects/project-1/tasks/task-x', undefined],
+      ['get', '/projects/project-1/tasks/task-x/collaboration', undefined],
+      ['post', '/projects/project-1/tasks/task-2/comments', { message: '   ' }],
+    ] as const)('%s %s answers 400 without touching the database', async (method, url, body) => {
+      signIn(admin);
+
+      const call = as(request(app)[method](url), admin);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatchObject({ code: 'BAD_REQUEST' });
+      expect(writeCalls()).toEqual([]);
+    });
+
+    test.each([
+      ['patch', '/projects/project-1', { title: 'Voirie' }],
+      ['patch', '/projects/project-1/close', { status: 'done' }],
+      ['post', '/projects/project-1/duplicate', {}],
+      ['delete', '/projects/project-1', undefined],
+      ['post', '/projects/project-1/tasks', { title: 'Réserver', status: 'todo', priority: 'high', responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+    ] as const)('%s %s answers 403 when the user cannot manage the project', async (method, url, body) => {
+      signIn(alice);
+      jest.mocked(repository.getProjectPermissions).mockResolvedValue(projectPermissions(false));
+
+      const call = as(request(app)[method](url), alice);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toMatchObject({ code: 'FORBIDDEN' });
+      expect(writeCalls()).toEqual([]);
+    });
+
+    // Tâche visible mais non modifiable (403), ou invisible pour un agent non assigné (404 en lecture, 403 en commentaire).
+    test.each([
+      ['patch', '/projects/project-1/tasks/task-2', 403, true, { title: 'Renommée' }],
+      ['delete', '/projects/project-1/tasks/task-2', 403, true, undefined],
+      ['get', '/projects/project-1/tasks/task-2/collaboration', 404, false, undefined],
+      ['post', '/projects/project-1/tasks/task-2/comments', 403, false, { message: 'Fait.' }],
+    ] as const)('%s %s answers %i when the user cannot act on the task', async (method, url, status, assigned, body) => {
+      signIn(alice);
+      jest.mocked(repository.getTaskPermissions).mockResolvedValue(taskPermissions(false, assigned));
+
+      const call = as(request(app)[method](url), alice);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(status);
+      expect(writeCalls()).toEqual([]);
+      expect(repository.getTaskCollaboration).not.toHaveBeenCalled();
     });
   });
 });
