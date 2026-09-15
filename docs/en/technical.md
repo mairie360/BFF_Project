@@ -75,23 +75,25 @@ Inventory extracted from `contracts/openapi.json`. Replace brace parameters with
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| PATCH | `/projects/{projectId}/close` | application/json | 200, 403 |
-| POST | `/projects` | application/json | 201, 400 |
-| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 404 |
-| DELETE | `/projects/{projectId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}` | application/json | 200, 400, 404 |
-| GET | `/projects/{projectId}` | — | 200, 404 |
-| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 404 |
-| POST | `/projects/{projectId}/duplicate` | — | 201, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 404 |
-| GET | `/projects-page` | — | 200, 500 |
-| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 403 |
-| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 403 |
+| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 501, 502 |
+| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 501, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects-page` | — | 200, 400, 401, 500, 501, 502 |
+| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502 |
+| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 500, 502 |
 
 ## Session, permissions and errors
 
 `/projects-page` and `/projects` require a Bearer token and a valid user context. Recognized roles are `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibility and changes use server rules and returned permissions. User-context calls and the Project client have a 5-second timeout.
+
+Errors use the `ApiError` envelope (`{ error: { code, message, details } }`): 401 for a missing or rejected session, 502 when BFF User or Project API is unreachable or answers 5xx, 501 when an operation needs to read or update a project while `PROJECT_DB_ACCESS=disabled` (Project API 0.4.1 publishes neither GET project, PATCH task nor any project update); project creation, update and closing and task creation then answer 501 before any Project API write. Project API 400/401/403/404 are kept with a generic message: neither the upstream body nor network details are returned, and an unexpected error (PostgreSQL) becomes a logged generic 500. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
 
 ## Synchronization and verification
 
@@ -120,6 +122,8 @@ Before running Docker, check service variables, build secrets and networks in th
 ## Troubleshooting
 
 If user context fails, check BFF User before Project API. If views disagree, check permissions, identifiers and `PROJECT_DB_ACCESS`. `npm run mock:project-api` supplies a local development server; it does not replace real data. The `pretest` script checks types using `tsconfig.test.json` before Jest.
+
+`tests/projects.upstream-mocks.test.ts` (`PROJECT_DB_ACCESS=disabled` mode) and `tests/projects.database.upstream-mocks.test.ts` (database mode, repository mocked with `jest.mock`) test the whole app against real HTTP servers simulating BFF User, Project API and Core API. Their contracts are rebuilt from the installed `@mairie360/bff-user-openapi` (devDependency aligned with the test stacks' `bff-user` image), `@mairie360/project-api-openapi` and `@mairie360/core-api-openapi` packages: the mocks reject paths, parameters and bodies missing from the upstream contract, and every BFF response is validated against `contracts/openapi.json`. `tests/upstream-contracts.test.ts` pins the versions and consumed operations.
 
 ## Repository reference
 

@@ -8,9 +8,6 @@ dotenv.config();
 
 const router = Router();
 
-const CORE_FULL_URL = `http://${process.env.CORE_API_URL}:${process.env.CORE_API_PORT}`;
-const PROJECT_FULL_URL = `http://${process.env.PROJECT_API_URL}:${process.env.PROJECT_API_PORT}`;
-
 registry.registerPath({
   method: 'get',
   path: '/check_apis',
@@ -26,35 +23,43 @@ registry.registerPath({
       },
     },
     502: {
-      description: 'API Core injoignable',
+      description: 'API Core injoignable ou API Project injoignable',
+      content: {
+        'application/json': {
+          schema: CheckApiResponseSchema,
+        },
+      },
     },
   },
 });
 
-router.get('/', async (_, res) => {
-  try {
-    const coreResponse = await axios.get(`${CORE_FULL_URL}/health`, { timeout: 5000 });
-    console.log(coreResponse);
-    const core_is_reachable = coreResponse.status === 200;
-    
-    const projectResponse = await axios.get(`${PROJECT_FULL_URL}/health`, { timeout: 5000 });
-    console.log(projectResponse);
-    const project_is_reachable = projectResponse.status === 200;
-    const result: CheckApiResponse = {
-      status: 'OK',
-      core_api: core_is_reachable ? 'Connected' : 'Unreachable',
-      project_api: project_is_reachable ? 'Connected' : 'Unreachable'
-    };
-    res.status(200).json(result + ' ' + `${CORE_FULL_URL}/health` + ' and ' + `${PROJECT_FULL_URL}/health`);
-  } catch (error) {
-    res.status(502).json({
-      url: `${CORE_FULL_URL}/health` + ' and ' + `${PROJECT_FULL_URL}/health`,
-      status: 'Error',
-      core_api: 'Unreachable',
-      project_api: 'Unreachable',
-      message: (error as Error).message
-    });
+async function isReachable(service: 'CORE_API' | 'PROJECT_API'): Promise<boolean> {
+  // URL relue à chaque appel : la configuration peut changer sans recharger le module.
+  const host = process.env[`${service}_URL`];
+  const port = process.env[`${service}_PORT`];
+  if (!host || !port) {
+    return false;
   }
+
+  try {
+    const response = await axios.get(`http://${host}:${port}/health`, { timeout: 5000 });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+router.get('/', async (_, res) => {
+  // Les deux API sont sondées indépendamment : une panne de l'une ne masque pas l'état de l'autre,
+  // et aucun détail réseau n'est renvoyé au client.
+  const [coreReachable, projectReachable] = await Promise.all([isReachable('CORE_API'), isReachable('PROJECT_API')]);
+  const result: CheckApiResponse = {
+    status: coreReachable && projectReachable ? 'OK' : 'Error',
+    core_api: coreReachable ? 'Connected' : 'Unreachable',
+    project_api: projectReachable ? 'Connected' : 'Unreachable',
+  };
+
+  res.status(coreReachable && projectReachable ? 200 : 502).json(result);
 });
 
 export default router;

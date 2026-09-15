@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
   buildProjectResponseOverridesFromCreateBody,
   buildProjectDtoForUser,
@@ -10,6 +10,7 @@ import {
   handleUnknownError,
   mapProjectCreateBodyToBackend,
   mapTaskInputToBackend,
+  requireDatabaseAccess,
   sendValidationError,
   syncProjectUsersOnApi,
 } from './project_helpers';
@@ -40,6 +41,7 @@ registry.registerPath({
   },
 
   responses: {
+    ...apiErrorResponses(400, 401, 403, 500, 501, 502),
     201: {
       description: 'Projet créé',
       content: {
@@ -71,6 +73,8 @@ router.post('/', async (req: Request, res: Response) => {
     const user = requireManagerRole(res);
     if (!user) return;
     if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
+    // À retirer quand Project_API republiera GET /projects/{project_id}/ : la branche Project_API est prête.
+    requireDatabaseAccess("La création d'un projet");
     const createdProject = isProjectDatabaseAccessEnabled()
       ? {
           project_id: await createProjectRecord(user.id, {

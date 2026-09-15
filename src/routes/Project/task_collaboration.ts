@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import {
+  apiErrorResponses,
   ApiError,
   ProjectTaskParams,
   TaskCollaborationResponse,
@@ -20,6 +21,7 @@ registry.registerPath({
   summary: 'Consulte les commentaires et l’historique d’une tâche',
   request: { params: ProjectTaskParams },
   responses: {
+    ...apiErrorResponses(400, 401, 404, 500, 502),
     200: { description: 'Suivi collaboratif', content: { 'application/json': { schema: TaskCollaborationResponse } } },
     403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
   },
@@ -35,6 +37,7 @@ registry.registerPath({
     body: { required: true, content: { 'application/json': { schema: TaskCommentBody } } },
   },
   responses: {
+    ...apiErrorResponses(400, 401, 403, 500, 502),
     201: { description: 'Commentaire ajouté', content: { 'application/json': { schema: TaskComment } } },
     403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
   },

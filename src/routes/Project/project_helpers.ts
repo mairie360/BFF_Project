@@ -162,18 +162,6 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function extractMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  return "Upstream request failed";
-}
-
 function mapStatusCode(status: number): number {
   if (status === 400 || status === 401 || status === 403 || status === 404 || status === 501) {
     return status;
@@ -213,6 +201,17 @@ function mapErrorCode(status: number): string {
 
   return "INTERNAL_SERVER_ERROR";
 }
+
+// Messages génériques par statut : ni le corps de Project API ni le détail réseau (hôte, port) ne sont renvoyés.
+const upstreamErrorMessages: Record<number, string> = {
+  400: "La requête a été refusée par Project API.",
+  401: "La session a été refusée par Project API.",
+  403: "Accès refusé par Project API.",
+  404: "Ressource introuvable dans Project API.",
+  500: "Project API a renvoyé une réponse inattendue.",
+  501: "Opération non disponible dans Project API.",
+  502: "Project API est indisponible.",
+};
 
 function isUpstreamApiError(error: unknown): error is UpstreamApiError {
   return error instanceof UpstreamApiError;
@@ -254,24 +253,13 @@ export function sendRouteError(res: Response, error: unknown): Response {
   }
 
   if (axios.isAxiosError(error)) {
-    const upstreamStatus = error.response?.status ?? 502;
-    const status = mapStatusCode(upstreamStatus);
-    const responseBody = error.response?.data as { message?: unknown } | undefined;
-    const message =
-      (typeof responseBody?.message === "string" && responseBody.message) ||
-      error.message ||
-      "Project API unavailable";
-
-    return sendError(res, status, mapErrorCode(status), message, []);
+    const status = mapStatusCode(error.response?.status ?? 502);
+    return sendError(res, status, mapErrorCode(status), upstreamErrorMessages[status], []);
   }
 
-  return sendError(
-    res,
-    500,
-    "INTERNAL_SERVER_ERROR",
-    extractMessage(error),
-    [],
-  );
+  // Le détail d'une erreur imprévue (PostgreSQL, bug) reste dans les logs.
+  console.error("[BFF Project] Erreur inattendue", error);
+  return sendError(res, 500, "INTERNAL_SERVER_ERROR", "Erreur interne du serveur.", []);
 }
 
 export async function fetchProjects() {
@@ -289,6 +277,15 @@ function disabledOnApi(feature: string): UpstreamApiError {
     501,
     `${feature} n'est pas disponible via Project_API ; activez PROJECT_DB_ACCESS.`,
   );
+}
+
+/**
+ * Sans base de données, les routes qui écrivent puis relisent un projet échoueraient après avoir écrit dans
+ * Project_API (0.4.1 ne publie plus GET /projects/{project_id}/ et n'a aucune opération de modification de
+ * projet) : elles appellent ce garde après les contrôles de droits et répondent 501 avant toute écriture.
+ */
+export function requireDatabaseAccess(feature: string): void {
+  if (!isProjectDatabaseAccessEnabled()) throw disabledOnApi(feature);
 }
 
 export async function fetchProjectUsers(projectId: number): Promise<User[]> {
@@ -322,7 +319,7 @@ export async function fetchProjectBundle(projectId: number): Promise<{
 }> {
   if (isProjectDatabaseAccessEnabled()) {
     const databaseBundle = await getProjectBundleFromDatabase(projectId);
-    if (!databaseBundle) throw new Error('Projet introuvable.');
+    if (!databaseBundle) throw new UpstreamApiError(404, 'Projet introuvable.');
     return databaseBundle;
   }
 
@@ -336,17 +333,10 @@ export async function createProjectOnApi(
   const result = (await projectClient.createProject(body)).data;
 
   if (!result || !Number.isInteger(result.project_id) || result.project_id <= 0) {
-    throw new Error('Project_API a retourné une réponse invalide lors de la création du projet.');
+    throw new UpstreamApiError(502, 'Project_API a retourné une réponse invalide lors de la création du projet.');
   }
 
   return result;
-}
-
-export async function patchProjectOnApi(
-  projectId: number,
-  body: Partial<CreateProjectView> & Record<string, unknown>,
-): Promise<void> {
-  await projectApiAxios.patch(`/api/v1/projects/${projectId}/`, body);
 }
 
 export async function syncProjectUsersOnApi(projectId: number, userIds: string[]): Promise<void> {
@@ -399,7 +389,7 @@ export async function createTaskOnApi(
 
   const result = (await projectClient.createTask(projectId, body)).data;
   if (!result || !Number.isInteger(result.task_id) || result.task_id <= 0) {
-    throw new Error('Project_API a retourné une réponse invalide lors de la création de la tâche.');
+    throw new UpstreamApiError(502, 'Project_API a retourné une réponse invalide lors de la création de la tâche.');
   }
   return result;
 }
@@ -748,26 +738,6 @@ export function mapProjectCreateBodyToBackend(
     name: body.title,
     description: body.description,
   };
-}
-
-export function mapProjectUpdateBodyToBackend(
-  body: BffUpdateProjectInput,
-): Partial<CreateProjectView> & Record<string, unknown> {
-  const backendBody: Partial<CreateProjectView> & Record<string, unknown> = {};
-
-  if (typeof body.title === "string") {
-    backendBody.name = body.title;
-  }
-
-  if (typeof body.description === "string") {
-    backendBody.description = body.description;
-  }
-
-  if (typeof body.responsibleId === "string") {
-    backendBody.group_id = parsePublicId(body.responsibleId);
-  }
-
-  return backendBody;
 }
 
 export function buildProjectResponseFromState(options: {

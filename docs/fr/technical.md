@@ -75,23 +75,25 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| PATCH | `/projects/{projectId}/close` | application/json | 200, 403 |
-| POST | `/projects` | application/json | 201, 400 |
-| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 404 |
-| DELETE | `/projects/{projectId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}` | application/json | 200, 400, 404 |
-| GET | `/projects/{projectId}` | — | 200, 404 |
-| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 404 |
-| POST | `/projects/{projectId}/duplicate` | — | 201, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 404 |
-| GET | `/projects-page` | — | 200, 500 |
-| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 403 |
-| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 403 |
+| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 501, 502 |
+| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 501, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects-page` | — | 200, 400, 401, 500, 501, 502 |
+| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502 |
+| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 500, 502 |
 
 ## Session, permissions et erreurs
 
 `/projects-page` et `/projects` exigent un Bearer et un contexte utilisateur valide. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
+
+Les erreurs utilisent l’enveloppe `ApiError` (`{ error: { code, message, details } }`) : 401 pour une session absente ou refusée, 502 si BFF User ou Project API est injoignable ou répond en 5xx, 501 quand une opération exige la lecture ou la modification d’un projet alors que `PROJECT_DB_ACCESS=disabled` (Project API 0.4.1 ne publie ni GET projet, ni PATCH tâche, ni modification de projet) ; création, modification et clôture de projet et création de tâche répondent alors 501 avant toute écriture dans Project API. Les 400/401/403/404 de Project API sont conservés avec un message générique : ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue (PostgreSQL) produit un 500 générique journalisé. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
 
 ## Synchronisation et vérifications
 
@@ -120,6 +122,8 @@ Avant un lancement Docker, vérifier les variables de service, les secrets de bu
 ## Diagnostic
 
 Si le contexte utilisateur échoue, vérifier BFF User avant Project API. Si les vues divergent, contrôler les permissions, les identifiants et le mode `PROJECT_DB_ACCESS`. `npm run mock:project-api` fournit un serveur local de développement; ce serveur ne remplace pas les données réelles. Le script `pretest` vérifie les types avec `tsconfig.test.json` avant Jest.
+
+`tests/projects.upstream-mocks.test.ts` (mode `PROJECT_DB_ACCESS=disabled`) et `tests/projects.database.upstream-mocks.test.ts` (mode base, repository simulé par `jest.mock`) testent l’application complète contre de vrais serveurs HTTP simulant BFF User, Project API et Core API. Leurs contrats sont reconstruits depuis les paquets `@mairie360/bff-user-openapi` (devDependency alignée sur l’image `bff-user` des stacks de test), `@mairie360/project-api-openapi` et `@mairie360/core-api-openapi` installés : les mocks refusent chemins, paramètres et corps absents du contrat amont, et chaque réponse du BFF est validée contre `contracts/openapi.json`. `tests/upstream-contracts.test.ts` fige les versions et les opérations consommées.
 
 ## Repères dans le dépôt
 

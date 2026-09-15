@@ -1,19 +1,18 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
     buildProjectResponseOverridesFromUpdateBody,
     buildProjectDtoForUser,
     buildTaskDtoForUser,
     fetchProjectBundle,
     handleUnknownError,
-    mapProjectUpdateBodyToBackend,
-    patchProjectOnApi,
     parsePublicId,
+    requireDatabaseAccess,
     sendValidationError,
     syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { isProjectDatabaseAccessEnabled, updateProjectRecord } from '../../repositories/projectRepository';
+import { updateProjectRecord } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -36,6 +35,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         200: {
             description: 'Projet mis à jour avec succès',
             content: {
@@ -97,13 +97,9 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
             ...(bodyResult.data.assigneeIds ?? []),
         ];
         if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
-        const backendPayload = mapProjectUpdateBodyToBackend(bodyResult.data);
-
-        if (isProjectDatabaseAccessEnabled()) {
-            await updateProjectRecord(projectId, bodyResult.data);
-        } else if (Object.keys(backendPayload).length > 0) {
-            await patchProjectOnApi(projectId, backendPayload);
-        }
+        // Project_API n'expose aucune modification de projet : la base de données est indispensable.
+        requireDatabaseAccess("La modification d'un projet");
+        await updateProjectRecord(projectId, bodyResult.data);
 
         const desiredUserIds = requestedUserIds;
         if (desiredUserIds.length > 0) {

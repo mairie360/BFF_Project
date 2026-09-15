@@ -66,8 +66,12 @@ in the environment; `.npmrc` references it. Never commit the value.
 - **default (enabled):** `src/repositories/projectRepository.ts` queries PostgreSQL directly for
   project/task visibility, assignable users, member sync, and collaboration (comments/history live in
   `tasks.custom_fields` jsonb; status history joins `task_history`).
-- **`disabled`:** falls back to the Project API HTTP client for CRUD and an **in-memory** collaboration
-  store (lost on restart). This is the mode the test suite uses.
+- **`disabled`:** falls back to the Project API HTTP client and an **in-memory** collaboration store (lost
+  on restart). Project API 0.4.1 publishes neither GET project, PATCH task nor any project update, so only
+  the project list, deletes and collaboration work; every route that must read a project back answers
+  `501 NOT_IMPLEMENTED`. Write routes call `requireDatabaseAccess(feature)` after the permission guards so the
+  501 happens **before** any Project API write (no orphan project/task/member). Remove those guards from
+  `create_project.ts` / `create_task.ts` once GET project is published again.
 
 Helpers in `project_helpers.ts` (`fetchProjectBundle`, `createTaskOnApi`, `patchTaskOnApi`, …) branch
 on `isProjectDatabaseAccessEnabled()`, so most routes are written once and work in both modes.
@@ -107,17 +111,40 @@ embeds the resolved `permissions` / `access` block for the frontend.
 
 ### Error envelope
 
-Always `{ error: { code, message, details: [] } }`. `sendRouteError` / `mapStatusCode` / `mapErrorCode`
-in `project_helpers.ts` normalize thrown/axios errors — upstream 5xx becomes `502 BAD_GATEWAY`.
-Upstream calls (BFF User fetch, Project API axios) use a 5s timeout.
+Always `{ error: { code, message, details: [] } }` (registered `ApiError` schema). `sendRouteError` /
+`mapStatusCode` / `mapErrorCode` in `project_helpers.ts` normalize thrown/axios errors — upstream
+400/401/403/404/501 are kept, 5xx and network failures become `502 BAD_GATEWAY`, always with a generic
+per-status message (never the upstream body nor host/port); non-axios, non-`UpstreamApiError` errors
+(e.g. PostgreSQL) are logged and become a generic 500. Every route documents its error statuses with
+`...apiErrorResponses(...)` (`openapi-registry.ts`) — keep it in sync when a route gains a new error path,
+the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
+axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
+`*_API_URL` + `*_API_PORT` read per request.
 
 ## Tests
 
-`tests/*.test.ts` are in-process integration tests: they start a mock Project API
-(`scripts/mock-project-api.ts`, `START_MOCK_PROJECT_API=false` to get the server object without
-listening on a fixed port) and an inline mock BFF User, set `PROJECT_DB_ACCESS=disabled`, then
-`await import('../src/app')`. Bearer token values select the mock user role
-(`user-token` → User, `manager-token` → Responsable, anything else → Admin).
+Tests with contract-driven upstream mocks: the suites import the **whole app** with the real `project-user.ts`/axios and serve upstreams from
+local HTTP servers (`tests/support/contract-mock-server.ts`). Contracts are rebuilt at test time from the
+**installed** `@mairie360/bff-user-openapi` (devDependency, aligned with the `bff-user` image of the test
+stacks), `@mairie360/project-api-openapi` and `@mairie360/core-api-openapi` packages
+(`tests/support/orval-contract.ts`), so bumping a package is enough to test a new contract. Mocks reject
+paths, methods, params and bodies absent from the contract and validate mocked success responses; orval
+does not type errors, so mocked error replies need `outOfContract: true`. Every BFF response is checked
+against `contracts/openapi.json` (status documented + schema).
+
+- `tests/projects.upstream-mocks.test.ts` — `PROJECT_DB_ACCESS=disabled`, real repository (no SQL in that
+  mode): session resolution, error mapping, Project API client helpers, `/check_apis`.
+- `tests/projects.database.upstream-mocks.test.ts` — database mode with the repository `jest.mock`ed; asserts
+  Project API receives **no** request.
+- `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
+- `projectClient` reads `PROJECT_API_BASE_PATH` at import, so suites set it then `await import('../src/app')`;
+  `USER_BFF_URL` and `*_API_URL`/`*_API_PORT` are read per request and set in `beforeEach`.
+- The API-mode collaboration store is in-memory per process: use distinct project/task ids per test.
+- Known contract bug in `@mairie360/project-api-openapi` 0.4.1: `DELETE .../users/{userId}//` (fixed in
+  `Project_API`, where `tests/routing_test.rs` now checks the contract against actix routes); the BFF calls
+  `.../users/{user_id}/`, so a test asserts the mock rejects it until the package is republished and bumped.
+- `openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are shared verbatim with the other
+  BFFs (`BFF_user`, `BFF_Calendar`, `BFF_Dashboard`, `BFF_Elearning`, `BFF_Message`); keep the copies identical.
 
 ## Toolchain notes
 
