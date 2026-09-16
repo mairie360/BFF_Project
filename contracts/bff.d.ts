@@ -425,7 +425,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -804,7 +804,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -1034,7 +1034,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -1377,7 +1377,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -1837,7 +1837,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -2146,7 +2146,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -2496,7 +2496,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -2721,7 +2721,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;
@@ -3036,7 +3036,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
-                /** @description Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled) */
+                /** @description Opération non implémentée par Project API */
                 501: {
                     headers: {
                         [name: string]: unknown;

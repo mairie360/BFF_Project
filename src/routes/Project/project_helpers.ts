@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import axios from "axios";
 import { z } from "zod";
-import projectClient, { projectApiAxios } from "../../clients/projectClient";
+import projectClient from "../../clients/projectClient";
 import type {
   CreateProjectResultView,
   CreateProjectView,
@@ -23,19 +23,13 @@ import {
 } from "../../openapi-registry";
 import type { ProjectUserContext } from "../../auth/project-user";
 import {
-  createTaskRecord,
-  deleteProjectRecord,
-  deleteTaskRecord,
-  getProjectBundleFromDatabase,
+  getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
-  isProjectDatabaseAccessEnabled,
-  listVisibleProjectRows,
-  syncProjectMembers,
-  updateTaskRecord,
+  listVisibleProjects,
   type ProjectPermissions,
   type TaskPermissions,
-} from "../../repositories/projectRepository";
+} from "../../services/projectData";
 
 export type BffProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
@@ -44,7 +38,8 @@ export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
 
 // Project_API 0.4.1 n'expose plus que l'id ; le nom vient de la base quand elle est accessible.
-export type User = ApiUser & { name?: string };
+// Le nom d'un membre peut être absent dans Project API (utilisateur supprimé) ; le contrat du BFF le remplace.
+export type User = ApiUser;
 
 // Project_API 0.4.1 ne publie plus PATCH /tasks/{task_id} : payload conservé pour le mode base de données.
 export interface PatchTaskView {
@@ -263,29 +258,12 @@ export function sendRouteError(res: Response, error: unknown): Response {
 }
 
 export async function fetchProjects() {
-  return (await projectClient.getProjects()).data;
+  return { projects: await listVisibleProjects() };
 }
 
-export async function fetchProjectsForUser(user: ProjectUserContext) {
-  const visibleProjects = await listVisibleProjectRows(user);
-  if (visibleProjects) return { projects: visibleProjects };
+/** Project API n'expose que les projets visibles par l'appelant. */
+export async function fetchProjectsForUser(_user: ProjectUserContext) {
   return fetchProjects();
-}
-
-function disabledOnApi(feature: string): UpstreamApiError {
-  return new UpstreamApiError(
-    501,
-    `${feature} n'est pas disponible via Project_API ; activez PROJECT_DB_ACCESS.`,
-  );
-}
-
-/**
- * Sans base de données, les routes qui écrivent puis relisent un projet échoueraient après avoir écrit dans
- * Project_API (0.4.1 ne publie plus GET /projects/{project_id}/ et n'a aucune opération de modification de
- * projet) : elles appellent ce garde après les contrôles de droits et répondent 501 avant toute écriture.
- */
-export function requireDatabaseAccess(feature: string): void {
-  if (!isProjectDatabaseAccessEnabled()) throw disabledOnApi(feature);
 }
 
 export async function fetchProjectUsers(projectId: number): Promise<User[]> {
@@ -317,14 +295,10 @@ export async function fetchProjectBundle(projectId: number): Promise<{
   tasks: TaskView[];
   users: User[];
 }> {
-  if (isProjectDatabaseAccessEnabled()) {
-    const databaseBundle = await getProjectBundleFromDatabase(projectId);
-    if (!databaseBundle) throw new UpstreamApiError(404, 'Projet introuvable.');
-    return databaseBundle;
-  }
+  const bundle = await getProjectBundle(projectId);
+  if (!bundle) throw new UpstreamApiError(404, 'Projet introuvable.');
 
-  // GET /api/v1/projects/{project_id}/ est désactivé dans Project_API 0.4.1.
-  throw disabledOnApi("La lecture d'un projet");
+  return bundle;
 }
 
 export async function createProjectOnApi(
@@ -348,11 +322,6 @@ export async function syncProjectUsersOnApi(projectId: number, userIds: string[]
 
   if (desiredUserIds.size === 0) return;
 
-  if (isProjectDatabaseAccessEnabled()) {
-    await syncProjectMembers(projectId, Array.from(desiredUserIds));
-    return;
-  }
-
   const currentUsers = await fetchProjectUsersOrEmpty(projectId);
   const currentUserIds = new Set(currentUsers.map((user) => user.id));
 
@@ -362,9 +331,7 @@ export async function syncProjectUsersOnApi(projectId: number, userIds: string[]
       .map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })),
     ...currentUsers
       .filter((user) => !desiredUserIds.has(user.id))
-      .map((user) =>
-        projectApiAxios.delete(`/api/v1/projects/${projectId}/users/${user.id}/`),
-      ),
+      .map((user) => projectClient.removeUserFromProject(projectId, user.id)),
   ]);
 }
 
@@ -372,21 +339,6 @@ export async function createTaskOnApi(
   projectId: number,
   body: CreateTaskView,
 ): Promise<CreateTaskResultView> {
-  if (isProjectDatabaseAccessEnabled()) {
-    return {
-      task_id: await createTaskRecord(projectId, {
-        title: body.name,
-        status: body.status,
-        priority: body.priority,
-        dueDate: body.due_date,
-        assignedTo: body.assigned_to,
-        fields: body.fields,
-      }),
-      name: body.name,
-      description: body.description,
-    };
-  }
-
   const result = (await projectClient.createTask(projectId, body)).data;
   if (!result || !Number.isInteger(result.task_id) || result.task_id <= 0) {
     throw new UpstreamApiError(502, 'Project_API a retourné une réponse invalide lors de la création de la tâche.');
@@ -395,10 +347,6 @@ export async function createTaskOnApi(
 }
 
 export async function deleteProjectOnApi(projectId: number): Promise<void> {
-  if (isProjectDatabaseAccessEnabled()) {
-    await deleteProjectRecord(projectId);
-    return;
-  }
   await projectClient.deleteProject(projectId);
 }
 
@@ -407,28 +355,13 @@ export async function patchTaskOnApi(
   taskId: number,
   body: PatchTaskView,
 ): Promise<void> {
-  if (isProjectDatabaseAccessEnabled()) {
-    await updateTaskRecord(projectId, taskId, {
-      title: body.name,
-      status: body.status,
-      priority: body.priority,
-      dueDate: body.due_date,
-      assignedTo: body.assigned_to,
-    });
-    return;
-  }
-  // PATCH /api/v1/projects/{project_id}/tasks/{task_id}/ est désactivé dans Project_API 0.4.1.
-  throw disabledOnApi("La modification d'une tâche");
+  await projectClient.patchTask(projectId, taskId, body);
 }
 
 export async function deleteTaskOnApi(
   projectId: number,
   taskId: number,
 ): Promise<void> {
-  if (isProjectDatabaseAccessEnabled()) {
-    await deleteTaskRecord(projectId, taskId);
-    return;
-  }
   await projectClient.deleteTask(projectId, taskId);
 }
 
@@ -600,10 +533,11 @@ export function deriveProjectDueDate(tasks: TaskView[]): string {
     return nowIso();
   }
 
+  // Une tâche sans échéance (Project API la déclare facultative) est repoussée en fin de tri.
   const sorted = [...tasks].sort((left, right) =>
-    left.due_date.localeCompare(right.due_date),
+    (left.due_date ?? '').localeCompare(right.due_date ?? ''),
   );
-  return sorted[0]?.due_date ?? nowIso();
+  return sorted.find((task) => task.due_date)?.due_date ?? nowIso();
 }
 
 export function mapProjectToDto(
@@ -682,7 +616,8 @@ export function mapTaskToDto(
     priority,
     priorityLabel: mapTaskPriorityLabel(priority),
     labels: [],
-    dueDate: task.due_date,
+    // Le contrat du BFF impose une échéance : une tâche sans date affiche la date du jour.
+    dueDate: task.due_date ?? nowIso(),
     completed: status === "done",
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -1030,7 +965,8 @@ export async function buildProjectDtoForUser(
     project,
     tasks,
     users,
-    await getProjectPermissions(user, project.id),
+    // Le projet vient d'un bundle déjà lu : il est donc visible, inutile de le relire.
+    await getProjectPermissions(user, project.id, true),
   );
 }
 

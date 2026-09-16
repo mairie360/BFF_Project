@@ -10,16 +10,11 @@ import {
   handleUnknownError,
   mapProjectCreateBodyToBackend,
   mapTaskInputToBackend,
-  requireDatabaseAccess,
   sendValidationError,
   syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
-import {
-  appendTaskHistory,
-  createProjectRecord,
-  isProjectDatabaseAccessEnabled,
-} from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 
@@ -73,16 +68,7 @@ router.post('/', async (req: Request, res: Response) => {
     const user = requireManagerRole(res);
     if (!user) return;
     if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
-    // À retirer quand Project_API republiera GET /projects/{project_id}/ : la branche Project_API est prête.
-    requireDatabaseAccess("La création d'un projet");
-    const createdProject = isProjectDatabaseAccessEnabled()
-      ? {
-          project_id: await createProjectRecord(user.id, {
-            title: bodyResult.data.title,
-            description: bodyResult.data.description,
-          }),
-        }
-      : await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
+    const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
     await syncProjectUsersOnApi(createdProject.project_id, [
       bodyResult.data.responsibleId,
       ...bodyResult.data.assigneeIds,

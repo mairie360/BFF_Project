@@ -7,12 +7,11 @@ import {
     fetchProjectBundle,
     handleUnknownError,
     parsePublicId,
-    requireDatabaseAccess,
     sendValidationError,
     syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { updateProjectRecord } from '../../repositories/projectRepository';
+import { updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
@@ -97,8 +96,6 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
             ...(bodyResult.data.assigneeIds ?? []),
         ];
         if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
-        // Project_API n'expose aucune modification de projet : la base de données est indispensable.
-        requireDatabaseAccess("La modification d'un projet");
         await updateProjectRecord(projectId, bodyResult.data);
 
         const desiredUserIds = requestedUserIds;

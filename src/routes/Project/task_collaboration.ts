@@ -8,7 +8,7 @@ import {
   TaskCommentBody,
   registry,
 } from '../../openapi-registry';
-import { addTaskComment, getTaskCollaboration } from '../../repositories/projectRepository';
+import { addTaskComment, getTaskCollaboration } from '../../services/projectData';
 import { handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 import { requireTaskComment, requireTaskView } from './project_access';
 

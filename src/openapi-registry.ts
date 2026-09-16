@@ -419,7 +419,7 @@ const apiErrorDescriptions = {
   403: 'Droits insuffisants',
   404: 'Projet ou tâche introuvable ou inaccessible',
   500: 'Erreur interne du serveur',
-  501: 'Opération indisponible via Project API (PROJECT_DB_ACCESS=disabled)',
+  501: 'Opération non implémentée par Project API',
   502: 'BFF User ou Project API injoignable ou en erreur',
 } as const;
 

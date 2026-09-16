@@ -30,7 +30,7 @@ Ce dépôt contient le serveur BFF et son contrat. Les web services associés po
 
 ## Données et état actuel
 
-Le module combine Project API et PostgreSQL. Le dépôt SQL gère notamment visibilité, membres, projets, tâches et collaboration. Les commentaires et une partie de l’historique utilisent `tasks.custom_fields`; l’historique de statut peut venir de `task_history`. Avec `PROJECT_DB_ACCESS=disabled`, la collaboration utilise un repli mémoire perdu au redémarrage.
+Le module lit et écrit tout via des APIs : Project API pour les projets, tâches, membres et la collaboration (commentaires et historique), Core API pour l’annuaire des personnes assignables, BFF User pour la session de l’appelant. Le BFF ne possède aucune base de données.
 
 ## Périmètre et limites
 

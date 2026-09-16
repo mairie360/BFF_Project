@@ -10,7 +10,7 @@ import {
     sendValidationError,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
-import { appendTaskHistory } from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 

@@ -6,11 +6,10 @@ import {
   fetchProjectBundle,
   handleUnknownError,
   parsePublicId,
-  requireDatabaseAccess,
   sendValidationError,
 } from './project_helpers';
 import { requireProjectManagement } from './project_access';
-import { setProjectClosed } from '../../repositories/projectRepository';
+import { setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
@@ -43,8 +42,6 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
     const user = await requireProjectManagement(res, projectId);
     if (!user) return;
     // Project_API ne sait que clôturer (PATCH /projects/{project_id}/close, sans suspension) et ne permet pas de
-    // relire le projet : la base de données est indispensable.
-    requireDatabaseAccess("La clôture d'un projet");
     await setProjectClosed(projectId, bodyResult.data.status === 'done' ? 'completed' : 'suspended');
 
     const bundle = await fetchProjectBundle(projectId);

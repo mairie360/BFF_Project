@@ -7,11 +7,10 @@ import {
     handleUnknownError,
     mapTaskInputToBackend,
     parsePublicId,
-    requireDatabaseAccess,
     sendValidationError,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { appendTaskHistory } from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 
@@ -92,8 +91,6 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         const user = await requireProjectManagement(res, projectId);
         if (!user) return;
         if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
-        // À retirer quand Project_API republiera GET /projects/{project_id}/ : la tâche créée doit être relue.
-        requireDatabaseAccess("La création d'une tâche");
         const createdTask = await createTaskOnApi(
             projectId,
             mapTaskInputToBackend({

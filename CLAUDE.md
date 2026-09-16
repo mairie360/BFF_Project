@@ -10,8 +10,9 @@ grid and Kanban views, and enforces per-session permissions. Upstreams:
 
 - **Project API** (Rust) — via the generated client `@mairie360/project-api-openapi`.
 - **BFF User** (`USER_BFF_URL`, `/me`) — session → user identity, roles and groups.
-- **Core API** — only probed by `GET /check_apis`.
-- **PostgreSQL** (`pg` Pool) — used directly for visibility/permission queries and collaboration.
+- **Core API** — the directory of assignable people (`listDirectoryUsers`), and `GET /check_apis`.
+- **No database.** The BFF holds no `pg` pool: visibility, membership, tasks and collaboration all come
+  from Project API. `src/services/projectData.ts` is the single place that talks to the two APIs.
 
 ## Commands
 
@@ -61,20 +62,20 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 `/health` and `/check_apis` are unauthenticated.
 
-### Two data-source modes — `PROJECT_DB_ACCESS`
+### Everything goes through the APIs
 
-- **default (enabled):** `src/repositories/projectRepository.ts` queries PostgreSQL directly for
-  project/task visibility, assignable users, member sync, and collaboration (comments/history live in
-  `tasks.custom_fields` jsonb; status history joins `task_history`).
-- **`disabled`:** falls back to the Project API HTTP client and an **in-memory** collaboration store (lost
-  on restart). Project API 0.4.1 publishes neither GET project, PATCH task nor any project update, so only
-  the project list, deletes and collaboration work; every route that must read a project back answers
-  `501 NOT_IMPLEMENTED`. Write routes call `requireDatabaseAccess(feature)` after the permission guards so the
-  501 happens **before** any Project API write (no orphan project/task/member). Remove those guards from
-  `create_project.ts` / `create_task.ts` once GET project is published again.
+`src/services/projectData.ts` is the only data layer:
 
-Helpers in `project_helpers.ts` (`fetchProjectBundle`, `createTaskOnApi`, `patchTaskOnApi`, …) branch
-on `isProjectDatabaseAccessEnabled()`, so most routes are written once and work in both modes.
+- `getProjectBundle(projectId)` → `GET /api/v1/projects/{id}/` (project + tasks + members); Project API
+  computes visibility, so a project the caller may not see gives a 404, which the service maps to `null`.
+- `listVisibleProjects()`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
+  `addTaskComment`, `appendTaskHistory` → the matching Project API operations.
+- `listAssignableUsers(user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
+- `getProjectPermissions` / `getTaskPermissions` derive the rights from the role plus what Project API
+  exposes; pass `visible`/`assignedUserId` when a bundle has already been read to avoid re-reading it.
+
+Project API **0.5.0** is the minimum: it is the release that publishes GET project, PATCH project,
+PATCH task and the collaboration routes the BFF needs.
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
 
@@ -97,7 +98,7 @@ trailing digits). Routes validate params, then `parsePublicId`, then 400 if null
 
 BFF (`todo` / `in-progress` / `review` / `done`, `high|medium|low`) ↔ Project API
 (`Todo`/`InProgress`/`Completed`/`Error`, `Low|Medium|High`) ↔ DB (`todo`/`in_progress`/`completed`).
-All the `*Map` tables are in `project_helpers.ts` and `projectRepository.ts`. Mapping is lossy in
+All the `*Map` tables are in `project_helpers.ts`. Mapping is lossy in
 places (e.g. BFF `review` ↔ backend `Error`), and several project-level fields (status, priority,
 progress, dueDate) are **derived from a project's tasks**, not stored.
 
@@ -115,7 +116,7 @@ Always `{ error: { code, message, details: [] } }` (registered `ApiError` schema
 `mapStatusCode` / `mapErrorCode` in `project_helpers.ts` normalize thrown/axios errors — upstream
 400/401/403/404/501 are kept, 5xx and network failures become `502 BAD_GATEWAY`, always with a generic
 per-status message (never the upstream body nor host/port); non-axios, non-`UpstreamApiError` errors
-(e.g. PostgreSQL) are logged and become a generic 500. Every route documents its error statuses with
+are logged and become a generic 500. Every route documents its error statuses with
 `...apiErrorResponses(...)` (`openapi-registry.ts`) — keep it in sync when a route gains a new error path,
 the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
 axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
@@ -132,26 +133,9 @@ paths, methods, params and bodies absent from the contract and validate mocked s
 does not type errors, so mocked error replies need `outOfContract: true`. Every BFF response is checked
 against `contracts/openapi.json` (status documented + schema).
 
-- `tests/projects.upstream-mocks.test.ts` — `PROJECT_DB_ACCESS=disabled`, real repository (no SQL in that
-  mode): session resolution, error mapping, Project API client helpers, `/check_apis`.
-- `tests/projects.database.upstream-mocks.test.ts` — database mode with the repository `jest.mock`ed; asserts
-  Project API receives **no** request.
+- `tests/projects.upstream-mocks.test.ts` — the whole app against Project API, Core API and BFF User
+  mocks: session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
-- `projectClient` reads `PROJECT_API_BASE_PATH` at import, so suites set it then `await import('../src/app')`;
+- `projectClient` reads `PROJECT_API_BASE_PATH` at import, so the suite sets it then `await import('../src/app')`;
   `USER_BFF_URL` and `*_API_URL`/`*_API_PORT` are read per request and set in `beforeEach`.
-- The API-mode collaboration store is in-memory per process: use distinct project/task ids per test.
-- Known contract bug in `@mairie360/project-api-openapi` 0.4.1: `DELETE .../users/{userId}//` (fixed in
-  `Project_API`, where `tests/routing_test.rs` now checks the contract against actix routes); the BFF calls
-  `.../users/{user_id}/`, so a test asserts the mock rejects it until the package is republished and bumped.
-- `openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are shared verbatim with the other
-  BFFs (`BFF_user`, `BFF_Calendar`, `BFF_Dashboard`, `BFF_Elearning`, `BFF_Message`); keep the copies identical.
-
-## Toolchain notes
-
-- Node **22** in CI (`contracts.yml`, `cicd.yml`); the Dockerfile builds/runs on `node:20-alpine`.
-- Docker runtime command is `npx tsx dist/index.js` (not `node`) because the generated Project API
-  client ships `.ts` sources that are resolved at runtime.
-- ESLint uses the flat config `eslint.config.cjs` (the `.eslintrc.js` is legacy and ignored).
-  `@typescript-eslint/no-explicit-any` is an **error**.
-- `docker compose` (see `docker-compose.yml`) brings up redis + a pinned `project-api` image + this
-  BFF with `develop.watch` sync; needs the `bff_user_backend` external network and npm build secrets.
+- Jest's coverage threshold is 60 % on branches, functions, lines and statements.

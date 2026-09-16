@@ -14,16 +14,10 @@ secrets:
   npm_token:
     environment: NODE_AUTH_TOKEN
 
+# Le BFF ne lit ni PostgreSQL ni Redis : tout passe par Project API, Core API et BFF User.
 x-common-env: &common-env
   HOST: "0.0.0.0"
   PORT: 4001
-  REDIS_URL: redis://redis:6379
-  DB_TYPE: postgres
-  DB_NAME: mairie_360_database
-  DB_USER: postgres
-  DB_HOST: ${SHARED_DB_HOST:-postgres}
-  DB_PASSWORD: password
-  DB_PORT: 5432
 
 x-depends-on: &depends-on
   redis:

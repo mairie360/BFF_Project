@@ -64,11 +64,25 @@ export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskVie
   };
 }
 
-/** Membre d'un projet : Project API ne publie que l'id, le nom vient de la base quand elle est accessible. */
+/** Membre d'un projet tel que Project API le renvoie (identifiant et nom). */
 export function member(agent: Agent) {
   return { id: agent.id, name: `${agent.first_name} ${agent.last_name}` };
 }
 
 export function projectBundle(project: ProjetView, tasks: TaskView[] = [], users: Agent[] = []) {
   return { project, tasks, users: users.map(member) };
+}
+
+/** Corps de `GET /api/v1/user/` de Core API (DirectoryUsersResultView). */
+export function coreDirectory(list: Agent[]) {
+  return {
+    users: list.map((agent) => ({
+      id: agent.id,
+      first_name: agent.first_name,
+      last_name: agent.last_name,
+      email: `${agent.first_name.toLowerCase()}@mairie.test`,
+      roles: [agent.role],
+      group_ids: [1],
+    })),
+  };
 }

@@ -17,7 +17,6 @@ import {
     syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireProjectManagement } from './project_access';
-import { createProjectRecord, isProjectDatabaseAccessEnabled } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -86,14 +85,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                 labels: [],
                 dueDate: new Date().toISOString(),
             };
-        const createdProject = isProjectDatabaseAccessEnabled()
-            ? {
-                project_id: await createProjectRecord(user.id, {
-                    title: duplicateBody.title,
-                    description: duplicateBody.description,
-                }),
-            }
-            : await createProjectOnApi(mapProjectCreateBodyToBackend(duplicateBody));
+        const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(duplicateBody));
         await syncProjectUsersOnApi(
             createdProject.project_id,
             sourceBundle.users.map((member) => `user-${member.id}`),
@@ -108,7 +100,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                     priority: mapTaskPriority(task.priority),
                     assigneeIds: [],
                     labels: [],
-                    dueDate: task.due_date,
+                    dueDate: task.due_date ?? new Date().toISOString(),
                 }),
             );
         }
@@ -135,7 +127,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                         priority: 'medium',
                         assigneeIds: [],
                         labels: [],
-                        dueDate: task.due_date,
+                        dueDate: task.due_date ?? new Date().toISOString(),
                     })),
                 }),
             }),
