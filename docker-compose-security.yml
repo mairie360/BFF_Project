@@ -139,7 +139,7 @@ services:
       - backend
 
   project-api:
-    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:0.4.1}
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:0.5.1}
     container_name: bff-project-sec-project-api
     depends_on:
       liquibase:
