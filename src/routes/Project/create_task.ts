@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     createTaskOnApi,
     buildTaskDtoForUser,
@@ -10,7 +10,7 @@ import {
     sendValidationError,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { appendTaskHistory } from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 
@@ -33,6 +33,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         201: {
             description: 'Tâche créée avec succès',
             content: {

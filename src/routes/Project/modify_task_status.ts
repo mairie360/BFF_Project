@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectTask, ApiError } from '../../openapi-registry';
 import {
     fetchProjectBundle,
     handleUnknownError,
@@ -10,7 +10,7 @@ import {
     sendValidationError,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
-import { appendTaskHistory } from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 
@@ -33,6 +33,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         200: {
             description: 'Statut de la tâche mis à jour avec succès',
             content: {

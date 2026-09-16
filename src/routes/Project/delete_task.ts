@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectTaskParams, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectTaskParams, ApiError } from '../../openapi-registry';
 import { deleteTaskOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 import { requireTaskManagement } from './project_access';
 
@@ -16,6 +16,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 502),
         204: {
             description: 'Tâche supprimée avec succès',
         },

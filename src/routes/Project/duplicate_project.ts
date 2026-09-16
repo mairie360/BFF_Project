@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
     buildProjectResponseFromState,
     buildProjectResponseOverridesFromCreateBody,
@@ -17,7 +17,6 @@ import {
     syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireProjectManagement } from './project_access';
-import { createProjectRecord, isProjectDatabaseAccessEnabled } from '../../repositories/projectRepository';
 
 const router = Router();
 
@@ -32,6 +31,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
         201: {
             description: 'Projet dupliqué avec succès',
             content: {
@@ -85,14 +85,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                 labels: [],
                 dueDate: new Date().toISOString(),
             };
-        const createdProject = isProjectDatabaseAccessEnabled()
-            ? {
-                project_id: await createProjectRecord(user.id, {
-                    title: duplicateBody.title,
-                    description: duplicateBody.description,
-                }),
-            }
-            : await createProjectOnApi(mapProjectCreateBodyToBackend(duplicateBody));
+        const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(duplicateBody));
         await syncProjectUsersOnApi(
             createdProject.project_id,
             sourceBundle.users.map((member) => `user-${member.id}`),
@@ -107,7 +100,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                     priority: mapTaskPriority(task.priority),
                     assigneeIds: [],
                     labels: [],
-                    dueDate: task.due_date,
+                    dueDate: task.due_date ?? new Date().toISOString(),
                 }),
             );
         }
@@ -134,7 +127,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                         priority: 'medium',
                         assigneeIds: [],
                         labels: [],
-                        dueDate: task.due_date,
+                        dueDate: task.due_date ?? new Date().toISOString(),
                     })),
                 }),
             }),

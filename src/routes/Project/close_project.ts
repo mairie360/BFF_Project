@@ -1,16 +1,15 @@
 import { Router, type Request, type Response } from 'express';
-import { ApiError, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
+import { apiErrorResponses, ApiError, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
 import {
   buildProjectDtoForUser,
   buildTaskDtoForUser,
   fetchProjectBundle,
   handleUnknownError,
   parsePublicId,
-  patchProjectOnApi,
   sendValidationError,
 } from './project_helpers';
 import { requireProjectManagement } from './project_access';
-import { isProjectDatabaseAccessEnabled, setProjectClosed } from '../../repositories/projectRepository';
+import { setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
@@ -24,6 +23,7 @@ registry.registerPath({
     body: { required: true, content: { 'application/json': { schema: CloseProjectBody } } },
   },
   responses: {
+    ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
     200: { description: 'Projet clôturé ou suspendu', content: { 'application/json': { schema: ProjectDetailsResponse } } },
     403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
   },
@@ -41,13 +41,8 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   try {
     const user = await requireProjectManagement(res, projectId);
     if (!user) return;
-    const databaseStatus = bodyResult.data.status === 'done' ? 'completed' : 'suspended';
-
-    if (isProjectDatabaseAccessEnabled()) {
-      await setProjectClosed(projectId, databaseStatus);
-    } else {
-      await patchProjectOnApi(projectId, { status: databaseStatus });
-    }
+    // Project_API ne sait que clôturer (PATCH /projects/{project_id}/close, sans suspension) et ne permet pas de
+    await setProjectClosed(projectId, bodyResult.data.status === 'done' ? 'completed' : 'suspended');
 
     const bundle = await fetchProjectBundle(projectId);
     const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);

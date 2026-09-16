@@ -30,7 +30,7 @@ This repository contains the BFF server and its contract. Associated web service
 
 ## Data and current state
 
-The module combines Project API and PostgreSQL. The SQL repository handles visibility, membership, projects, tasks and collaboration. Comments and some history use `tasks.custom_fields`; status history can come from `task_history`. With `PROJECT_DB_ACCESS=disabled`, collaboration uses an in-memory fallback lost on restart.
+The module reads and writes everything through APIs: Project API for projects, tasks, membership and collaboration (comments and history), Core API for the directory of assignable people, BFF User for the caller session. The BFF has no database of its own.
 
 ## Scope and limitations
 

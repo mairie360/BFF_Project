@@ -220,7 +220,7 @@ services:
       bff-user:
         condition: service_healthy
     environment:
-      <<: *db-env
+      # Aucune variable DB : le BFF ne lit que Project API, Core API et BFF User.
       HOST: "0.0.0.0"
       PORT: 4001
       CORE_API_URL: core-api

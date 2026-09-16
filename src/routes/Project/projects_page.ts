@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import {
+  apiErrorResponses,
   registry,
   ProjectsPageResponse,
   ProjectsPageQuery,
@@ -18,7 +19,7 @@ import {
   sendValidationError,
 } from "./project_helpers";
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
-import { listAssignableUsers } from '../../repositories/projectRepository';
+import { listAssignableUsers } from '../../services/projectData';
 
 const router = Router();
 
@@ -35,6 +36,7 @@ registry.registerPath({
   },
 
   responses: {
+    ...apiErrorResponses(400, 401, 500, 501, 502),
     200: {
       description: "Page projets chargée avec succès",
       content: {

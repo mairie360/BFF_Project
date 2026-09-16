@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
 import {
   buildProjectResponseOverridesFromCreateBody,
   buildProjectDtoForUser,
@@ -14,11 +14,7 @@ import {
   syncProjectUsersOnApi,
 } from './project_helpers';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
-import {
-  appendTaskHistory,
-  createProjectRecord,
-  isProjectDatabaseAccessEnabled,
-} from '../../repositories/projectRepository';
+import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
 
@@ -40,6 +36,7 @@ registry.registerPath({
   },
 
   responses: {
+    ...apiErrorResponses(400, 401, 403, 500, 501, 502),
     201: {
       description: 'Projet créé',
       content: {
@@ -71,14 +68,7 @@ router.post('/', async (req: Request, res: Response) => {
     const user = requireManagerRole(res);
     if (!user) return;
     if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
-    const createdProject = isProjectDatabaseAccessEnabled()
-      ? {
-          project_id: await createProjectRecord(user.id, {
-            title: bodyResult.data.title,
-            description: bodyResult.data.description,
-          }),
-        }
-      : await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
+    const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
     await syncProjectUsersOnApi(createdProject.project_id, [
       bodyResult.data.responsibleId,
       ...bodyResult.data.assigneeIds,

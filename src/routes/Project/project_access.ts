@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
-import { getProjectPermissions, getTaskPermissions, listAssignableUsers } from '../../repositories/projectRepository';
+import { getProjectPermissions, getTaskPermissions, listAssignableUsers } from '../../services/projectData';
 
 function sendAccessError(res: Response, status: 403 | 404, message: string): null {
   res.status(status).json({

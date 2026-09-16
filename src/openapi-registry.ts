@@ -401,12 +401,31 @@ registry.register(
 // ERROR
 // =====================
 
-export const ApiError = z.object({
+// Schéma enregistré : les réponses d'erreur référencent #/components/schemas/ApiError au lieu de le recopier.
+export const ApiError = registry.register('ApiError', z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
     details: z.array(z.unknown()),
   }),
-});
+}));
 
-registry.register('ApiError', ApiError);
+// Statuts d'erreur renvoyés avec ApiError. Les routes /projects* exigent un Bearer et résolvent la session
+// auprès de BFF User (401, 502) ; sendRouteError conserve les 400/401/403/404/501 de Project API et
+// transforme ses 5xx et les pannes réseau en 502.
+const apiErrorDescriptions = {
+  400: 'Requête invalide ou refusée par Project API',
+  401: 'Session manquante, invalide ou expirée',
+  403: 'Droits insuffisants',
+  404: 'Projet ou tâche introuvable ou inaccessible',
+  500: 'Erreur interne du serveur',
+  501: 'Opération non implémentée par Project API',
+  502: 'BFF User ou Project API injoignable ou en erreur',
+} as const;
+
+export function apiErrorResponses(...statuses: Array<keyof typeof apiErrorDescriptions>) {
+  return Object.fromEntries(statuses.map((status) => [status, {
+    description: apiErrorDescriptions[status],
+    content: { 'application/json': { schema: ApiError } },
+  }]));
+}

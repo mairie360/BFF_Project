@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registry, ProjectIdParams, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, ProjectIdParams, ApiError } from '../../openapi-registry';
 import { deleteProjectOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 import { requireProjectManagement } from './project_access';
 
@@ -16,6 +16,7 @@ registry.registerPath({
     },
 
     responses: {
+        ...apiErrorResponses(400, 401, 403, 404, 500, 502),
         204: {
             description: 'Projet supprimé avec succès',
         },

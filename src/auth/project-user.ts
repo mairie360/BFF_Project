@@ -1,5 +1,7 @@
 import 'dotenv/config';
+import { isAxiosError } from 'axios';
 import type { NextFunction, Request, Response } from 'express';
+import { userBffClient } from '../clients/userBffClient';
 import { getAuthorizationHeader, getBearerToken } from './token';
 
 export const PROJECT_ROLES = ['Admin', 'Maire', 'Responsable', 'User', 'Guest'] as const;
@@ -135,25 +137,26 @@ export async function loadProjectUserContext(): Promise<ProjectUserContext> {
   const authorization = getAuthorizationHeader();
   if (!authorization) throw new ProjectIdentityError(401, 'Session manquante.');
 
-  let response: globalThis.Response;
+  let body: UserBffResponse;
   try {
-    response = await fetch(`${getUserBffUrl()}/me`, {
-      headers: { Accept: 'application/json', Authorization: authorization },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5_000),
+    const response = await userBffClient.getMe({
+      baseURL: getUserBffUrl(),
+      headers: { Authorization: authorization },
+      timeout: 5_000,
     });
-  } catch {
-    throw new ProjectIdentityError(502, 'Le service utilisateur est indisponible.');
-  }
-
-  if (response.status === 401) {
-    throw new ProjectIdentityError(401, 'La session a expiré.');
-  }
-  if (!response.ok) {
+    body = response.data as UserBffResponse;
+  } catch (error) {
+    if (!isAxiosError(error)) throw error;
+    const status = error.response?.status;
+    if (status === undefined) throw new ProjectIdentityError(502, 'Le service utilisateur est indisponible.');
+    if (status === 401) throw new ProjectIdentityError(401, 'La session a expiré.');
     throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
   }
 
-  const body = (await response.json()) as UserBffResponse;
+  // axios laisse le corps brut quand il n'est pas du JSON analysable.
+  if (typeof body !== 'object' || body === null) {
+    throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
+  }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
   const explicitId = Number(body.user?.id);
@@ -198,7 +201,8 @@ export async function projectUserContextMiddleware(
     return next();
   } catch (error) {
     const status = error instanceof ProjectIdentityError ? error.status : 502;
-    const message = error instanceof Error ? error.message : 'Le contexte utilisateur est indisponible.';
+    // Seuls les messages de ProjectIdentityError sont destinés au client.
+    const message = error instanceof ProjectIdentityError ? error.message : 'Le contexte utilisateur est indisponible.';
     return res.status(status).json({
       error: {
         code: status === 401 ? 'UNAUTHORIZED' : 'BAD_GATEWAY',

@@ -10,7 +10,7 @@ Serveur Express 5.2.1 écrit en TypeScript. Les schémas Zod et leur registre Op
 
 ## Données et persistance
 
-Le module combine Project API et PostgreSQL. Le dépôt SQL gère notamment visibilité, membres, projets, tâches et collaboration. Les commentaires et une partie de l’historique utilisent `tasks.custom_fields`; l’historique de statut peut venir de `task_history`. Avec `PROJECT_DB_ACCESS=disabled`, la collaboration utilise un repli mémoire perdu au redémarrage.
+Le BFF ne possède aucune base. Visibilité, membres, projets, tâches et collaboration (commentaires et historique) sont lus et écrits via le contrat OpenAPI de Project API 0.5.0, et l’annuaire des personnes assignables vient de Core API (`GET /api/v1/user/`). Project API calcule elle-même la visibilité : un projet inaccessible à l’appelant répond 404.
 
 Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches.
 
@@ -36,7 +36,7 @@ CORE_API_URL=localhost
 CORE_API_PORT=3000
 ```
 
-Compléter `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` et `DB_PASSWORD` pour une base existante contenant les tables attendues par les dépôts SQL. Ces variables et les éventuels secrets listés ci-dessous restent à fournir; l’exemple HTTP ne prépare ni schéma ni données.
+Aucune variable de base de données n’est nécessaire : le BFF ne dialogue qu’avec BFF User, Project API et Core API.
 
 ```bash
 npm run start
@@ -63,9 +63,6 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 | `PROJECT_API_BASE_PATH` | http://localhost:3001 | Adresse explicite prioritaire; les chemins `/api/v1/...` viennent du client. |
 | `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Adresse alternative et paramètres de diagnostic. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Configuration du client Core et du diagnostic. |
-| `PROJECT_DB_ACCESS` | enabled | Seule la valeur `disabled` désactive l’accès SQL. |
-| `DB_HOST` / `DB_PORT` | localhost / 5432 | Connexion PostgreSQL des dépôts SQL. |
-| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | — | Base, compte et secret à fournir pour le schéma partagé attendu. |
 
 ## Routes et contrat de données
 
@@ -75,23 +72,25 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| PATCH | `/projects/{projectId}/close` | application/json | 200, 403 |
-| POST | `/projects` | application/json | 201, 400 |
-| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 404 |
-| DELETE | `/projects/{projectId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}` | application/json | 200, 400, 404 |
-| GET | `/projects/{projectId}` | — | 200, 404 |
-| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 404 |
-| POST | `/projects/{projectId}/duplicate` | — | 201, 404 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 404 |
-| GET | `/projects-page` | — | 200, 500 |
-| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 403 |
-| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 403 |
+| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 501, 502 |
+| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 501, 502 |
+| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 501, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
+| GET | `/projects-page` | — | 200, 400, 401, 500, 501, 502 |
+| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502 |
+| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 500, 502 |
 
 ## Session, permissions et erreurs
 
 `/projects-page` et `/projects` exigent un Bearer et un contexte utilisateur valide. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
+
+Les erreurs utilisent l’enveloppe `ApiError` (`{ error: { code, message, details } }`) : 401 pour une session absente ou refusée, 502 si BFF User ou Project API est injoignable ou répond en 5xx, 501 si Project API signale une opération qu’elle n’implémente pas. Les 400/401/403/404 de Project API sont conservés avec un message générique : ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
 
 ## Synchronisation et vérifications
 
@@ -119,7 +118,9 @@ Avant un lancement Docker, vérifier les variables de service, les secrets de bu
 
 ## Diagnostic
 
-Si le contexte utilisateur échoue, vérifier BFF User avant Project API. Si les vues divergent, contrôler les permissions, les identifiants et le mode `PROJECT_DB_ACCESS`. `npm run mock:project-api` fournit un serveur local de développement; ce serveur ne remplace pas les données réelles. Le script `pretest` vérifie les types avec `tsconfig.test.json` avant Jest.
+Si le contexte utilisateur échoue, vérifier BFF User avant Project API. Si les vues divergent, contrôler les permissions et les identifiants. `npm run mock:project-api` fournit un serveur local de développement; ce serveur ne remplace pas les données réelles. Le script `pretest` vérifie les types avec `tsconfig.test.json` avant Jest.
+
+`tests/projects.upstream-mocks.test.ts` teste l’application complète contre de vrais serveurs HTTP simulant BFF User, Project API et Core API. Leurs contrats sont reconstruits depuis les paquets `@mairie360/bff-user-openapi` (devDependency alignée sur l’image `bff-user` des stacks de test), `@mairie360/project-api-openapi` et `@mairie360/core-api-openapi` installés : les mocks refusent chemins, paramètres et corps absents du contrat amont, et chaque réponse du BFF est validée contre `contracts/openapi.json`. `tests/upstream-contracts.test.ts` fige les versions et les opérations consommées.
 
 ## Repères dans le dépôt
 
@@ -128,7 +129,7 @@ Si le contexte utilisateur échoue, vérifier BFF User avant Project API. Si les
 - [src/auth/project-user.ts](../../src/auth/project-user.ts)
 - [src/routes/Project/project_helpers.ts](../../src/routes/Project/project_helpers.ts)
 - [src/routes/Project/project_access.ts](../../src/routes/Project/project_access.ts)
-- [src/repositories/projectRepository.ts](../../src/repositories/projectRepository.ts)
+- [src/services/projectData.ts](../../src/services/projectData.ts)
 - [src/clients/projectClient.ts](../../src/clients/projectClient.ts)
 - [scripts/mock-project-api.ts](../../scripts/mock-project-api.ts)
 - [tsconfig.test.json](../../tsconfig.test.json)
