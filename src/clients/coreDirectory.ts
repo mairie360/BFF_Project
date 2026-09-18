@@ -1,4 +1,4 @@
-import { getCoreApi } from '@mairie360/core-api-openapi/endpoints/coreApi';
+import { getCoreAPIMairie360 } from '@mairie360/core-api-openapi/endpoints/coreAPIMairie360';
 import type { DirectoryUser } from '@mairie360/core-api-openapi/model';
 import axios, { type AxiosRequestConfig } from 'axios';
 import { getAuthorizationHeader } from '../auth/token';
@@ -7,7 +7,7 @@ import { getAuthorizationHeader } from '../auth/token';
 // (@mairie360/core-api-openapi) : le BFF n'interroge plus les tables users et group_members.
 const coreApiAxios = axios.create({ timeout: 5_000, headers: { Accept: 'application/json' } });
 
-const coreApi = getCoreApi(coreApiAxios);
+const coreApi = getCoreAPIMairie360(coreApiAxios);
 
 function normalizeBaseUrl(value: string): string {
   return /^https?:\/\//i.test(value) ? value : `http://${value}`;

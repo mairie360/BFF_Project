@@ -151,7 +151,8 @@ export class ContractMockServer {
     if (!reply.outOfContract) {
       const { documented, schema } = this.contract.responseSchema(match, status);
       if (!documented) this.violation(`[${this.service}] ${method} ${match.template} : statut ${status} non documenté`);
-      if (schema && reply.raw === undefined) {
+      // Seul un corps JSON présent est validé : une réponse sans corps (204, `T | void`) n'a rien à confronter au schéma.
+      if (schema && reply.raw === undefined && reply.body !== undefined) {
         this.contract.validate(schema, reply.body).forEach((error) => this.violation(`[${this.service}] réponse ${status} ${method} ${match.template} ${error}`));
       }
     }

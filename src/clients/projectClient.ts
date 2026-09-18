@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import axios from "axios";
-import { getProjectApi } from "@mairie360/project-api-openapi/endpoints/projectApi";
+import { getProjectAPIMairie360 } from "@mairie360/project-api-openapi/endpoints/projectAPIMairie360";
 import { getAuthorizationHeader } from "../auth/token";
 
 function getProjectApiBaseUrl(): string {
@@ -39,6 +39,6 @@ projectApiAxios.interceptors.request.use(
 );
 
 // 2. Injecter l'instance dans le code généré par Orval
-const projectClient = getProjectApi(projectApiAxios);
+const projectClient = getProjectAPIMairie360(projectApiAxios);
 
 export default projectClient;
