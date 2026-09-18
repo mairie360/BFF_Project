@@ -4,8 +4,11 @@ import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
 import { OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract } from './support/orval-contract';
+import type { GetProjectResultView, ProjetView } from '@mairie360/project-api-openapi/model';
+import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
-  agents, bearer, coreDirectory, projectBundle, projetView, sessionResponse, taskView, type Agent,
+  agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
+  projectUsersResult, projectsResult, projetView, sessionResponse, taskComment, taskHistoryEntry, taskView, userBffUrls, type Agent,
 } from './support/project-fixtures';
 
 // Toute l'application est testée avec les vrais clients orval/axios contre de vrais serveurs HTTP simulant
@@ -13,12 +16,29 @@ import {
 // les paquets @mairie360/*-openapi installés (tests/support/orval-contract.ts) : chaque mock refuse les routes,
 // paramètres et corps absents du contrat amont et valide ses réponses de succès. Les erreurs ne sont pas typées
 // par orval : toute réponse d'erreur simulée est marquée `outOfContract`. Chaque réponse du BFF est validée
-// contre contracts/openapi.json. Le BFF n'a plus d'accès à PostgreSQL.
+// contre contracts/openapi.json. Le BFF n'a plus d'accès à PostgreSQL. Les corps simulés sont typés par les modèles
+// générés et les chemins attendus viennent des helpers d'URL des clients générés.
 
 const userBff = new ContractMockServer('USER_BFF', loadOrvalContract('@mairie360/bff-user-openapi'));
 const projectApi = new ContractMockServer('PROJECT_API', loadOrvalContract('@mairie360/project-api-openapi'));
 const coreApi = new ContractMockServer('CORE_API', loadOrvalContract('@mairie360/core-api-openapi'));
 const mocks = [userBff, projectApi, coreApi];
+// Gabarits des contrats amont (clés des mocks) ; les chemins concrets attendus viennent des helpers d'URL.
+const PROJECT = {
+  projects: '/api/v1/projects/',
+  project: '/api/v1/projects/{projectId}/',
+  close: '/api/v1/projects/{projectId}/close',
+  users: '/api/v1/projects/{projectId}/users/',
+  user: '/api/v1/projects/{projectId}/users/{userId}/',
+  tasks: '/api/v1/projects/{projectId}/tasks/',
+  task: '/api/v1/projects/{projectId}/tasks/{taskId}/',
+  collaboration: '/api/v1/projects/{projectId}/tasks/{taskId}/collaboration',
+  comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
+  history: '/api/v1/projects/{projectId}/tasks/{taskId}/history',
+  health: '/health',
+} as const;
+const CORE = { directory: '/api/v1/user/', health: '/health' } as const;
+const USER_BFF = { me: '/me' } as const;
 const bffContract = OpenApiContract.load(path.join(__dirname, '..', 'contracts', 'openapi.json'));
 
 const { admin, alice, marie } = agents;
@@ -45,8 +65,9 @@ beforeEach(() => {
   process.env.PROJECT_API_URL = projectApiUrl.hostname;
   process.env.PROJECT_API_PORT = projectApiUrl.port;
   // Annuaire Core : la restriction par groupes est appliquée comme par Core API.
-  coreApi.on('get', '/api/v1/user/', ({ url }) => {
-    const groupIds = url.searchParams.get('group_ids')?.split(',').map(Number);
+  coreApi.on('get', CORE.directory, ({ url }) => {
+    const { group_ids }: Pick<ListDirectoryUsersParams, 'group_ids'> = Object.fromEntries(url.searchParams);
+    const groupIds = group_ids?.split(',').map(Number);
     const directory = [admin, alice, marie];
     return {
       body: coreDirectory(groupIds ? directory.filter((agent) => agent.id !== admin.id) : directory),
@@ -66,42 +87,39 @@ function expectBffContract(method: string, pathname: string, response: request.R
   if (schema) expect(bffContract.validate(schema, response.body)).toEqual([]);
 }
 
-const signIn = (agent: Agent, reply: MockReply = { body: sessionResponse(agent) }) => userBff.on('get', '/me', reply);
+const signIn = (agent: Agent, reply: MockReply = { body: sessionResponse(agent) }) => userBff.on('get', USER_BFF.me, reply);
 const as = (call: request.Test, agent: Agent) => call.set('Authorization', bearer(agent.id));
-const upstreamSequence = () => projectApi.requests.map((call) => `${call.method} ${call.path}`);
+/** Appels reçus par Project API, sous la forme `MÉTHODE chemin` (chemin tel que le construit le client généré). */
+const upstreamSequence = () => projectApi.requests.map((call) => `${call.method} ${call.url.pathname}`);
+const called = (method: string, url: string) => `${method} ${url}`;
 /** Erreur texte d'actix/mairie360_api_lib : non typée par orval, donc hors contrat. */
 const textError = (status: number, raw: string): MockReply => ({ status, raw, contentType: 'text/plain', outOfContract: true });
 
 type Scenario = {
-  projects?: ReturnType<typeof projetView>[];
-  bundles?: Record<number, ReturnType<typeof projectBundle>>;
+  projects?: ProjetView[];
+  bundles?: Record<number, GetProjectResultView>;
   createdProjectId?: number;
   createdTaskId?: number;
 };
 
 function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, createdTaskId = 30 }: Scenario = {}) {
-  projectApi.on('get', '/api/v1/projects/', { body: { projects } });
-  projectApi.on('get', '/api/v1/projects/{projectId}/', ({ pathParams }) => {
+  projectApi.on('get', PROJECT.projects, { body: projectsResult(projects) });
+  projectApi.on('get', PROJECT.project, ({ pathParams }) => {
     const bundle = bundles[Number(pathParams.projectId)];
     // 404 renvoyé par Project API pour un projet inexistant ou invisible (erreurs non typées par orval).
     return bundle ? { body: bundle } : textError(404, 'Unknown project.');
   });
-  projectApi.on('post', '/api/v1/projects/', { body: { project_id: createdProjectId } });
-  projectApi.on('patch', '/api/v1/projects/{projectId}/', { status: 204 });
-  projectApi.on('patch', '/api/v1/projects/{projectId}/close', { status: 200 });
-  projectApi.on('delete', '/api/v1/projects/{projectId}/', { status: 204 });
-  projectApi.on('get', '/api/v1/projects/{projectId}/users/', ({ pathParams }) => ({
-    body: { users: bundles[Number(pathParams.projectId)]?.users ?? [] },
-  }));
-  projectApi.on('post', '/api/v1/projects/{projectId}/users/', { status: 200 });
-  projectApi.on('delete', '/api/v1/projects/{projectId}/users/{userId}/', { status: 204 });
-  projectApi.on('post', '/api/v1/projects/{projectId}/tasks/', { body: { task_id: createdTaskId, name: 'Tâche', description: null } });
-  projectApi.on('patch', '/api/v1/projects/{projectId}/tasks/{taskId}/', { status: 204 });
-  projectApi.on('delete', '/api/v1/projects/{projectId}/tasks/{taskId}/', { status: 204 });
-  projectApi.on('post', '/api/v1/projects/{projectId}/tasks/{taskId}/history', { status: 201, body: {
-    id: 'history-1', action: 'task_updated', label: 'Tâche modifiée.',
-    author: { id: 'user-1', name: 'Admin Mairie' }, createdAt: '2026-09-16T08:00:00.000Z',
-  } });
+  projectApi.on('post', PROJECT.projects, { body: createProjectResult(createdProjectId) });
+  projectApi.on('patch', PROJECT.project, { status: 204 });
+  projectApi.on('patch', PROJECT.close, { status: 200 });
+  projectApi.on('delete', PROJECT.project, { status: 204 });
+  projectApi.on('get', PROJECT.users, ({ pathParams }) => ({ body: projectUsersResult(bundles[Number(pathParams.projectId)]?.users ?? []) }));
+  projectApi.on('post', PROJECT.users, { status: 200 });
+  projectApi.on('delete', PROJECT.user, { status: 204 });
+  projectApi.on('post', PROJECT.tasks, { body: createTaskResult(createdTaskId) });
+  projectApi.on('patch', PROJECT.task, { status: 204 });
+  projectApi.on('delete', PROJECT.task, { status: 204 });
+  projectApi.on('post', PROJECT.history, { status: 201, body: taskHistoryEntry() });
 }
 
 describe('Project BFF with contract-driven BFF User, Project API and Core API mocks', () => {
@@ -129,8 +147,10 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         role: 'Responsable', scope: 'team', canCreateProject: true, canManageProjects: true, canManageTasks: true,
         canUpdateAssignedTaskStatus: true, canCommentTasks: true,
       });
-      expect(userBff.calls('/me', 'get')[0].headers.authorization).toBe(bearer(marie.id));
-      expect(projectApi.calls('/api/v1/projects/', 'get')[0].headers.authorization).toBe(bearer(marie.id));
+      const [me] = userBff.calls(USER_BFF.me, 'get');
+      expect(me.url.pathname).toBe(userBffUrls.getGetMeUrl());
+      expect(me.headers.authorization).toBe(bearer(marie.id));
+      expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(marie.id));
     });
 
     test.each([
@@ -189,7 +209,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.body.summary.totalProjects).toBe(1);
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
-      expect(upstreamSequence().sort()).toEqual(['GET /api/v1/projects/', 'GET /api/v1/projects/1/', 'GET /api/v1/projects/2/']);
+      expect(upstreamSequence().sort()).toEqual([called('GET', projectApiUrls.getGetProjectsUrl()), called('GET', projectApiUrls.getGetProjectUrl(1)), called('GET', projectApiUrls.getGetProjectUrl(2))]);
     });
 
     test('GET /projects/:id returns the project an employee may see, with only their tasks', async () => {
@@ -225,13 +245,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       signIn(admin);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
       const author = { id: 'user-2', name: 'Alice Martin' };
-      projectApi.on('get', '/api/v1/projects/{projectId}/tasks/{taskId}/collaboration', { body: {
-        comments: [{ id: 'comment-1', message: 'Devis reçu.', author, createdAt: '2026-09-01T08:00:00.000Z' }],
-        history: [{
+      projectApi.on('get', PROJECT.collaboration, { body: collaboration(
+        [taskComment({ author })],
+        [taskHistoryEntry({
           id: 'status-4', action: 'status_changed', label: 'Statut modifié : todo → in_progress',
           author, createdAt: '2026-09-02T08:00:00.000Z', changes: { status: { from: 'todo', to: 'in_progress' } },
-        }],
-      } });
+        })],
+      ) });
 
       const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration'), admin);
 
@@ -245,7 +265,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       signIn(admin);
       mockProjectApi();
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
-      projectApi.on('get', '/api/v1/projects/', textError(500, 'An error occurred while accessing the database.'));
+      projectApi.on('get', PROJECT.projects, textError(500, 'An error occurred while accessing the database.'));
 
       const response = await as(request(app).get('/projects-page'), admin);
 
@@ -269,16 +289,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         12: projectBundle(projetView(12, { name: 'Fête du village' }), [taskView(30, { title: 'Réserver la salle' })], [alice, marie]),
       } });
       // Le projet vient d'être créé : Project API ne lui connaît encore aucun membre.
-      projectApi.on('get', '/api/v1/projects/{projectId}/users/', { body: { users: [] } });
+      projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
 
       const response = await as(request(app).post('/projects'), marie).send(createBody);
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      expect(projectApi.calls('/api/v1/projects/', 'POST')[0].body).toEqual({ name: 'Fête du village', description: 'Organisation de la fête' });
-      expect(projectApi.calls('/api/v1/projects/{projectId}/users/', 'POST').map((call) => call.body))
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({ name: 'Fête du village', description: 'Organisation de la fête' });
+      expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
         .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/', 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
+      expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
       expect(response.body.project.title).toBe('Fête du village');
     });
 
@@ -290,7 +310,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1', response);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'PATCH')[0].body).toEqual({ name: 'Voirie 2027' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ name: 'Voirie 2027' });
       expect(response.body.project.title).toBe('Voirie 2027');
     });
 
@@ -302,7 +322,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1/close', response);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'PATCH')[0].body).toEqual({ status: 'Suspended' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Suspended' });
       expect(response.body.project.status).toBe('review');
     });
 
@@ -314,23 +334,23 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/', 'PATCH')[0].body).toEqual({ name: 'Renommée' });
-      const [history] = projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/history', 'POST');
+      expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ name: 'Renommée' });
+      const [history] = projectApi.calls(PROJECT.history, 'POST');
       expect(history.body).toMatchObject({ action: 'task_updated' });
     });
 
     test('POST /projects/:id/tasks/:taskId/comments stores the comment through Project API', async () => {
       signIn(alice);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: alice.id })], [alice]) } });
-      projectApi.on('post', '/api/v1/projects/{projectId}/tasks/{taskId}/comments', { status: 201, body: {
+      projectApi.on('post', PROJECT.comments, { status: 201, body: taskComment({
         id: 'comment-9', message: 'Fait.', author: { id: `user-${alice.id}`, name: 'Alice Martin' }, createdAt: '2026-09-16T10:00:00.000Z',
-      } });
+      }) });
 
       const response = await as(request(app).post('/projects/project-1/tasks/task-2/comments'), alice).send({ message: 'Fait.' });
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects/project-1/tasks/task-2/comments', response);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/comments', 'POST')[0].body).toEqual({ message: 'Fait.' });
+      expect(projectApi.calls(PROJECT.comments, 'POST')[0].body).toEqual({ message: 'Fait.' });
       expect(response.body.message).toBe('Fait.');
     });
 
@@ -345,8 +365,8 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects/project-1/tasks', response);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/', 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/history', 'POST')[0].body).toMatchObject({ action: 'task_created' });
+      expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
+      expect(projectApi.calls(PROJECT.history, 'POST')[0].body).toMatchObject({ action: 'task_created' });
       expect(response.body).toMatchObject({ id: 'task-30', title: 'Réserver la salle' });
     });
 
@@ -369,16 +389,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         12: projectBundle(projetView(12, { name: 'Voirie' }), [taskView(30, { title: 'Appel d\u2019offres' })], [alice, marie]),
       } });
       // Le duplicata est vide tant que ses membres n'ont pas été ajoutés.
-      projectApi.on('get', '/api/v1/projects/{projectId}/users/', { body: { users: [] } });
+      projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
 
       const response = await as(request(app).post('/projects/project-1/duplicate'), marie).send({});
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects/project-1/duplicate', response);
-      expect(projectApi.calls('/api/v1/projects/', 'POST')[0].body).toMatchObject({ name: 'Voirie' });
-      expect(projectApi.calls('/api/v1/projects/{projectId}/users/', 'POST').map((call) => call.body))
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ name: 'Voirie' });
+      expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
         .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/', 'POST')[0].body).toMatchObject({ name: 'Appel d\u2019offres' });
+      expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Appel d\u2019offres' });
       expect(response.body.taskItems).toHaveLength(1);
     });
 
@@ -395,8 +415,8 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       ]);
 
       expect(responses.map((response) => response.status)).toEqual([404, 404, 404, 404, 404]);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'PATCH')).toHaveLength(0);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'DELETE')).toHaveLength(0);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      expect(projectApi.calls(PROJECT.project, 'DELETE')).toHaveLength(0);
     });
 
     test('DELETE removes a task and a project through Project API', async () => {
@@ -408,8 +428,8 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect([task.status, project.status]).toEqual([204, 204]);
       expectBffContract('delete', '/projects/project-1/tasks/task-2', task);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/', 'DELETE')).toHaveLength(1);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'DELETE')).toHaveLength(1);
+      expect(projectApi.calls(PROJECT.task, 'DELETE')).toHaveLength(1);
+      expect(projectApi.calls(PROJECT.project, 'DELETE')).toHaveLength(1);
     });
   });
 
@@ -429,7 +449,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(400);
       expect(response.body.error).toMatchObject({ code: 'BAD_REQUEST' });
-      expect(projectApi.calls('/api/v1/projects/{projectId}/', 'PATCH')).toHaveLength(0);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
     });
 
     test.each([
@@ -457,15 +477,15 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(status.status).toBe(200);
       expectBffContract('patch', '/projects/project-1/tasks/task-2/status', status);
-      expect(projectApi.calls('/api/v1/projects/{projectId}/tasks/{taskId}/', 'PATCH')[0].body).toEqual({ status: 'Completed' });
+      expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ status: 'Completed' });
       expect(content.status).toBe(403);
     });
   });
 
   describe('GET /check_apis', () => {
     beforeEach(() => {
-      projectApi.on('get', '/health', { raw: 'OK', contentType: 'text/plain' });
-      coreApi.on('get', '/health', { raw: 'OK', contentType: 'text/plain' });
+      projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
+      coreApi.on('get', CORE.health, { raw: 'OK', contentType: 'text/plain' });
     });
 
     test('reports both APIs connected through their /health operations', async () => {
@@ -474,11 +494,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.status).toBe(200);
       expectBffContract('get', '/check_apis', response);
       expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
+      expect(upstreamSequence()).toEqual([called('GET', projectApiUrls.getHealthUrl())]);
+      expect(coreApi.requests.map((call) => call.url.pathname)).toEqual([coreApiUrls.getHealthUrl()]);
     });
 
     test.each([
-      ['Project API', () => projectApi.on('get', '/health', { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable' }],
-      ['Core API', () => coreApi.on('get', '/health', { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected' }],
+      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable' }],
+      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected' }],
     ])('answers 502 when %s is unreachable', async (_service, breakService, expected) => {
       breakService();
 

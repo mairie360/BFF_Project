@@ -41,7 +41,8 @@ export function loadOrvalContract(packageName: string): OpenApiContract {
 
   for (const file of tsFiles(path.join(pkg.dir, 'endpoints'))) {
     const source = parse(file);
-    title = /\*\s*(\S+)\s*\n\s*\*\s*OpenAPI spec version/.exec(source.text)?.[1] ?? title;
+    // Titre du contrat : la ligne qui suit « Do not edit manually. » dans l'en-tête orval.
+    title = /Do not edit manually\.\s*\n\s*\*\s*(.+?)\s*$/m.exec(source.text)?.[1] ?? title;
     visit(source, (node) => {
       if (!ts.isVariableDeclaration(node) || !node.initializer || !ts.isArrowFunction(node.initializer)) return;
       const operation = readOperation(node.name.getText(), node.initializer, models);

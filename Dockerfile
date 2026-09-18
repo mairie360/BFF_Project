@@ -11,7 +11,9 @@ RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
 COPY . .
 RUN npm run build
 
-# Pas de npm ci --omit=dev : tsx (devDependency) exécute l'app au runtime.
+RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
+    --mount=type=secret,id=node_auth_token,env=NODE_AUTH_TOKEN \
+    npm ci --omit=dev --ignore-scripts
 
 # --- Étape 2 : Runtime ---
 FROM node:24-alpine
@@ -30,6 +32,5 @@ USER node
 ENV NODE_OPTIONS="--max-old-space-size=180"
 
 EXPOSE 4001
-# dist/index.js importe les clients Orval publiés en .ts : tsx les transpile au vol.
-# Binaire local plutôt que npx pour ne jamais télécharger de paquet au démarrage.
-CMD ["/app/node_modules/.bin/tsx", "dist/index.js"]
+# dist/index.js est un bundle esbuild autonome (les clients @mairie360/*-openapi sont inlinés).
+CMD ["node", "dist/index.js"]
