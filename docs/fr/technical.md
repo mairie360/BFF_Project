@@ -90,7 +90,7 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 
 `/projects-page` et `/projects` exigent un Bearer et un contexte utilisateur valide. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
 
-Les erreurs utilisent l’enveloppe `ApiError` (`{ error: { code, message, details } }`) : 401 pour une session absente ou refusée, 502 si BFF User ou Project API est injoignable ou répond en 5xx, 501 si Project API signale une opération qu’elle n’implémente pas. Les 400/401/403/404 de Project API sont conservés avec un message générique : ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
+Les erreurs utilisent l’enveloppe `ApiError` (`{ error: { code, message, details } }`) : 401 pour une session absente ou refusée, 502 si BFF User ou Project API est injoignable ou répond en 5xx, 501 si Project API signale une opération qu’elle n’implémente pas. Les 400/401/403/404 de Project API sont conservés avec un message générique : ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Un corps JSON mal formé répond 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
 
 ## Synchronisation et vérifications
 
@@ -113,6 +113,8 @@ Le job `contracts.yml` utilise Node.js 22, `actions/checkout@v7` et `actions/set
 `cicd.yml` appelle `mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.13.2`, avec `cicd_version: v1.13.2` et `node_version: "22"`. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
 
 Le Dockerfile utilise encore `node:20-alpine` pour la construction et l’exécution; la commande de l’image est `["npx", "tsx", "dist/index.js"]`. Cette version est distincte du job de contrats Node.js 22.
+
+`security_test.sh` lance la stack OWASP ZAP de `docker-compose-security.yml`: ZAP rejoue chaque opération de `/openapi.json` avec un JWT admin statique (`sub=1`, HS256, `JWT_SECRET=b"secret"`) et remplit corps et paramètres de chemin avec les exemples du contrat. `init-test.sql` crée les ressources que ces exemples désignent (utilisateurs 1 et 2, `project-1` avec `task-1`, et `project-2` / `task-2` pour les routes DELETE); garder exemples et seed alignés en ajoutant une route.
 
 Avant un lancement Docker, vérifier les variables de service, les secrets de build et les réseaux dans les fichiers du dépôt. Une CI verte valide ses jobs; elle ne prouve pas la disponibilité des services métier dans un environnement distant.
 
