@@ -250,11 +250,18 @@ services:
         condition: service_healthy
     volumes:
       - ./.zap/rules.tsv:/zap/wrk/rules.tsv:ro
-    # -c rules.tsv : les alertes informatives sont passées à IGNORE, toute autre
-    #   alerte (WARN/FAIL) fait sortir zap-api-scan.py en code != 0.
-    # -z ... replacer : injecte un JWT HS256 statique (sub=2, role=user, exp=2100,
-    #   signé avec JWT_SECRET=b"secret", le même que core-api/bff-user) sur chaque
-    #   requête pour scanner les routes authentifiées /projects*.
+    # -c rules.tsv: informational alerts are set to IGNORE, any other alert
+    #   (WARN/FAIL) makes zap-api-scan.py exit non-zero.
+    # -z ... replacer: injects a static HS256 JWT (sub=1, the Admin user seeded by
+    #   init-test.sql, exp=2100, signed with JWT_SECRET=b"secret") on every request,
+    #   so every operation is scanned as an authenticated admin.
+    # -silent: no check-for-update or telemetry when the ZAP daemon starts (otherwise
+    #   it can hang on add-on updates and fail with "Failed to connect to ZAP").
+    # -z is split with shlex: 'Bearer <jwt>' must stay quoted, otherwise ZAP only
+    #   receives "replacement=Bearer" and every authenticated route answers 401.
+    # formhandler: ZAP ignores the contract example of a field named "password" and sends
+    #   "ZAP", below the 8-character minimum. Defining one field replaces ZAP's whole
+    #   default list, so every other field takes its example from the contract.
     command:
       - zap-api-scan.py
       - -t
@@ -264,6 +271,6 @@ services:
       - -c
       - rules.tsv
       - -z
-      - "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwicm9sZSI6InVzZXIiLCJleHAiOjQxMDI0NDQ4MDB9.qjXr3pV4v8hvkbv_ufmNqaPqhDTbOGfTUeEXxa1z70U"
+      - "-silent -config formhandler.fields.field(0).fieldId=password -config formhandler.fields.field(0).value=Zap-Scan-Passw0rd -config formhandler.fields.field(0).enabled=true -config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement='Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.xCeBe_2QxRlXW8WXr3t6F69wbEHA93HbP_7l4OTJwjA'"
     networks:
       - backend
