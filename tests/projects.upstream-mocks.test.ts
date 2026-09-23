@@ -440,6 +440,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       ['patch', '/projects/project-x', { title: 'Voirie' }],
       ['patch', '/projects/project-1/tasks/task-x', { title: 'Renommée' }],
       ['post', '/projects/project-1/tasks/task-2/comments', { message: '   ' }],
+      ['post', '/projects/project-1/tasks/task-2/comments', { message: '<script>alert(1)</script>' }],
+      ['patch', '/projects/project-1', { description: '<img src=x onerror=alert(1)>' }],
+      ['patch', '/projects/project-1', { labels: ['<b>urgent</b>'] }],
+      ['patch', '/projects/project-1/tasks/task-2', { responsibleId: '() { :;}; /bin/sleep 15' }],
+      ['patch', '/projects/project-1/tasks/task-2', { assigneeIds: ['Jane Doe'] }],
+      ['patch', '/projects/project-1/tasks/task-2', { assigneeIds: ['task-1'] }],
+      ['get', '/projects-page?dueAfter=not-a-date', undefined],
     ] as const)('%s %s answers 400 without calling Project API', async (method, url, body) => {
       signIn(admin);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
@@ -450,6 +457,18 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.status).toBe(400);
       expect(response.body.error).toMatchObject({ code: 'BAD_REQUEST' });
       expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+    });
+
+    test('a malformed JSON body answers a JSON 400, not the Express HTML error page', async () => {
+      signIn(admin);
+
+      const response = await as(request(app).patch('/projects/project-1/close'), admin)
+        .set('Content-Type', 'application/json')
+        .send('{"status":');
+
+      expect(response.status).toBe(400);
+      expect(response.headers['content-type']).toMatch(/application\/json/);
+      expect(response.body).toEqual({ error: { code: 'BAD_REQUEST', message: 'Invalid request', details: [] } });
     });
 
     test.each([

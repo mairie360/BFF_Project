@@ -514,7 +514,8 @@
         "type": "object",
         "properties": {
           "q": {
-            "type": "string"
+            "type": "string",
+            "example": "scan"
           },
           "status": {
             "type": "string",
@@ -536,10 +537,12 @@
             ]
           },
           "dueBefore": {
-            "type": "string"
+            "type": "string",
+            "example": "2030-12-31"
           },
           "dueAfter": {
-            "type": "string"
+            "type": "string",
+            "example": "2020-01-01"
           },
           "view": {
             "type": "string",
@@ -555,13 +558,15 @@
             "type": [
               "number",
               "null"
-            ]
+            ],
+            "example": 1
           },
           "limit": {
             "type": [
               "number",
               "null"
-            ]
+            ],
+            "example": 20
           }
         }
       },
@@ -569,10 +574,14 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan project"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Project created by the ZAP scan"
           },
           "status": {
             "type": "string",
@@ -596,22 +605,29 @@
             "example": "high"
           },
           "responsibleId": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?:user-\\d+)?$",
+            "example": "user-1"
           },
           "assigneeIds": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^user-\\d+$",
+              "example": "user-1"
             }
           },
           "labels": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^<>]*$",
+              "example": "security"
             }
           },
           "dueDate": {
-            "type": "string"
+            "type": "string",
+            "example": "2030-12-31T00:00:00Z"
           },
           "taskItems": {
             "type": "array",
@@ -619,7 +635,9 @@
               "type": "object",
               "properties": {
                 "title": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[^<>]*$",
+                  "example": "Scan task"
                 },
                 "status": {
                   "type": "string",
@@ -645,17 +663,22 @@
                 "assigneeIds": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^user-\\d+$",
+                    "example": "user-1"
                   }
                 },
                 "labels": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "security"
                   }
                 },
                 "dueDate": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "2030-12-31T00:00:00Z"
                 }
               },
               "required": [
@@ -684,10 +707,14 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan project"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Project created by the ZAP scan"
           },
           "status": {
             "type": "string",
@@ -711,22 +738,29 @@
             "example": "high"
           },
           "responsibleId": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?:user-\\d+)?$",
+            "example": "user-1"
           },
           "assigneeIds": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^user-\\d+$",
+              "example": "user-1"
             }
           },
           "labels": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^<>]*$",
+              "example": "security"
             }
           },
           "dueDate": {
-            "type": "string"
+            "type": "string",
+            "example": "2030-12-31T00:00:00Z"
           },
           "taskItems": {
             "type": "array",
@@ -734,7 +768,9 @@
               "type": "object",
               "properties": {
                 "title": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[^<>]*$",
+                  "example": "Scan task"
                 },
                 "status": {
                   "type": "string",
@@ -760,17 +796,22 @@
                 "assigneeIds": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^user-\\d+$",
+                    "example": "user-1"
                   }
                 },
                 "labels": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "security"
                   }
                 },
                 "dueDate": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "2030-12-31T00:00:00Z"
                 }
               },
               "required": [
@@ -789,7 +830,9 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan task"
           },
           "status": {
             "type": "string",
@@ -813,22 +856,29 @@
             "example": "high"
           },
           "responsibleId": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?:user-\\d+)?$",
+            "example": "user-1"
           },
           "assigneeIds": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^user-\\d+$",
+              "example": "user-1"
             }
           },
           "labels": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^<>]*$",
+              "example": "security"
             }
           },
           "dueDate": {
-            "type": "string"
+            "type": "string",
+            "example": "2030-12-31T00:00:00Z"
           }
         },
         "required": [
@@ -845,7 +895,9 @@
         "type": "object",
         "properties": {
           "title": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan task"
           },
           "status": {
             "type": "string",
@@ -869,22 +921,29 @@
             "example": "high"
           },
           "responsibleId": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^(?:user-\\d+)?$",
+            "example": "user-1"
           },
           "assigneeIds": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^user-\\d+$",
+              "example": "user-1"
             }
           },
           "labels": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^<>]*$",
+              "example": "security"
             }
           },
           "dueDate": {
-            "type": "string"
+            "type": "string",
+            "example": "2030-12-31T00:00:00Z"
           }
         }
       },
@@ -926,7 +985,9 @@
           "message": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2000
+            "maxLength": 2000,
+            "pattern": "^[^<>]*$",
+            "example": "Comment posted by the ZAP scan"
           }
         },
         "required": [
@@ -2734,10 +2795,14 @@
                 "type": "object",
                 "properties": {
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan project"
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Project created by the ZAP scan"
                   },
                   "status": {
                     "type": "string",
@@ -2761,22 +2826,29 @@
                     "example": "high"
                   },
                   "responsibleId": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?:user-\\d+)?$",
+                    "example": "user-1"
                   },
                   "assigneeIds": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^user-\\d+$",
+                      "example": "user-1"
                     }
                   },
                   "labels": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^<>]*$",
+                      "example": "security"
                     }
                   },
                   "dueDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2030-12-31T00:00:00Z"
                   },
                   "taskItems": {
                     "type": "array",
@@ -2784,7 +2856,9 @@
                       "type": "object",
                       "properties": {
                         "title": {
-                          "type": "string"
+                          "type": "string",
+                          "pattern": "^[^<>]*$",
+                          "example": "Scan task"
                         },
                         "status": {
                           "type": "string",
@@ -2810,17 +2884,22 @@
                         "assigneeIds": {
                           "type": "array",
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "pattern": "^user-\\d+$",
+                            "example": "user-1"
                           }
                         },
                         "labels": {
                           "type": "array",
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "pattern": "^[^<>]*$",
+                            "example": "security"
                           }
                         },
                         "dueDate": {
-                          "type": "string"
+                          "type": "string",
+                          "example": "2030-12-31T00:00:00Z"
                         }
                       },
                       "required": [
@@ -3369,7 +3448,9 @@
                 "type": "object",
                 "properties": {
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan task"
                   },
                   "status": {
                     "type": "string",
@@ -3393,22 +3474,29 @@
                     "example": "high"
                   },
                   "responsibleId": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?:user-\\d+)?$",
+                    "example": "user-1"
                   },
                   "assigneeIds": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^user-\\d+$",
+                      "example": "user-1"
                     }
                   },
                   "labels": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^<>]*$",
+                      "example": "security"
                     }
                   },
                   "dueDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2030-12-31T00:00:00Z"
                   }
                 },
                 "required": [
@@ -3700,7 +3788,7 @@
             "schema": {
               "type": "string",
               "description": "Identifiant du projet",
-              "example": "project-1"
+              "example": "project-2"
             },
             "required": true,
             "description": "Identifiant du projet",
@@ -3800,10 +3888,14 @@
                 "type": "object",
                 "properties": {
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan project"
                   },
                   "description": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Project created by the ZAP scan"
                   },
                   "status": {
                     "type": "string",
@@ -3827,22 +3919,29 @@
                     "example": "high"
                   },
                   "responsibleId": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?:user-\\d+)?$",
+                    "example": "user-1"
                   },
                   "assigneeIds": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^user-\\d+$",
+                      "example": "user-1"
                     }
                   },
                   "labels": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^<>]*$",
+                      "example": "security"
                     }
                   },
                   "dueDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2030-12-31T00:00:00Z"
                   },
                   "taskItems": {
                     "type": "array",
@@ -3850,7 +3949,9 @@
                       "type": "object",
                       "properties": {
                         "title": {
-                          "type": "string"
+                          "type": "string",
+                          "pattern": "^[^<>]*$",
+                          "example": "Scan task"
                         },
                         "status": {
                           "type": "string",
@@ -3876,17 +3977,22 @@
                         "assigneeIds": {
                           "type": "array",
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "pattern": "^user-\\d+$",
+                            "example": "user-1"
                           }
                         },
                         "labels": {
                           "type": "array",
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "pattern": "^[^<>]*$",
+                            "example": "security"
                           }
                         },
                         "dueDate": {
-                          "type": "string"
+                          "type": "string",
+                          "example": "2030-12-31T00:00:00Z"
                         }
                       },
                       "required": [
@@ -4941,7 +5047,7 @@
             "schema": {
               "type": "string",
               "description": "Identifiant de la tâche",
-              "example": "task-1"
+              "example": "task-2"
             },
             "required": true,
             "description": "Identifiant de la tâche",
@@ -5052,7 +5158,9 @@
                 "type": "object",
                 "properties": {
                   "title": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan task"
                   },
                   "status": {
                     "type": "string",
@@ -5076,22 +5184,29 @@
                     "example": "high"
                   },
                   "responsibleId": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?:user-\\d+)?$",
+                    "example": "user-1"
                   },
                   "assigneeIds": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^user-\\d+$",
+                      "example": "user-1"
                     }
                   },
                   "labels": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^<>]*$",
+                      "example": "security"
                     }
                   },
                   "dueDate": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2030-12-31T00:00:00Z"
                   }
                 }
               }
@@ -6217,7 +6332,8 @@
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "scan"
             },
             "required": false,
             "name": "q",
@@ -6254,7 +6370,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "2030-12-31"
             },
             "required": false,
             "name": "dueBefore",
@@ -6262,7 +6379,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "2020-01-01"
             },
             "required": false,
             "name": "dueAfter",
@@ -6289,7 +6407,8 @@
               "type": [
                 "number",
                 "null"
-              ]
+              ],
+              "example": 1
             },
             "required": false,
             "name": "page",
@@ -6300,7 +6419,8 @@
               "type": [
                 "number",
                 "null"
-              ]
+              ],
+              "example": 20
             },
             "required": false,
             "name": "limit",
@@ -7155,7 +7275,9 @@
                   "message": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "^[^<>]*$",
+                    "example": "Comment posted by the ZAP scan"
                   }
                 },
                 "required": [

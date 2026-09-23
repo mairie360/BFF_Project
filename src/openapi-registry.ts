@@ -127,12 +127,25 @@ export const ProjectTaskParams = z.object({
 registry.register('ProjectIdParams', ProjectIdParams);
 registry.register('ProjectTaskParams', ProjectTaskParams);
 
+// DELETE routes get their own example ids (seeded by init-test.sql): a scan replaying the examples
+// must not delete the project and task that the other routes read or update.
+export const DeletedProjectIdParams = ProjectIdParams.extend({
+  projectId: ProjectIdParams.shape.projectId.openapi({ example: 'project-2' }),
+});
+
+export const DeletedTaskParams = ProjectTaskParams.extend({
+  taskId: ProjectTaskParams.shape.taskId.openapi({ example: 'task-2' }),
+});
+
 // =====================
 // QUERIES
 // =====================
 
+// An unparsable date would filter every project out (NaN comparisons): it is refused instead.
+const DateFilter = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Expected a date');
+
 export const ProjectsPageQuery = z.object({
-  q: z.string().optional(),
+  q: z.string().optional().openapi({ example: 'scan' }),
 
   status: z
     .enum(['all', 'todo', 'in-progress', 'review', 'done'])
@@ -142,15 +155,15 @@ export const ProjectsPageQuery = z.object({
     .enum(['all', 'high', 'medium', 'low'])
     .optional(),
 
-  dueBefore: z.string().optional(),
+  dueBefore: DateFilter.optional().openapi({ example: '2030-12-31' }),
 
-  dueAfter: z.string().optional(),
+  dueAfter: DateFilter.optional().openapi({ example: '2020-01-01' }),
 
   view: ViewMode.optional(),
 
-  page: z.coerce.number().optional(),
+  page: z.coerce.number().optional().openapi({ example: 1 }),
 
-  limit: z.coerce.number().optional(),
+  limit: z.coerce.number().optional().openapi({ example: 20 }),
 });
 
 registry.register('ProjectsPageQuery', ProjectsPageQuery);
@@ -159,36 +172,48 @@ registry.register('ProjectsPageQuery', ProjectsPageQuery);
 // CREATE PROJECT
 // =====================
 
+// People are referenced by their public id (`user-<id>`): another public id (`project-1`, `task-1`) must
+// not be read as a user. The examples name users seeded by init-test.sql. An empty responsible means "nobody".
+const PersonId = z.string().regex(/^(?:user-\d+)?$/, 'Expected a user-<id> identifier').openapi({ example: 'user-1' });
+const PersonIds = z.array(
+  z.string().regex(/^user-\d+$/, 'Expected a user-<id> identifier').openapi({ example: 'user-1' }),
+);
+// Stored texts are rendered by the fronts: `<` and `>` are refused.
+const noMarkup = (schema: z.ZodString) => schema.regex(/^[^<>]*$/, 'Must not contain < or >');
+const Title = (example: string) => noMarkup(z.string()).openapi({ example });
+const Labels = z.array(noMarkup(z.string()).openapi({ example: 'security' }));
+const DueDate = z.string().openapi({ example: '2030-12-31T00:00:00Z' });
+
 export const CreateProjectTaskInput = z.object({
-  title: z.string(),
+  title: Title('Scan task'),
 
   status: ProjectStatus,
 
   priority: ProjectPriority,
 
-  assigneeIds: z.array(z.string()),
+  assigneeIds: PersonIds,
 
-  labels: z.array(z.string()),
+  labels: Labels,
 
-  dueDate: z.string(),
+  dueDate: DueDate,
 });
 
 export const CreateProjectBody = z.object({
-  title: z.string(),
+  title: Title('Scan project'),
 
-  description: z.string(),
+  description: noMarkup(z.string()).openapi({ example: 'Project created by the ZAP scan' }),
 
   status: ProjectStatus,
 
   priority: ProjectPriority,
 
-  responsibleId: z.string(),
+  responsibleId: PersonId,
 
-  assigneeIds: z.array(z.string()),
+  assigneeIds: PersonIds,
 
-  labels: z.array(z.string()),
+  labels: Labels,
 
-  dueDate: z.string(),
+  dueDate: DueDate,
 
   taskItems: z.array(CreateProjectTaskInput).optional(),
 });
@@ -208,19 +233,19 @@ registry.register('UpdateProjectBody', UpdateProjectBody);
 // =====================
 
 export const CreateTaskBody = z.object({
-  title: z.string(),
+  title: Title('Scan task'),
 
   status: ProjectStatus,
 
   priority: ProjectPriority,
 
-  responsibleId: z.string(),
+  responsibleId: PersonId,
 
-  assigneeIds: z.array(z.string()),
+  assigneeIds: PersonIds,
 
-  labels: z.array(z.string()),
+  labels: Labels,
 
-  dueDate: z.string(),
+  dueDate: DueDate,
 });
 
 registry.register('CreateTaskBody', CreateTaskBody);
@@ -251,7 +276,7 @@ export const CloseProjectBody = z.object({
 });
 
 export const TaskCommentBody = z.object({
-  message: z.string().trim().min(1).max(2_000),
+  message: noMarkup(z.string().trim().min(1).max(2_000)).openapi({ example: 'Comment posted by the ZAP scan' }),
 });
 
 export const TaskComment = z.object({
