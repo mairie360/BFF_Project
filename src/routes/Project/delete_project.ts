@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectIdParams, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, DeletedProjectIdParams, ApiError } from '../../openapi-registry';
 import { deleteProjectOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 import { requireProjectManagement } from './project_access';
 
@@ -12,7 +12,7 @@ registry.registerPath({
     summary: 'Supprime un projet existant',
 
     request: {
-        params: ProjectIdParams,
+        params: DeletedProjectIdParams,
     },
 
     responses: {
@@ -33,7 +33,7 @@ registry.registerPath({
 });
 
 router.delete('/:projectId', async (req: Request, res: Response) => {
-    const paramsResult = ProjectIdParams.safeParse(req.params);
+    const paramsResult = DeletedProjectIdParams.safeParse(req.params);
 
     if (!paramsResult.success) {
         return sendValidationError(res, paramsResult.error.issues);
