@@ -6,6 +6,7 @@ const router = Router();
 registry.registerPath({
   method: 'get',
   path: '/health',
+  security: [],
   tags: ['Connectivity'],
   summary: "Vérifie la santé du BFF",
   responses: {

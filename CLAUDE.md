@@ -122,6 +122,15 @@ the upstream-mock tests fail on any undocumented status. Upstream calls (BFF Use
 axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
 `*_API_URL` + `*_API_PORT` read per request.
 
+### ZAP OpenAPI coverage gate
+
+`security_test.sh` / `performance_test.sh` clone `mairie360/CICD` into `cicd-repo/` (gitignored) at
+the pinned `cicd_version` (`CICD_VERSION=<branch>` overrides it). ZAP runs its `zap_hooks.py` with
+`--hook`: every operation of the served spec must be reached, and non-public ones with a
+non-401/403 answer. The spec requires `bearerAuth` at the top level (`openapi.ts`); `/health` and
+`/check_apis` set `security: []` in `registerPath`. The k6 side (`coverage.js`, one handler per
+operation in `load-test.js`) is not wired yet.
+
 ## Tests
 
 Tests with contract-driven upstream mocks: the suites import the **whole app** with the real `project-user.ts`/axios and serve upstreams from

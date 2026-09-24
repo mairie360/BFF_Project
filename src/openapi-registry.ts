@@ -6,6 +6,16 @@ extendZodWithOpenApi(z);
 
 export const registry = new OpenAPIRegistry();
 
+// Bearer JWT read by `tokenContextMiddleware` / `requireBearerToken` (src/auth/token.ts) and forwarded
+// upstream. The document requires it on every operation (`openapi.ts`); public operations opt out
+// with `security: []`. The ZAP OpenAPI coverage gate reads this to tell which operations must be
+// reached authenticated.
+export const bearerAuth = registry.registerComponent('securitySchemes', 'bearerAuth', {
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT',
+});
+
 // Schema -- ENUMS
 
 export const ProjectStatus = z.enum(['todo', 'in-progress', 'review', 'done']).openapi({
