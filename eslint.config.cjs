@@ -10,6 +10,7 @@ module.exports = [
       'dist/',
       'node_modules/',
       'coverage/',
+      'cicd-repo/',
       'eslint.config.cjs',
       '.eslintrc.js',
       'jest.config.ts',
