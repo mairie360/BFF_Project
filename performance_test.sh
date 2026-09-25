@@ -3,21 +3,33 @@
 COMPOSE_FILE="docker-compose-performance.yml"
 SERVICE_NAME="k6-perf-test"
 
-echo "==> [1/4] Démarrage de la stack et lancement du test k6..."
-docker compose -f "$COMPOSE_FILE" up -d --build
+# The CI exports IMAGE_REF (the image published by release-dev). Locally, build
+# the BFF under test from development.Dockerfile and point the stack at it.
+if [ -z "${IMAGE_REF:-}" ]; then
+  echo "==> [0/4] Building bff-project:local from development.Dockerfile..."
+  docker build -f development.Dockerfile -t bff-project:local \
+    --secret id=npmrc,src=.npmrc \
+    --secret id=npm_token,env=NODE_AUTH_TOKEN \
+    . || exit 1
+  export IMAGE_REF="bff-project:local"
+fi
+echo "==> BFF under test: $IMAGE_REF"
 
-echo "==> [2/4] Attente de la fin du test k6..."
+echo "==> [1/4] Starting the stack and the k6 test..."
+docker compose -f "$COMPOSE_FILE" up -d
+
+echo "==> [2/4] Waiting for the end of the k6 test..."
 docker compose -f "$COMPOSE_FILE" wait "$SERVICE_NAME"
 EXIT_CODE=$?
 
-echo "==> [3/4] Affichage des résultats (logs)..."
+echo "==> [3/4] Printing the results (logs)..."
 docker compose -f "$COMPOSE_FILE" logs "$SERVICE_NAME"
 
-echo "==> [4/4] Nettoyage des conteneurs..."
+echo "==> [4/4] Removing the containers..."
 docker compose -f "$COMPOSE_FILE" down -v
 
 echo "----------------------------------------"
-echo "Code de sortie final : $EXIT_CODE"
+echo "Final exit code: $EXIT_CODE"
 echo "----------------------------------------"
 
 exit $EXIT_CODE

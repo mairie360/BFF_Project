@@ -1,15 +1,18 @@
-# Stack de test de performance ISOLÉE pour le BFF Project.
+# Isolated performance test stack for the BFF Project.
 #
-#   ./performance_test.sh          (local)
-#   docker compose -f docker-compose-performance.yml up --build \
-#       --abort-on-container-exit --exit-code-from k6-perf-test   (CI)
+#   ./performance_test.sh                 (local)
+#   IMAGE_REF=<image> ./performance_test.sh   (CI: the image published by release-dev)
 #
-# k6-perf-test sort en échec si un seuil de load-test.js est dépassé.
-# Le BFF Project appelle BFF User pour résoudre la session (/me) : la stack
-# embarque donc, comme celle de BFF User, Core API + BFF User en plus de
-# Project API. TARGET_IMAGE (optionnel) : image BFF pré-construite à tester au
-# lieu du build local. NODE_AUTH_TOKEN doit être exporté pour le build local
-# (lecture des packages @mairie360/*).
+# The BFF under test is never built by this file: it runs the image named by
+# IMAGE_REF, which the CI sets to the dev image built once by release-dev and
+# then promoted to staging and prod. When IMAGE_REF is empty, the script builds
+# bff-project:local from development.Dockerfile first (NODE_AUTH_TOKEN and ./.npmrc
+# are needed to read the @mairie360/* packages).
+#
+# k6-perf-test fails when a threshold of load-test.js is exceeded.
+#
+# BFF Project calls BFF User to resolve the session (/me): like the BFF User
+# stack, it therefore embeds Core API + BFF User on top of Project API.
 
 volumes:
   postgres-data:
@@ -17,12 +20,6 @@ volumes:
 
 networks:
   backend:
-
-secrets:
-  npmrc:
-    file: ./.npmrc
-  npm_token:
-    environment: NODE_AUTH_TOKEN
 
 x-db-env: &db-env
   DB_TYPE: postgres
@@ -202,16 +199,8 @@ services:
       start_period: 40s
 
   bff-project:
-    image: ${TARGET_IMAGE:-bff-project:perf}
+    image: ${IMAGE_REF:-bff-project:local}
     container_name: bff-project-perf-bff
-    build:
-      context: .
-      dockerfile: development.Dockerfile
-      secrets:
-        - npmrc
-        - npm_token
-    # Pas de "tsx watch" sous charge : on lance le serveur directement.
-    command: ["npx", "tsx", "src/index.ts"]
     depends_on:
       seeder:
         condition: service_completed_successfully
