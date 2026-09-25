@@ -123,6 +123,18 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
 }
 
 describe('Project BFF with contract-driven BFF User, Project API and Core API mocks', () => {
+  test('every response carries the helmet security headers and no X-Powered-By', async () => {
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-powered-by']).toBeUndefined();
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['cross-origin-resource-policy']).toBe('same-origin');
+    expect(response.headers['content-security-policy']).toContain("default-src 'self'");
+    expect(response.headers['content-security-policy']).not.toContain('upgrade-insecure-requests');
+    expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
+  });
+
   describe('session resolution through BFF User GET /me', () => {
     test('rejects project routes without a bearer before calling any upstream', async () => {
       const responses = await Promise.all([
