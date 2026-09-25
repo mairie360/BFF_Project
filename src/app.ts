@@ -1,5 +1,6 @@
 import { openApiDocument as swaggerSpec } from './openapi';
 import express from 'express';
+import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
@@ -23,12 +24,15 @@ dotenv.config();
 
 
 const app = express();
-app.disable('x-powered-by');
-app.use((_req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-  next();
-});
+// Security headers (CSP, X-Content-Type-Options, Permissions-Policy, CORP...) and removal of
+// X-Powered-By, same configuration as BFF User. upgrade-insecure-requests is dropped because the
+// BFF is served over HTTP behind the reverse proxy.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: { 'upgrade-insecure-requests': null },
+  },
+}));
 app.use(express.json());
 app.use(tokenContextMiddleware);
 
