@@ -1,5 +1,5 @@
 import { openApiDocument as swaggerSpec } from './openapi';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
@@ -65,6 +65,16 @@ app.use((_req, res) => {
       details: [],
     },
   });
+});
+
+// Last handler: body-parser rejections (malformed JSON, oversized body) and unexpected errors answer the
+// ApiError shape instead of Express's HTML page, which also leaks the stack trace outside production.
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  const status = (error as { status?: unknown } | null)?.status;
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return res.status(status).json({ error: { code: 'BAD_REQUEST', message: 'Invalid request', details: [] } });
+  }
+  return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error', details: [] } });
 });
 
 export default app;

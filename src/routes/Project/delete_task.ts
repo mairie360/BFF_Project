@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectTaskParams, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, registry, DeletedTaskParams, ApiError } from '../../openapi-registry';
 import { deleteTaskOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
 import { requireTaskManagement } from './project_access';
 
@@ -12,7 +12,7 @@ registry.registerPath({
     summary: 'Supprime une tâche existante pour un projet',
 
     request: {
-        params: ProjectTaskParams,
+        params: DeletedTaskParams,
     },
 
     responses: {
@@ -33,7 +33,7 @@ registry.registerPath({
 });
 
 router.delete('/:projectId/tasks/:taskId', async (req: Request, res: Response) => {
-    const paramsResult = ProjectTaskParams.safeParse(req.params);
+    const paramsResult = DeletedTaskParams.safeParse(req.params);
 
     if (!paramsResult.success) {
         return sendValidationError(res, paramsResult.error.issues);

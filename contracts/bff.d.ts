@@ -467,7 +467,9 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @example Scan project */
                         title: string;
+                        /** @example Project created by the ZAP scan */
                         description: string;
                         /**
                          * @description Le statut du projet
@@ -481,11 +483,14 @@ export interface paths {
                          * @enum {string}
                          */
                         priority: "high" | "medium" | "low";
+                        /** @example user-1 */
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
+                        /** @example 2030-12-31T00:00:00Z */
                         dueDate: string;
                         taskItems?: {
+                            /** @example Scan task */
                             title: string;
                             /**
                              * @description Le statut du projet
@@ -501,6 +506,7 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
+                            /** @example 2030-12-31T00:00:00Z */
                             dueDate: string;
                         }[];
                     };
@@ -853,6 +859,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @example Scan task */
                         title: string;
                         /**
                          * @description Le statut du projet
@@ -866,9 +873,11 @@ export interface paths {
                          * @enum {string}
                          */
                         priority: "high" | "medium" | "low";
+                        /** @example user-1 */
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
+                        /** @example 2030-12-31T00:00:00Z */
                         dueDate: string;
                     };
                 };
@@ -1491,7 +1500,9 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @example Scan project */
                         title?: string;
+                        /** @example Project created by the ZAP scan */
                         description?: string;
                         /**
                          * @description Le statut du projet
@@ -1505,11 +1516,14 @@ export interface paths {
                          * @enum {string}
                          */
                         priority?: "high" | "medium" | "low";
+                        /** @example user-1 */
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
+                        /** @example 2030-12-31T00:00:00Z */
                         dueDate?: string;
                         taskItems?: {
+                            /** @example Scan task */
                             title: string;
                             /**
                              * @description Le statut du projet
@@ -1525,6 +1539,7 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
+                            /** @example 2030-12-31T00:00:00Z */
                             dueDate: string;
                         }[];
                     };
@@ -1965,6 +1980,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @example Scan task */
                         title?: string;
                         /**
                          * @description Le statut du projet
@@ -1978,9 +1994,11 @@ export interface paths {
                          * @enum {string}
                          */
                         priority?: "high" | "medium" | "low";
+                        /** @example user-1 */
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
+                        /** @example 2030-12-31T00:00:00Z */
                         dueDate?: string;
                     };
                 };
@@ -3207,6 +3225,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** @example Comment posted by the ZAP scan */
                         message: string;
                     };
                 };
@@ -3595,12 +3614,15 @@ export interface components {
             taskId: string;
         };
         ProjectsPageQuery: {
+            /** @example scan */
             q?: string;
             /** @enum {string} */
             status?: "all" | "todo" | "in-progress" | "review" | "done";
             /** @enum {string} */
             priority?: "all" | "high" | "medium" | "low";
+            /** @example 2030-12-31 */
             dueBefore?: string;
+            /** @example 2020-01-01 */
             dueAfter?: string;
             /**
              * @description Le mode de vue pour les projets
@@ -3608,11 +3630,15 @@ export interface components {
              * @enum {string}
              */
             view?: "kanban" | "grid" | "table";
+            /** @example 1 */
             page?: number | null;
+            /** @example 20 */
             limit?: number | null;
         };
         CreateProjectBody: {
+            /** @example Scan project */
             title: string;
+            /** @example Project created by the ZAP scan */
             description: string;
             /**
              * @description Le statut du projet
@@ -3626,11 +3652,14 @@ export interface components {
              * @enum {string}
              */
             priority: "high" | "medium" | "low";
+            /** @example user-1 */
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
+            /** @example 2030-12-31T00:00:00Z */
             dueDate: string;
             taskItems?: {
+                /** @example Scan task */
                 title: string;
                 /**
                  * @description Le statut du projet
@@ -3646,11 +3675,14 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
+                /** @example 2030-12-31T00:00:00Z */
                 dueDate: string;
             }[];
         };
         UpdateProjectBody: {
+            /** @example Scan project */
             title?: string;
+            /** @example Project created by the ZAP scan */
             description?: string;
             /**
              * @description Le statut du projet
@@ -3664,11 +3696,14 @@ export interface components {
              * @enum {string}
              */
             priority?: "high" | "medium" | "low";
+            /** @example user-1 */
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
+            /** @example 2030-12-31T00:00:00Z */
             dueDate?: string;
             taskItems?: {
+                /** @example Scan task */
                 title: string;
                 /**
                  * @description Le statut du projet
@@ -3684,10 +3719,12 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
+                /** @example 2030-12-31T00:00:00Z */
                 dueDate: string;
             }[];
         };
         CreateTaskBody: {
+            /** @example Scan task */
             title: string;
             /**
              * @description Le statut du projet
@@ -3701,12 +3738,15 @@ export interface components {
              * @enum {string}
              */
             priority: "high" | "medium" | "low";
+            /** @example user-1 */
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
+            /** @example 2030-12-31T00:00:00Z */
             dueDate: string;
         };
         UpdateTaskBody: {
+            /** @example Scan task */
             title?: string;
             /**
              * @description Le statut du projet
@@ -3720,9 +3760,11 @@ export interface components {
              * @enum {string}
              */
             priority?: "high" | "medium" | "low";
+            /** @example user-1 */
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
+            /** @example 2030-12-31T00:00:00Z */
             dueDate?: string;
         };
         UpdateTaskStatusBody: {
@@ -3741,6 +3783,7 @@ export interface components {
             status: "done" | "review";
         };
         TaskCommentBody: {
+            /** @example Comment posted by the ZAP scan */
             message: string;
         };
         TaskComment: {
