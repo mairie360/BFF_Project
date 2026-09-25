@@ -139,3 +139,7 @@ against `contracts/openapi.json` (status documented + schema).
 - `projectClient` reads `PROJECT_API_BASE_PATH` at import, so the suite sets it then `await import('../src/app')`;
   `USER_BFF_URL` and `*_API_URL`/`*_API_PORT` are read per request and set in `beforeEach`.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
+
+## Pull request reviewers
+
+Every PR requests a review from the whole team, minus its author: `CarolinHugo`, `LAURETbenjamin`, `MathTek` and `Quentintnrl` (`gh pr create … --reviewer CarolinHugo,LAURETbenjamin,MathTek`). `.github/CODEOWNERS` makes GitHub request them automatically as well.
