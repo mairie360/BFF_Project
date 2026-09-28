@@ -20,3 +20,4 @@ load-test.js
 init-test.sql
 docker-compose*.yml
 *_test.sh
+cicd-repo

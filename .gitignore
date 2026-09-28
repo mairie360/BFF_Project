@@ -19,3 +19,7 @@ zap.yaml
 summary.json
 
 !contracts/openapi.json
+
+# mairie360/CICD checkout (shared ZAP / k6 test files), cloned by security_test.sh and
+# performance_test.sh, and by the CI jobs.
+cicd-repo/
