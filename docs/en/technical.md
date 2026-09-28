@@ -90,7 +90,7 @@ Inventory extracted from `contracts/openapi.json`. Replace brace parameters with
 
 `/projects-page` and `/projects` require a Bearer token and a valid user context. Recognized roles are `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibility and changes use server rules and returned permissions. User-context calls and the Project client have a 5-second timeout.
 
-Errors use the `ApiError` envelope (`{ error: { code, message, details } }`): 401 for a missing or rejected session, 502 when BFF User or Project API is unreachable or answers 5xx, 501 if Project API reports an operation it does not implement. Project API 400/401/403/404 are kept with a generic message: neither the upstream body nor network details are returned, and an unexpected error becomes a logged generic 500. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
+Errors use the `ApiError` envelope (`{ error: { code, message, details } }`): 401 for a missing or rejected session, 502 when BFF User or Project API is unreachable or answers 5xx, 501 if Project API reports an operation it does not implement. Project API 400/401/403/404 are kept with a generic message: neither the upstream body nor network details are returned, and an unexpected error becomes a logged generic 500. A malformed JSON body answers a 400 in the same envelope instead of the Express HTML page. Bodies are validated before any upstream call: `<` and `>` are refused in titles, descriptions, labels and comments, and people are referenced by a public id (`user-<id>`; an empty `responsibleId` means nobody); `/projects-page` refuses a `dueBefore`/`dueAfter` that is not a date. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
 
 ## Synchronization and verification
 
@@ -113,6 +113,8 @@ The `contracts.yml` job uses Node.js 22, `actions/checkout@v7` and `actions/setu
 `cicd.yml` calls `mairie360/CICD/.github/workflows/BFFs-cicd.yml@v1.13.2`, with `cicd_version: v1.13.2` and `node_version: "22"`. Reusable steps and GitHub environments determine actual checks, publications and deployments.
 
 The Dockerfile currently uses `node:20-alpine` for build and runtime; the image command is `["npx", "tsx", "dist/index.js"]`. That version is separate from the Node.js 22 contract job.
+
+`security_test.sh` runs the OWASP ZAP stack of `docker-compose-security.yml`: ZAP replays every operation of `/openapi.json` with a static admin JWT (`sub=1`, HS256, `JWT_SECRET=b"secret"`) and fills bodies and path parameters from the contract examples. `init-test.sql` seeds the resources those examples name (users 1 and 2, `project-1` with `task-1`, and `project-2` / `task-2` for the DELETE routes); keep examples and seed in sync when adding a route.
 
 Before running Docker, check service variables, build secrets and networks in the repository files. Green CI validates its jobs; it does not prove business-service availability in a remote environment.
 
