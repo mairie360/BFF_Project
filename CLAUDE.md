@@ -122,14 +122,22 @@ the upstream-mock tests fail on any undocumented status. Upstream calls (BFF Use
 axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
 `*_API_URL` + `*_API_PORT` read per request.
 
-### ZAP OpenAPI coverage gate
+### ZAP / k6 OpenAPI coverage gate
 
 `security_test.sh` / `performance_test.sh` clone `mairie360/CICD` into `cicd-repo/` (gitignored) at
 the pinned `cicd_version` (`CICD_VERSION=<branch>` overrides it). ZAP runs its `zap_hooks.py` with
 `--hook`: every operation of the served spec must be reached, and non-public ones with a
 non-401/403 answer. The spec requires `bearerAuth` at the top level (`openapi.ts`); `/health` and
-`/check_apis` set `security: []` in `registerPath`. The k6 side (`coverage.js`, one handler per
-operation in `load-test.js`) is not wired yet.
+`/check_apis` set `security: []` in `registerPath`. `load-test.js` builds on `coverage.js` with **one
+handler per operation** of `contracts/openapi.json`: a new route without a handler makes k6 abort at
+init. Two scenarios: `crud` (2 VUs) runs every handler through `coverage.run()` and carries the gate;
+`reads` (ramp to 20 VUs) replays the GET handlers only, so GET handlers read seeded fixtures
+(`project-1`, `task-1`), never `state`. Writes use the admin token (sub=1). In `crud`, handlers run
+path by path in contract order and, per path, get → put → post → delete → patch, so
+`PATCH .../close` runs before `POST /projects`: `prepare()` creates the working project (its tasks
+come back in the top-level `taskItems`), POST handlers create the disposable resources the DELETE
+handlers remove, and `cleanup()` deletes the working project and its duplicate. Every operation
+gets a `p(95)` threshold from its family (`budgetOf`).
 
 ## Tests
 

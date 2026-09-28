@@ -9,7 +9,11 @@
 # bff-project:local from development.Dockerfile first (NODE_AUTH_TOKEN and ./.npmrc
 # are needed to read the @mairie360/* packages).
 #
-# k6-perf-test fails when a threshold of load-test.js is exceeded.
+# k6-perf-test fails when a threshold of load-test.js is exceeded. load-test.js declares one
+# handler per operation of contracts/openapi.json through the shared OpenAPI coverage module
+# (mairie360/CICD tests/k6/coverage.js, cloned into cicd-repo/ by performance_test.sh or checked
+# out by the CI job): k6 aborts at init when an operation has no handler, and fails its
+# `operations_uncovered` threshold when a handler does not send its request.
 #
 # BFF Project calls BFF User to resolve the session (/me): like the BFF User
 # stack, it therefore embeds Core API + BFF User on top of Project API.
@@ -239,6 +243,10 @@ services:
         condition: service_healthy
     volumes:
       - ./load-test.js:/load-test.js:ro
+      # The committed contract is the coverage reference (contracts:check keeps it equal to the
+      # document served by the BFF).
+      - ./contracts/openapi.json:/openapi.json:ro
+      - ./cicd-repo/tests/k6/coverage.js:/coverage.js:ro
     environment:
       BASE_URL: http://bff-project:4001
       JWT_SECRET: b"secret"
