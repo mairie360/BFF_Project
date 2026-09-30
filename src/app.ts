@@ -1,5 +1,6 @@
 import { openApiDocument as swaggerSpec } from './openapi';
-import express, { NextFunction, Request, Response } from 'express';
+import { errorHandler, notFoundHandler } from '@mairie360/bffs-lib';
+import express from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
@@ -61,24 +62,10 @@ app.use('/projects', deleteTaskRouter);
 app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
 
-app.use((_req, res) => {
-  res.status(404).json({
-    error: {
-      code: 'NOT_FOUND',
-      message: 'Route not found',
-      details: [],
-    },
-  });
-});
-
-// Last handler: body-parser rejections (malformed JSON, oversized body) and unexpected errors answer the
-// ApiError shape instead of Express's HTML page, which also leaks the stack trace outside production.
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const status = (error as { status?: unknown } | null)?.status;
-  if (typeof status === 'number' && status >= 400 && status < 500) {
-    return res.status(status).json({ error: { code: 'BAD_REQUEST', message: 'Invalid request', details: [] } });
-  }
-  return res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error', details: [] } });
-});
+// Unknown routes and every error that reaches Express (malformed JSON, oversized body, unexpected
+// errors) end in the shared envelope `{ error: { code, message, details } }` instead of Express's HTML
+// page: the status is kept and an unexpected error becomes a generic 500 without leaking its message.
+app.use(notFoundHandler);
+app.use(errorHandler());
 
 export default app;

@@ -72,25 +72,25 @@ Inventory extracted from `contracts/openapi.json`. Replace brace parameters with
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
-| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 501, 502 |
-| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 501, 502 |
+| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 502 |
+| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 502 |
+| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 502 |
 | DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502 |
-| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
-| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 501, 502 |
+| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 502 |
+| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 502 |
 | DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
-| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 501, 502 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 501, 502 |
-| GET | `/projects-page` | — | 200, 400, 401, 500, 501, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 502 |
+| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 502 |
+| GET | `/projects-page` | — | 200, 400, 401, 500, 502 |
 | GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502 |
-| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 500, 502 |
+| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 404, 500, 502 |
 
 ## Session, permissions and errors
 
 `/projects-page` and `/projects` require a Bearer token and a valid user context. Recognized roles are `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibility and changes use server rules and returned permissions. User-context calls and the Project client have a 5-second timeout.
 
-Errors use the `ApiError` envelope (`{ error: { code, message, details } }`): 401 for a missing or rejected session, 502 when BFF User or Project API is unreachable or answers 5xx, 501 if Project API reports an operation it does not implement. Project API 400/401/403/404 are kept with a generic message: neither the upstream body nor network details are returned, and an unexpected error becomes a logged generic 500. A malformed JSON body answers a 400 in the same envelope instead of the Express HTML page. Bodies are validated before any upstream call: `<` and `>` are refused in titles, descriptions, labels and comments, and people are referenced by a public id (`user-<id>`; an empty `responsibleId` means nobody); `/projects-page` refuses a `dueBefore`/`dueAfter` that is not a date. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
+Errors use the envelope shared by every BFF, `ErrorResponse` from `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` derived from the status: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Validation failures answer 400 with one `details` entry per invalid value, `{ path, message }`, where `path` starts with `body.`, `params.` or `query.`. 401 for a missing or rejected session, 502 when BFF User, Project API or Core API is unreachable or answers 5xx. An upstream 4xx is kept, with a generic message, only when the route declares that status; any other upstream status (including 501) becomes 502. Neither the upstream body nor network details are returned, and an unexpected error becomes a logged generic 500. Unknown routes answer a JSON 404 and a malformed JSON body a 400 in the same envelope instead of the Express HTML page. Bodies are validated before any upstream call: `<` and `>` are refused in titles, descriptions, labels and comments, and people are referenced by a public id (`user-<id>`; an empty `responsibleId` means nobody); `/projects-page` refuses a `dueBefore`/`dueAfter` that is not a date. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
 
 ## Synchronization and verification
 

@@ -1,22 +1,17 @@
 import type { Response } from 'express';
+import { sendError } from './project_helpers';
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
 import { getProjectPermissions, getTaskPermissions, listAssignableUsers } from '../../services/projectData';
 
 function sendAccessError(res: Response, status: 403 | 404, message: string): null {
-  res.status(status).json({
-    error: {
-      code: status === 403 ? 'FORBIDDEN' : 'NOT_FOUND',
-      message,
-      details: [],
-    },
-  });
+  sendError(res, status, message);
   return null;
 }
 
 export function requireManagerRole(res: Response): ProjectUserContext | null {
   const user = getProjectUserContext(res);
   if (!canManageProjects(user.role)) {
-    return sendAccessError(res, 403, 'Le rôle Responsable, Maire ou Admin est requis.');
+    return sendAccessError(res, 403, 'The Responsable, Maire or Admin role is required.');
   }
   return user;
 }
@@ -38,7 +33,7 @@ export async function requireAssignableUsers(
   });
 
   if (invalidIds.length > 0) {
-    sendAccessError(res, 403, 'Vous pouvez uniquement assigner des agents de votre équipe.');
+    sendAccessError(res, 403, 'You can only assign agents of your team.');
     return false;
   }
 
@@ -52,7 +47,7 @@ export async function requireProjectView(
   const user = getProjectUserContext(res);
   const permissions = await getProjectPermissions(user, projectId);
   if (!permissions.canView) {
-    return sendAccessError(res, 404, 'Projet introuvable ou inaccessible.');
+    return sendAccessError(res, 404, 'Project not found or not visible.');
   }
   return user;
 }
@@ -66,7 +61,7 @@ export async function requireProjectManagement(
 
   const permissions = await getProjectPermissions(user, projectId);
   if (!permissions.canEdit) {
-    return sendAccessError(res, 403, 'Vous ne pouvez pas gérer ce projet.');
+    return sendAccessError(res, 403, 'You cannot manage this project.');
   }
   return user;
 }
@@ -79,7 +74,7 @@ export async function requireTaskView(
   const user = getProjectUserContext(res);
   const permissions = await getTaskPermissions(user, projectId, taskId);
   if (!permissions.canView) {
-    return sendAccessError(res, 404, 'Tâche introuvable ou inaccessible.');
+    return sendAccessError(res, 404, 'Task not found or not visible.');
   }
   return user;
 }
@@ -93,7 +88,7 @@ export async function requireTaskManagement(
   if (!user) return null;
   const permissions = await getTaskPermissions(user, projectId, taskId);
   if (!permissions.canEdit) {
-    return sendAccessError(res, 403, 'Vous ne pouvez pas modifier le contenu de cette tâche.');
+    return sendAccessError(res, 403, 'You cannot edit the content of this task.');
   }
   return user;
 }
@@ -112,7 +107,7 @@ export async function requireTaskStatusUpdate(
     assignedUserId,
   );
   if (!permissions.canUpdateStatus) {
-    return sendAccessError(res, 403, 'Seul l’agent assigné ou un responsable peut modifier ce statut.');
+    return sendAccessError(res, 403, 'Only the assigned agent or a manager can change this status.');
   }
   return user;
 }
@@ -125,7 +120,7 @@ export async function requireTaskComment(
   const user = getProjectUserContext(res);
   const permissions = await getTaskPermissions(user, projectId, taskId);
   if (!permissions.canComment) {
-    return sendAccessError(res, 403, 'Vous ne pouvez pas commenter cette tâche.');
+    return sendAccessError(res, 403, 'You cannot comment on this task.');
   }
   return user;
 }

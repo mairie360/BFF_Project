@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { isAxiosError } from 'axios';
+import { buildErrorResponse, HttpError } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { userBffClient } from '../clients/userBffClient';
 import { getAuthorizationHeader, getBearerToken } from './token';
@@ -126,16 +127,9 @@ function getUserBffUrl(): string {
   return (process.env.USER_BFF_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
 }
 
-export class ProjectIdentityError extends Error {
-  constructor(public readonly status: number, message: string) {
-    super(message);
-    this.name = 'ProjectIdentityError';
-  }
-}
-
 export async function loadProjectUserContext(): Promise<ProjectUserContext> {
   const authorization = getAuthorizationHeader();
-  if (!authorization) throw new ProjectIdentityError(401, 'Session manquante.');
+  if (!authorization) throw new HttpError(401, 'Missing session.');
 
   let body: UserBffResponse;
   try {
@@ -148,14 +142,14 @@ export async function loadProjectUserContext(): Promise<ProjectUserContext> {
   } catch (error) {
     if (!isAxiosError(error)) throw error;
     const status = error.response?.status;
-    if (status === undefined) throw new ProjectIdentityError(502, 'Le service utilisateur est indisponible.');
-    if (status === 401) throw new ProjectIdentityError(401, 'La session a expiré.');
-    throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
+    if (status === undefined) throw new HttpError(502, 'The user service is unavailable.');
+    if (status === 401) throw new HttpError(401, 'The session has expired.');
+    throw new HttpError(502, 'The user context is unavailable.');
   }
 
   // axios laisse le corps brut quand il n'est pas du JSON analysable.
   if (typeof body !== 'object' || body === null) {
-    throw new ProjectIdentityError(502, 'Le contexte utilisateur est indisponible.');
+    throw new HttpError(502, 'The user context is unavailable.');
   }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
@@ -165,7 +159,7 @@ export async function loadProjectUserContext(): Promise<ProjectUserContext> {
     : readJwtUserId(getBearerToken());
 
   if (!id) {
-    throw new ProjectIdentityError(401, 'Impossible d’identifier l’utilisateur connecté.');
+    throw new HttpError(401, 'Unable to identify the signed-in user.');
   }
 
   const firstName = typeof body.user?.first_name === 'string' ? body.user.first_name.trim() : '';
@@ -200,21 +194,14 @@ export async function projectUserContextMiddleware(
     res.locals.projectUser = await loadProjectUserContext();
     return next();
   } catch (error) {
-    const status = error instanceof ProjectIdentityError ? error.status : 502;
-    // Seuls les messages de ProjectIdentityError sont destinés au client.
-    const message = error instanceof ProjectIdentityError ? error.message : 'Le contexte utilisateur est indisponible.';
-    return res.status(status).json({
-      error: {
-        code: status === 401 ? 'UNAUTHORIZED' : 'BAD_GATEWAY',
-        message,
-        details: [],
-      },
-    });
+    // Only the messages of the HttpErrors raised above are meant for the client.
+    const failure = error instanceof HttpError ? error : new HttpError(502, 'The user context is unavailable.');
+    return res.status(failure.status).json(buildErrorResponse(failure.code, failure.message));
   }
 }
 
 export function getProjectUserContext(res: Response): ProjectUserContext {
   const context = res.locals.projectUser as ProjectUserContext | undefined;
-  if (!context) throw new ProjectIdentityError(401, 'Contexte utilisateur manquant.');
+  if (!context) throw new HttpError(401, 'Missing user context.');
   return context;
 }

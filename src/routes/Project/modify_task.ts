@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectTaskParams, UpdateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, registry, ProjectTaskParams, UpdateTaskBody, ProjectTask, ErrorResponse } from '../../openapi-registry';
 import {
     fetchProjectBundle,
     handleUnknownError,
+    sendError,
     mapTaskUpdateBodyToBackend,
     buildTaskDtoForUser,
     patchTaskOnApi,
@@ -13,6 +14,9 @@ import { requireAssignableUsers, requireTaskManagement } from './project_access'
 import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
+
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
     method: 'patch',
@@ -33,7 +37,7 @@ registry.registerPath({
     },
 
     responses: {
-        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
+        ...apiErrorResponses(...ERROR_STATUSES),
         200: {
             description: 'Tâche mise à jour avec succès',
             content: {
@@ -44,19 +48,19 @@ registry.registerPath({
         },
 
         400: {
-            description: 'Erreur de validation',
+            description: 'Validation error',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
 
         404: {
-            description: 'Projet ou tâche introuvable',
+            description: 'Project or task not found',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
@@ -68,21 +72,19 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
     const bodyResult = UpdateTaskBody.safeParse(req.body);
 
     if (!paramsResult.success) {
-        return sendValidationError(res, paramsResult.error.issues);
+        return sendValidationError(res, 'params', paramsResult.error.issues);
     }
 
     if (!bodyResult.success) {
-        return sendValidationError(res, bodyResult.error.issues);
+        return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
     const projectId = parsePublicId(paramsResult.data.projectId);
     const taskId = parsePublicId(paramsResult.data.taskId);
 
     if (projectId === null || taskId === null) {
-        return sendValidationError(res, [
+        return sendValidationError(res, 'params', [
             {
-                code: 'invalid_format',
-                path: ['projectId', 'taskId'],
                 message: 'projectId and taskId must end with numeric identifiers',
             },
         ]);
@@ -100,13 +102,7 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
         const task = initialBundle.tasks.find((entry) => entry.id === taskId);
 
         if (!task) {
-            return res.status(404).json({
-                error: {
-                    code: 'NOT_FOUND',
-                    message: 'Task not found',
-                    details: [],
-                },
-            });
+            return sendError(res, 404, 'Task not found');
         }
 
         const backendPayload = mapTaskUpdateBodyToBackend(bodyResult.data);
@@ -126,16 +122,14 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
         const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);
 
         if (!updatedTask) {
-            return res.status(404).json({
-                error: { code: 'NOT_FOUND', message: 'Task not found after update', details: [] },
-            });
+            return sendError(res, 404, 'Task not found after update');
         }
 
         return res.status(200).json(
             await buildTaskDtoForUser(user, projectId, updatedTask, updatedBundle.users),
         );
     } catch (error) {
-        return handleUnknownError(res, error);
+        return handleUnknownError(res, error, ERROR_STATUSES);
     }
 });
 

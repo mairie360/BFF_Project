@@ -112,13 +112,18 @@ embeds the resolved `permissions` / `access` block for the frontend.
 
 ### Error envelope
 
-Always `{ error: { code, message, details: [] } }` (registered `ApiError` schema). `sendRouteError` /
-`mapStatusCode` / `mapErrorCode` in `project_helpers.ts` normalize thrown/axios errors — upstream
-400/401/403/404/501 are kept, 5xx and network failures become `502 BAD_GATEWAY`, always with a generic
-per-status message (never the upstream body nor host/port); non-axios, non-`UpstreamApiError` errors
-are logged and become a generic 500. Every route documents its error statuses with
-`...apiErrorResponses(...)` (`openapi-registry.ts`) — keep it in sync when a route gains a new error path,
-the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
+Always `{ error: { code, message, details } }`, the envelope shared by every BFF: the `ErrorResponse` schema is
+`@mairie360/bffs-lib`'s `ErrorResponseSchema` (registered with `.clone()`, see `openapi-registry.ts`) and `code`
+derives from the status (`codeForStatus`). App-level `notFoundHandler` / `errorHandler()` from the lib close
+`src/app.ts`. In routes, `sendRouteError` / `handleUnknownError(res, error, ERROR_STATUSES)` (`project_helpers.ts`)
+normalizes thrown errors: an upstream 4xx is kept (generic message, via the lib's `mapUpstreamError`) only when
+the route's `ERROR_STATUSES` declares it, any other upstream status (5xx, 501, undeclared 4xx) and network
+failures become `502 BAD_GATEWAY`, never with the upstream body nor host/port; an `HttpError` keeps its status
+and message unless it is an undeclared 4xx (then 502); anything else is logged and becomes a generic 500.
+`sendValidationError(res, 'body' | 'params' | 'query', issues)` answers 400 with `details: [{ path, message }]`
+(`path` like `body.title`). Every route defines one `ERROR_STATUSES` list and passes it to both
+`apiErrorResponses(...)` (`openapi-registry.ts`) and `handleUnknownError`, so the contract and the runtime
+cannot drift; the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
 axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
 `*_API_URL` + `*_API_PORT` read per request.
 
