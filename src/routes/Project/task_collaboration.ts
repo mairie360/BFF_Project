@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import {
   apiErrorResponses,
-  ApiError,
+  type ApiErrorStatus,
   ProjectTaskParams,
   TaskCollaborationResponse,
   TaskComment,
@@ -14,6 +14,11 @@ import { requireTaskComment, requireTaskView } from './project_access';
 
 const router = Router();
 
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const COLLABORATION_ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+// 404: Project API answers it when the task disappears between the rights check and the comment.
+const COMMENT_ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+
 registry.registerPath({
   method: 'get',
   path: '/projects/{projectId}/tasks/{taskId}/collaboration',
@@ -21,9 +26,8 @@ registry.registerPath({
   summary: 'Consulte les commentaires et l’historique d’une tâche',
   request: { params: ProjectTaskParams },
   responses: {
-    ...apiErrorResponses(400, 401, 404, 500, 502),
+    ...apiErrorResponses(...COLLABORATION_ERROR_STATUSES),
     200: { description: 'Suivi collaboratif', content: { 'application/json': { schema: TaskCollaborationResponse } } },
-    403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
   },
 });
 
@@ -37,22 +41,21 @@ registry.registerPath({
     body: { required: true, content: { 'application/json': { schema: TaskCommentBody } } },
   },
   responses: {
-    ...apiErrorResponses(400, 401, 403, 500, 502),
+    ...apiErrorResponses(...COMMENT_ERROR_STATUSES),
     201: { description: 'Commentaire ajouté', content: { 'application/json': { schema: TaskComment } } },
-    403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
   },
 });
 
 function parseTaskParams(req: Request, res: Response): { projectId: number; taskId: number } | null {
   const paramsResult = ProjectTaskParams.safeParse(req.params);
   if (!paramsResult.success) {
-    sendValidationError(res, paramsResult.error.issues);
+    sendValidationError(res, 'params', paramsResult.error.issues);
     return null;
   }
   const projectId = parsePublicId(paramsResult.data.projectId);
   const taskId = parsePublicId(paramsResult.data.taskId);
   if (projectId === null || taskId === null) {
-    sendValidationError(res, [{ code: 'invalid_format', path: ['projectId', 'taskId'], message: 'Identifiants invalides' }]);
+    sendValidationError(res, 'params', [{ message: 'projectId and taskId must end with numeric identifiers' }]);
     return null;
   }
   return { projectId, taskId };
@@ -66,7 +69,7 @@ router.get('/:projectId/tasks/:taskId/collaboration', async (req: Request, res: 
     if (!user) return;
     return res.status(200).json(await getTaskCollaboration(params.projectId, params.taskId));
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, COLLABORATION_ERROR_STATUSES);
   }
 });
 
@@ -74,14 +77,14 @@ router.post('/:projectId/tasks/:taskId/comments', async (req: Request, res: Resp
   const params = parseTaskParams(req, res);
   if (!params) return;
   const bodyResult = TaskCommentBody.safeParse(req.body);
-  if (!bodyResult.success) return sendValidationError(res, bodyResult.error.issues);
+  if (!bodyResult.success) return sendValidationError(res, 'body', bodyResult.error.issues);
 
   try {
     const user = await requireTaskComment(res, params.projectId, params.taskId);
     if (!user) return;
     return res.status(201).json(await addTaskComment(params.projectId, params.taskId, user, bodyResult.data.message));
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, COMMENT_ERROR_STATUSES);
   }
 });
 

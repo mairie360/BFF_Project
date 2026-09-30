@@ -1,4 +1,5 @@
 import { OpenAPIRegistry, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import { ErrorResponseSchema } from '@mairie360/bffs-lib';
 import { z } from 'zod';
 
 // On ajoute les méthodes .openapi() à Zod
@@ -436,31 +437,28 @@ registry.register(
 // ERROR
 // =====================
 
-// Schéma enregistré : les réponses d'erreur référencent #/components/schemas/ApiError au lieu de le recopier.
-export const ApiError = registry.register('ApiError', z.object({
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-    details: z.array(z.unknown()),
-  }),
-}));
+// Body of every error answer, shared by every BFF (`@mairie360/bffs-lib`): `{ error: { code, message, details } }`.
+// clone(): the lib builds its schemas on import, before extendZodWithOpenApi() above, and zod 4 only
+// adds .openapi() to schemas created after the extension.
+export const ErrorResponse = registry.register('ErrorResponse', ErrorResponseSchema.clone());
 
-// Statuts d'erreur renvoyés avec ApiError. Les routes /projects* exigent un Bearer et résolvent la session
-// auprès de BFF User (401, 502) ; sendRouteError conserve les 400/401/403/404/501 de Project API et
-// transforme ses 5xx et les pannes réseau en 502.
+// Error statuses answered with ErrorResponse. The /projects* routes require a Bearer token and resolve the
+// session with BFF User (401, 502). Each route passes the same list to sendRouteError (project_helpers.ts):
+// an upstream 4xx is only kept when the route declares it, any other upstream status becomes 502.
 const apiErrorDescriptions = {
-  400: 'Requête invalide ou refusée par Project API',
-  401: 'Session manquante, invalide ou expirée',
-  403: 'Droits insuffisants',
-  404: 'Projet ou tâche introuvable ou inaccessible',
-  500: 'Erreur interne du serveur',
-  501: 'Opération non implémentée par Project API',
-  502: 'BFF User ou Project API injoignable ou en erreur',
+  400: 'Invalid request',
+  401: 'Missing, invalid or expired session',
+  403: 'Insufficient rights',
+  404: 'Project or task not found or not visible',
+  500: 'Internal server error',
+  502: 'BFF User, Project API or Core API is unreachable or failed',
 } as const;
 
-export function apiErrorResponses(...statuses: Array<keyof typeof apiErrorDescriptions>) {
+export type ApiErrorStatus = keyof typeof apiErrorDescriptions;
+
+export function apiErrorResponses(...statuses: ApiErrorStatus[]) {
   return Object.fromEntries(statuses.map((status) => [status, {
     description: apiErrorDescriptions[status],
-    content: { 'application/json': { schema: ApiError } },
+    content: { 'application/json': { schema: ErrorResponse } },
   }]));
 }

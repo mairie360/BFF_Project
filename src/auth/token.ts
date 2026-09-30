@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { buildErrorResponse } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 
 interface TokenContext {
@@ -39,23 +40,11 @@ export function tokenContextMiddleware(req: Request, _res: Response, next: NextF
 
 export function requireBearerToken(req: Request, res: Response, next: NextFunction): Response | void {
   if (!req.header('authorization')) {
-    return res.status(401).json({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Missing bearer token',
-        details: [],
-      },
-    });
+    return res.status(401).json(buildErrorResponse('UNAUTHORIZED', 'Missing bearer token'));
   }
 
   if (!readBearerToken(req.header('authorization'))) {
-    return res.status(401).json({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Invalid authorization header. Expected: Bearer <token>',
-        details: [],
-      },
-    });
+    return res.status(401).json(buildErrorResponse('UNAUTHORIZED', 'Invalid authorization header. Expected: Bearer <token>'));
   }
 
   return next();

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
     buildProjectResponseOverridesFromUpdateBody,
     buildProjectDtoForUser,
@@ -14,6 +14,9 @@ import { requireAssignableUsers, requireProjectManagement } from './project_acce
 import { updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
+
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
     method: 'patch',
@@ -34,7 +37,7 @@ registry.registerPath({
     },
 
     responses: {
-        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
+        ...apiErrorResponses(...ERROR_STATUSES),
         200: {
             description: 'Projet mis à jour avec succès',
             content: {
@@ -45,19 +48,19 @@ registry.registerPath({
         },
 
         400: {
-            description: 'Erreur de validation',
+            description: 'Validation error',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
         
         404: {
-            description: 'Projet introuvable',
+            description: 'Project not found',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
@@ -69,19 +72,18 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     const bodyResult = UpdateProjectBody.safeParse(req.body);
 
     if (!paramsResult.success) {
-        return sendValidationError(res, paramsResult.error.issues);
+        return sendValidationError(res, 'params', paramsResult.error.issues);
     }
 
     if (!bodyResult.success) {
-        return sendValidationError(res, bodyResult.error.issues);
+        return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
     const projectId = parsePublicId(paramsResult.data.projectId);
 
     if (projectId === null) {
-        return sendValidationError(res, [
+        return sendValidationError(res, 'params', [
             {
-                code: 'invalid_format',
                 path: ['projectId'],
                 message: 'projectId must end with a numeric identifier',
             },
@@ -117,7 +119,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
             )),
         });
     } catch (error) {
-        return handleUnknownError(res, error);
+        return handleUnknownError(res, error, ERROR_STATUSES);
     }
 });
 

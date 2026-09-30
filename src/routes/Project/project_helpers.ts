@@ -1,5 +1,12 @@
 import type { Response } from "express";
 import axios from "axios";
+import {
+  buildErrorResponse,
+  codeForStatus,
+  HttpError,
+  mapUpstreamError,
+  type ErrorDetail,
+} from "@mairie360/bffs-lib";
 import { z } from "zod";
 import projectClient from "../../clients/projectClient";
 import type {
@@ -93,17 +100,6 @@ export interface BffUpdateTaskStatusInput {
   status: BffProjectStatus;
 }
 
-class UpstreamApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-    public readonly details: unknown[] = [],
-  ) {
-    super(message);
-    this.name = "UpstreamApiError";
-  }
-}
-
 const projectStatusLabelMap: Record<BffProjectStatus, string> = {
   todo: "À faire",
   "in-progress": "En cours",
@@ -157,104 +153,49 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function mapStatusCode(status: number): number {
-  if (status === 400 || status === 401 || status === 403 || status === 404 || status === 501) {
-    return status;
-  }
+/** Where an invalid value was read, used as the first segment of `details[].path`. */
+export type ValidationLocation = "body" | "params" | "query";
 
-  if (status >= 500) {
-    return 502;
-  }
+type ValidationIssue = { path?: ReadonlyArray<PropertyKey>; message: string };
 
-  return 500;
+/** zod issues (or hand-written ones) as the envelope's `details`: `{ path: "body.title", message }`. */
+export function toErrorDetails(location: ValidationLocation, issues: ReadonlyArray<ValidationIssue>): ErrorDetail[] {
+  return issues.map((issue) => ({
+    path: [location, ...(issue.path ?? []).map(String)].join("."),
+    message: issue.message,
+  }));
 }
 
-function mapErrorCode(status: number): string {
-  if (status === 400) {
-    return "BAD_REQUEST";
-  }
-
-  if (status === 401) {
-    return "UNAUTHORIZED";
-  }
-
-  if (status === 403) {
-    return "FORBIDDEN";
-  }
-
-  if (status === 404) {
-    return "NOT_FOUND";
-  }
-
-  if (status === 501) {
-    return "NOT_IMPLEMENTED";
-  }
-
-  if (status >= 500) {
-    return "BAD_GATEWAY";
-  }
-
-  return "INTERNAL_SERVER_ERROR";
-}
-
-// Messages génériques par statut : ni le corps de Project API ni le détail réseau (hôte, port) ne sont renvoyés.
-const upstreamErrorMessages: Record<number, string> = {
-  400: "La requête a été refusée par Project API.",
-  401: "La session a été refusée par Project API.",
-  403: "Accès refusé par Project API.",
-  404: "Ressource introuvable dans Project API.",
-  500: "Project API a renvoyé une réponse inattendue.",
-  501: "Opération non disponible dans Project API.",
-  502: "Project API est indisponible.",
-};
-
-function isUpstreamApiError(error: unknown): error is UpstreamApiError {
-  return error instanceof UpstreamApiError;
-}
-
-function sendError(
-  res: Response,
-  status: number,
-  code: string,
-  message: string,
-  details: unknown[] = [],
-): Response {
-  return res.status(status).json({
-    error: {
-      code,
-      message,
-      details,
-    },
-  });
+/** Answers the shared envelope `{ error: { code, message, details } }`; the code derives from the status. */
+export function sendError(res: Response, status: number, message: string, details: ErrorDetail[] = []): Response {
+  return res.status(status).json(buildErrorResponse(codeForStatus(status), message, details));
 }
 
 export function sendValidationError(
   res: Response,
-  details: unknown[],
+  location: ValidationLocation,
+  issues: ReadonlyArray<ValidationIssue>,
 ): Response {
-  return sendError(res, 400, "BAD_REQUEST", "Validation failed", details);
+  return sendError(res, 400, "Validation failed", toErrorDetails(location, issues));
 }
 
-export function sendRouteError(res: Response, error: unknown): Response {
-  if (isUpstreamApiError(error)) {
-    const status = mapStatusCode(error.status);
-    return sendError(
-      res,
-      status,
-      mapErrorCode(status),
-      error.message,
-      error.details,
-    );
+/**
+ * Answers an error caught by a route. `declared` are the error statuses of the route's contract:
+ * - an upstream 4xx (Project API, Core API) is kept only when declared, with a generic message; any other
+ *   upstream status and network failures become 502, never with the upstream body or host;
+ * - an `HttpError` of the BFF keeps its status and message, unless it is a 4xx the route does not declare
+ *   (then 502: the BFF never answers a status its contract does not declare);
+ * - anything else is logged and becomes a generic 500.
+ */
+export function sendRouteError(res: Response, error: unknown, declared: readonly number[]): Response {
+  const upstream = axios.isAxiosError(error) ? mapUpstreamError(error, declared) : error;
+  if (!(upstream instanceof HttpError)) {
+    // The detail of an unexpected error (bug, invalid payload) stays in the logs.
+    console.error("[BFF Project] Unexpected error", error);
+    return sendError(res, 500, "Internal server error");
   }
-
-  if (axios.isAxiosError(error)) {
-    const status = mapStatusCode(error.response?.status ?? 502);
-    return sendError(res, status, mapErrorCode(status), upstreamErrorMessages[status], []);
-  }
-
-  // Le détail d'une erreur imprévue (PostgreSQL, bug) reste dans les logs.
-  console.error("[BFF Project] Erreur inattendue", error);
-  return sendError(res, 500, "INTERNAL_SERVER_ERROR", "Erreur interne du serveur.", []);
+  const mapped = upstream.status < 500 && !declared.includes(upstream.status) ? new HttpError(502) : upstream;
+  return sendError(res, mapped.status, mapped.message, mapped.details);
 }
 
 export async function fetchProjects() {
@@ -296,7 +237,7 @@ export async function fetchProjectBundle(projectId: number): Promise<{
   users: User[];
 }> {
   const bundle = await getProjectBundle(projectId);
-  if (!bundle) throw new UpstreamApiError(404, 'Projet introuvable.');
+  if (!bundle) throw new HttpError(404, 'Project not found.');
 
   return bundle;
 }
@@ -307,7 +248,7 @@ export async function createProjectOnApi(
   const result = (await projectClient.createProject(body)).data;
 
   if (!result || !Number.isInteger(result.project_id) || result.project_id <= 0) {
-    throw new UpstreamApiError(502, 'Project_API a retourné une réponse invalide lors de la création du projet.');
+    throw new HttpError(502, 'Project API answered an invalid body when creating the project.');
   }
 
   return result;
@@ -341,7 +282,7 @@ export async function createTaskOnApi(
 ): Promise<CreateTaskResultView> {
   const result = (await projectClient.createTask(projectId, body)).data;
   if (!result || !Number.isInteger(result.task_id) || result.task_id <= 0) {
-    throw new UpstreamApiError(502, 'Project_API a retourné une réponse invalide lors de la création de la tâche.');
+    throw new HttpError(502, 'Project API answered an invalid body when creating the task.');
   }
   return result;
 }
@@ -951,8 +892,8 @@ export function buildTaskResponseOverridesFromUpdateBody(
   return override;
 }
 
-export function handleUnknownError(res: Response, error: unknown): Response {
-  return sendRouteError(res, error);
+export function handleUnknownError(res: Response, error: unknown, declared: readonly number[]): Response {
+  return sendRouteError(res, error, declared);
 }
 
 export async function buildProjectDtoForUser(

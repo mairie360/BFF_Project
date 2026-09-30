@@ -49,7 +49,7 @@ async function isReachable(probe: () => Promise<unknown>): Promise<boolean> {
 function projectApiHealthOptions() {
   const host = process.env.PROJECT_API_URL;
   const port = process.env.PROJECT_API_PORT;
-  if (!host || !port) throw new Error('PROJECT_API non configurée');
+  if (!host || !port) throw new Error('PROJECT_API is not configured');
 
   const baseUrl = /^https?:\/\//i.test(host) ? host : `http://${host}`;
   return { baseURL: `${baseUrl.replace(/\/+$/, '')}:${port}`, timeout: 5_000 };

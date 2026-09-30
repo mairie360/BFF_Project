@@ -1,10 +1,11 @@
 import { Router, Request, Response } from "express";
 import {
   apiErrorResponses,
+  type ApiErrorStatus,
   registry,
   ProjectsPageResponse,
   ProjectsPageQuery,
-  ApiError,
+  ErrorResponse,
 } from "../../openapi-registry";
 import {
   buildKanbanColumns,
@@ -23,6 +24,9 @@ import { listAssignableUsers } from '../../services/projectData';
 
 const router = Router();
 
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 500, 502] as const satisfies readonly ApiErrorStatus[];
+
 registry.registerPath({
   method: "get",
   path: "/projects-page",
@@ -36,7 +40,7 @@ registry.registerPath({
   },
 
   responses: {
-    ...apiErrorResponses(400, 401, 500, 501, 502),
+    ...apiErrorResponses(...ERROR_STATUSES),
     200: {
       description: "Page projets chargée avec succès",
       content: {
@@ -47,10 +51,10 @@ registry.registerPath({
     },
 
     500: {
-      description: "Erreur serveur",
+      description: "Server error",
       content: {
         "application/json": {
-          schema: ApiError,
+          schema: ErrorResponse,
         },
       },
     },
@@ -61,7 +65,7 @@ router.get("/", async (req: Request, res: Response) => {
   const queryResult = ProjectsPageQuery.safeParse(req.query);
 
   if (!queryResult.success) {
-    return sendValidationError(res, queryResult.error.issues);
+    return sendValidationError(res, 'query', queryResult.error.issues);
   }
 
   // console.log(queryResult);
@@ -167,7 +171,7 @@ router.get("/", async (req: Request, res: Response) => {
       pagination: buildPagination(filteredProjects.length, page, limit),
     });
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, ERROR_STATUSES);
   }
 });
 

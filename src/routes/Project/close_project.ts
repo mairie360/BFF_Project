@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { apiErrorResponses, ApiError, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, ErrorResponse, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
 import {
   buildProjectDtoForUser,
   buildTaskDtoForUser,
@@ -13,6 +13,9 @@ import { setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+
 registry.registerPath({
   method: 'patch',
   path: '/projects/{projectId}/close',
@@ -23,20 +26,20 @@ registry.registerPath({
     body: { required: true, content: { 'application/json': { schema: CloseProjectBody } } },
   },
   responses: {
-    ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
+    ...apiErrorResponses(...ERROR_STATUSES),
     200: { description: 'Projet clôturé ou suspendu', content: { 'application/json': { schema: ProjectDetailsResponse } } },
-    403: { description: 'Droits insuffisants', content: { 'application/json': { schema: ApiError } } },
+    403: { description: 'Insufficient rights', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });
 
 router.patch('/:projectId/close', async (req: Request, res: Response) => {
   const paramsResult = ProjectIdParams.safeParse(req.params);
   const bodyResult = CloseProjectBody.safeParse(req.body);
-  if (!paramsResult.success) return sendValidationError(res, paramsResult.error.issues);
-  if (!bodyResult.success) return sendValidationError(res, bodyResult.error.issues);
+  if (!paramsResult.success) return sendValidationError(res, 'params', paramsResult.error.issues);
+  if (!bodyResult.success) return sendValidationError(res, 'body', bodyResult.error.issues);
 
   const projectId = parsePublicId(paramsResult.data.projectId);
-  if (projectId === null) return sendValidationError(res, [{ code: 'invalid_format', path: ['projectId'], message: 'Identifiant projet invalide' }]);
+  if (projectId === null) return sendValidationError(res, 'params', [{ path: ['projectId'], message: 'projectId must end with a numeric identifier' }]);
 
   try {
     const user = await requireProjectManagement(res, projectId);
@@ -57,7 +60,7 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
       )),
     });
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, ERROR_STATUSES);
   }
 });
 

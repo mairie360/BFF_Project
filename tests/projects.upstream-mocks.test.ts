@@ -166,9 +166,9 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     });
 
     test.each([
-      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'Le contexte utilisateur est indisponible.'],
-      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'Le contexte utilisateur est indisponible.'],
-      ['a dropped connection', { dropConnection: true }, 'Le service utilisateur est indisponible.'],
+      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'The user context is unavailable.'],
+      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'The user context is unavailable.'],
+      ['a dropped connection', { dropConnection: true }, 'The user service is unavailable.'],
     ] as Array<[string, MockReply, string]>)('maps %s to 502 without leaking details', async (_label, reply, message) => {
       signIn(alice, reply);
 
@@ -187,9 +187,9 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const unreachable = await as(request(app).get('/projects-page'), alice);
 
       expect(refused.status).toBe(401);
-      expect(refused.body.error.message).toBe('La session a expiré.');
+      expect(refused.body.error.message).toBe('The session has expired.');
       expect(unreachable.status).toBe(502);
-      expect(unreachable.body.error.message).toBe('Le service utilisateur est indisponible.');
+      expect(unreachable.body.error.message).toBe('The user service is unavailable.');
     });
   });
 
@@ -283,8 +283,46 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expectBffContract('get', '/projects-page', response);
-      expect(response.body.error).toEqual({ code: 'BAD_GATEWAY', message: 'Project API est indisponible.', details: [] });
+      expect(response.body.error).toEqual({ code: 'BAD_GATEWAY', message: 'Upstream service error', details: [] });
       expect(JSON.stringify(response.body)).not.toContain('database');
+    });
+
+    test.each([403, 404, 409, 501])('maps a Project API %i the route does not declare to 502', async (status) => {
+      signIn(admin);
+      mockProjectApi();
+      projectApi.on('get', PROJECT.projects, textError(status, 'Project API internals'));
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(502);
+      expectBffContract('get', '/projects-page', response);
+      expect(response.body).toEqual({ error: { code: 'BAD_GATEWAY', message: 'Upstream service error', details: [] } });
+    });
+
+    test('keeps a Project API 404 the route declares, with a generic message', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      projectApi.on('post', PROJECT.comments, textError(404, 'Unknown task 2.'));
+
+      const response = await as(request(app).post('/projects/project-1/tasks/task-2/comments'), admin).send({ message: 'Devis reçu.' });
+
+      expect(response.status).toBe(404);
+      expectBffContract('post', '/projects/project-1/tasks/task-2/comments', response);
+      expect(response.body).toEqual({ error: { code: 'NOT_FOUND', message: 'Resource not found', details: [] } });
+    });
+
+    test('answers a generic 500 when an unexpected error happens, without leaking it', async () => {
+      signIn(admin);
+      mockProjectApi();
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      // A success body the mapping cannot read: the TypeError it raises must stay in the logs.
+      projectApi.on('get', PROJECT.project, { body: { project: null, tasks: null, users: null }, outOfContract: true });
+
+      const response = await as(request(app).get('/projects/project-1'), admin);
+
+      expect(response.status).toBe(500);
+      expectBffContract('get', '/projects/project-1', response);
+      expect(response.body).toEqual({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error', details: [] } });
     });
   });
 
@@ -467,8 +505,32 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const response = await (body === undefined ? call : call.send(body));
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toMatchObject({ code: 'BAD_REQUEST' });
+      expectBffContract(method, url.split('?')[0], response);
+      expect(response.body.error).toMatchObject({ code: 'BAD_REQUEST', message: 'Validation failed' });
+      // Every detail names where the invalid value was read: body.<field>, params.<param> or query.<param>.
+      expect(response.body.error.details.length).toBeGreaterThan(0);
+      for (const detail of response.body.error.details) {
+        expect(detail).toEqual({ path: expect.stringMatching(/^(body|params|query)(\.|$)/), message: expect.any(String) });
+      }
       expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+    });
+
+    test('validation details point at the invalid fields', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const body = await as(request(app).post('/projects'), admin).send({ title: 'Sans description' });
+      const params = await as(request(app).patch('/projects/project-x'), admin).send({ title: 'Voirie' });
+
+      expect(body.body.error.details).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'body.description' })]));
+      expect(params.body.error.details).toEqual([expect.objectContaining({ path: 'params.projectId' })]);
+    });
+
+    test('an unknown route answers the JSON 404 envelope', async () => {
+      const response = await request(app).get('/unknown');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: { code: 'NOT_FOUND', message: 'Route not found', details: [] } });
     });
 
     test('a malformed JSON body answers a JSON 400, not the Express HTML error page', async () => {

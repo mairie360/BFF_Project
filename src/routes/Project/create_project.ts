@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, CreateProjectBody, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, registry, CreateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
   buildProjectResponseOverridesFromCreateBody,
   buildProjectDtoForUser,
@@ -17,6 +17,9 @@ import { requireAssignableUsers, requireManagerRole } from './project_access';
 import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
+
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 403, 500, 502] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: 'post',
@@ -36,7 +39,7 @@ registry.registerPath({
   },
 
   responses: {
-    ...apiErrorResponses(400, 401, 403, 500, 501, 502),
+    ...apiErrorResponses(...ERROR_STATUSES),
     201: {
       description: 'Projet créé',
       content: {
@@ -47,10 +50,10 @@ registry.registerPath({
     },
 
     400: {
-      description: 'Erreur de validation',
+      description: 'Validation error',
       content: {
         'application/json': {
-          schema: ApiError,
+          schema: ErrorResponse,
         },
       },
     },
@@ -61,7 +64,7 @@ router.post('/', async (req: Request, res: Response) => {
   const bodyResult = CreateProjectBody.safeParse(req.body);
 
   if (!bodyResult.success) {
-    return sendValidationError(res, bodyResult.error.issues);
+    return sendValidationError(res, 'body', bodyResult.error.issues);
   }
 
   try {
@@ -108,7 +111,7 @@ router.post('/', async (req: Request, res: Response) => {
       )),
     });
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, ERROR_STATUSES);
   }
 });
 

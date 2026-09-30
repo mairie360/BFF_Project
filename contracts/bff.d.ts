@@ -380,67 +380,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet ou tâche introuvable ou inaccessible */
+                /** @description Project or task not found or not visible */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -774,58 +765,49 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Erreur de validation */
+                /** @description Validation error */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -998,67 +980,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Erreur de validation */
+                /** @description Validation error */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet introuvable */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1350,58 +1323,49 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet introuvable */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1428,58 +1392,58 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet introuvable */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1807,67 +1771,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Erreur de validation */
+                /** @description Validation error */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet introuvable */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1906,58 +1861,58 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet ou tâche introuvable */
+                /** @description Project or task not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2119,67 +2074,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Erreur de validation */
+                /** @description Validation error */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet ou tâche introuvable */
+                /** @description Project or task not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2469,67 +2415,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet introuvable */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2694,67 +2631,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Erreur de validation */
+                /** @description Validation error */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet ou tâche introuvable */
+                /** @description Project or task not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3027,49 +2955,40 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur serveur */
+                /** @description Server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Opération non implémentée par Project API */
-                501: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApiError"];
-                    };
-                };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3136,58 +3055,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Projet ou tâche introuvable ou inaccessible */
+                /** @description Project or task not found or not visible */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3248,49 +3167,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Requête invalide ou refusée par Project API */
+                /** @description Invalid request */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session manquante, invalide ou expirée */
+                /** @description Missing, invalid or expired session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Droits insuffisants */
+                /** @description Insufficient rights */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur interne du serveur */
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Internal server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User ou Project API injoignable ou en erreur */
+                /** @description BFF User, Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiError"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -4313,11 +4241,15 @@ export interface components {
                 hasNextPage: boolean;
             };
         };
-        ApiError: {
+        ErrorResponse: {
             error: {
-                code: string;
+                /** @enum {string} */
+                code: "BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "PAYLOAD_TOO_LARGE" | "UNPROCESSABLE_ENTITY" | "TOO_MANY_REQUESTS" | "INTERNAL_ERROR" | "BAD_GATEWAY" | "SERVICE_UNAVAILABLE" | "GATEWAY_TIMEOUT";
                 message: string;
-                details: unknown[];
+                details: {
+                    path?: string;
+                    message: string;
+                }[];
             };
         };
         CheckApiResponse: {

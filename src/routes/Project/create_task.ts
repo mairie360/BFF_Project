@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectIdParams, CreateTaskBody, ProjectTask, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, CreateTaskBody, ProjectTask, ErrorResponse } from '../../openapi-registry';
 import {
     createTaskOnApi,
     buildTaskDtoForUser,
     fetchProjectBundle,
     handleUnknownError,
+    sendError,
     mapTaskInputToBackend,
     parsePublicId,
     sendValidationError,
@@ -13,6 +14,9 @@ import { requireAssignableUsers, requireProjectManagement } from './project_acce
 import { appendTaskHistory } from '../../services/projectData';
 
 const router = Router();
+
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
     method: 'post',
@@ -33,7 +37,7 @@ registry.registerPath({
     },
 
     responses: {
-        ...apiErrorResponses(400, 401, 403, 404, 500, 501, 502),
+        ...apiErrorResponses(...ERROR_STATUSES),
         201: {
             description: 'Tâche créée avec succès',
             content: {
@@ -44,19 +48,19 @@ registry.registerPath({
         },
 
         400: {
-            description: 'Erreur de validation',
+            description: 'Validation error',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
 
         404: {
-            description: 'Projet introuvable',
+            description: 'Project not found',
             content: {
                 'application/json': {
-                    schema: ApiError,
+                    schema: ErrorResponse,
                 },
             },
         },
@@ -68,19 +72,18 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
     const bodyResult = CreateTaskBody.safeParse(req.body);
 
     if (!paramsResult.success) {
-        return sendValidationError(res, paramsResult.error.issues);
+        return sendValidationError(res, 'params', paramsResult.error.issues);
     }
 
     if (!bodyResult.success) {
-        return sendValidationError(res, bodyResult.error.issues);
+        return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
     const projectId = parsePublicId(paramsResult.data.projectId);
 
     if (projectId === null) {
-        return sendValidationError(res, [
+        return sendValidationError(res, 'params', [
             {
-                code: 'invalid_format',
                 path: ['projectId'],
                 message: 'projectId must end with a numeric identifier',
             },
@@ -108,12 +111,12 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         const bundle = await fetchProjectBundle(projectId);
         const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
         if (!task) {
-            return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Task not found after creation', details: [] } });
+            return sendError(res, 404, 'Task not found after creation');
         }
 
         return res.status(201).json(await buildTaskDtoForUser(user, projectId, task, bundle.users));
     } catch (error) {
-        return handleUnknownError(res, error);
+        return handleUnknownError(res, error, ERROR_STATUSES);
     }
 });
 

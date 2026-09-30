@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { apiErrorResponses, registry, ProjectIdParams, ProjectDetailsResponse, ApiError } from '../../openapi-registry';
+import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
   buildProjectDtoForUser,
   buildTaskDtoForUser,
@@ -12,6 +12,9 @@ import { requireProjectView } from './project_access';
 
 const router = Router();
 
+// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+const ERROR_STATUSES = [400, 401, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+
 registry.registerPath({
   method: 'get',
   path: '/projects/{projectId}',
@@ -23,7 +26,7 @@ registry.registerPath({
   },
 
   responses: {
-    ...apiErrorResponses(400, 401, 404, 500, 501, 502),
+    ...apiErrorResponses(...ERROR_STATUSES),
     200: {
       description: 'Projet trouvé',
       content: {
@@ -34,10 +37,10 @@ registry.registerPath({
     },
 
     404: {
-      description: 'Projet introuvable',
+      description: 'Project not found',
       content: {
         'application/json': {
-          schema: ApiError,
+          schema: ErrorResponse,
         },
       },
     },
@@ -48,15 +51,14 @@ router.get('/:projectId', async (req: Request, res: Response) => {
   const paramsResult = ProjectIdParams.safeParse(req.params);
 
   if (!paramsResult.success) {
-    return sendValidationError(res, paramsResult.error.issues);
+    return sendValidationError(res, 'params', paramsResult.error.issues);
   }
 
   const projectId = parsePublicId(paramsResult.data.projectId);
 
   if (projectId === null) {
-    return sendValidationError(res, [
+    return sendValidationError(res, 'params', [
       {
-        code: 'invalid_format',
         path: ['projectId'],
         message: 'projectId must end with a numeric identifier',
       },
@@ -76,7 +78,7 @@ router.get('/:projectId', async (req: Request, res: Response) => {
       taskItems,
     });
   } catch (error) {
-    return handleUnknownError(res, error);
+    return handleUnknownError(res, error, ERROR_STATUSES);
   }
 });
 
