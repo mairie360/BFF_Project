@@ -515,6 +515,55 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
     });
 
+    test.each([
+      ['get', '/projects/project-x', undefined],
+      ['patch', '/projects/project-x/close', { status: 'done' }],
+      ['delete', '/projects/project-x', undefined],
+      ['post', '/projects/project-x/duplicate', {}],
+      ['post', '/projects/project-x/tasks', { title: 'Réserver la salle', status: 'todo', priority: 'high', responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+      ['delete', '/projects/project-1/tasks/task-x', undefined],
+      ['patch', '/projects/project-1/tasks/task-x/status', { status: 'done' }],
+      ['get', '/projects/project-1/tasks/task-x/collaboration', undefined],
+      ['post', '/projects/project-1/tasks/task-x/comments', { message: 'Devis reçu.' }],
+    ] as const)('%s %s answers 400 for an identifier without a numeric suffix', async (method, url, body) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const call = as(request(app)[method](url), admin);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(400);
+      expectBffContract(method, url, response);
+      expect(response.body.error.code).toBe('BAD_REQUEST');
+      expect(response.body.error.details).toEqual([expect.objectContaining({ path: expect.stringMatching(/^params(\.|$)/) })]);
+      expect(upstreamSequence()).toEqual([]);
+    });
+
+    test.each([
+      ['get', '/projects/project-1', undefined],
+      ['patch', '/projects/project-1', { title: 'Voirie' }],
+      ['patch', '/projects/project-1/close', { status: 'done' }],
+      ['delete', '/projects/project-1', undefined],
+      ['post', '/projects/project-1/duplicate', {}],
+      ['post', '/projects/project-1/tasks', { title: 'Réserver la salle', status: 'todo', priority: 'high', responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+      ['patch', '/projects/project-1/tasks/task-2', { title: 'Renommée' }],
+      ['delete', '/projects/project-1/tasks/task-2', undefined],
+      ['patch', '/projects/project-1/tasks/task-2/status', { status: 'done' }],
+      ['get', '/projects/project-1/tasks/task-2/collaboration', undefined],
+    ] as const)('%s %s maps a Project API 500 to 502 without leaking it', async (method, url, body) => {
+      signIn(admin);
+      mockProjectApi();
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      projectApi.on('get', PROJECT.project, textError(500, 'An error occurred while accessing the database.'));
+
+      const call = as(request(app)[method](url), admin);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(502);
+      expectBffContract(method, url, response);
+      expect(response.body).toEqual({ error: { code: 'BAD_GATEWAY', message: 'Upstream service error', details: [] } });
+    });
+
     test('validation details point at the invalid fields', async () => {
       signIn(admin);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
