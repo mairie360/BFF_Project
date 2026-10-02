@@ -447,7 +447,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Créer un projet */
+        /**
+         * Create a project
+         * @description Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -504,7 +507,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Projet créé */
+                /** @description Project created, as re-read from Project API */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1450,7 +1453,10 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Met à jour un projet existant */
+        /**
+         * Partially update a project
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -1510,7 +1516,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Projet mis à jour avec succès */
+                /** @description Project updated, as re-read from Project API */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2141,7 +2147,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Duplique un projet existant */
+        /**
+         * Duplicate a project
+         * @description Recreates the project with its members and its tasks; if a step fails, the partial duplicate is deleted again.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2154,7 +2163,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Projet dupliqué avec succès */
+                /** @description Project duplicated, as re-read from Project API */
                 201: {
                     headers: {
                         [name: string]: unknown;

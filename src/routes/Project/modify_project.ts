@@ -1,14 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
-    buildProjectResponseOverridesFromUpdateBody,
+    addProjectUsersOnApi,
     buildProjectDtoForUser,
     buildTaskDtoForUser,
     fetchProjectBundle,
     handleUnknownError,
-    parsePublicId,
+    parseProjectId,
     sendValidationError,
     syncProjectUsersOnApi,
+    userPublicId,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
 import { updateProjectRecord } from '../../services/projectData';
@@ -22,7 +23,8 @@ registry.registerPath({
     method: 'patch',
     path: '/projects/{projectId}',
     tags: ['Projects'],
-    summary: 'Met à jour un projet existant',
+    summary: 'Partially update a project',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
 
     request: {
         params: ProjectIdParams,
@@ -39,7 +41,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         200: {
-            description: 'Projet mis à jour avec succès',
+            description: 'Project updated, as re-read from Project API',
             content: {
                 'application/json': {
                     schema: ProjectDetailsResponse,
@@ -79,41 +81,47 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
 
     if (projectId === null) {
         return sendValidationError(res, 'params', [
             {
                 path: ['projectId'],
-                message: 'projectId must end with a numeric identifier',
+                message: 'projectId must be a project-<id> identifier',
             },
         ]);
     }
 
     try {
-        const user = await requireProjectManagement(res, projectId);
-        if (!user) return;
+        const access = await requireProjectManagement(res, projectId);
+        if (!access) return;
+        const { user, bundle: current } = access;
+        const body = bodyResult.data;
         const requestedUserIds = [
-            ...(bodyResult.data.responsibleId ? [bodyResult.data.responsibleId] : []),
-            ...(bodyResult.data.assigneeIds ?? []),
+            ...(body.responsibleId ? [body.responsibleId] : []),
+            ...(body.assigneeIds ?? []),
         ];
         if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
-        await updateProjectRecord(projectId, bodyResult.data);
 
-        const desiredUserIds = requestedUserIds;
-        if (desiredUserIds.length > 0) {
-            await syncProjectUsersOnApi(projectId, desiredUserIds);
+        if (body.title !== undefined || body.description !== undefined || body.status !== undefined) {
+            await updateProjectRecord(projectId, body);
         }
 
-        const bundle = await fetchProjectBundle(projectId);
-        const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);
+        // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
+        // the merged state (the current responsible, the first member, stays unless `responsibleId` is sent).
+        // A `responsibleId` alone only adds that member and removes nobody.
+        if (body.assigneeIds !== undefined) {
+            const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
+            const responsible = body.responsibleId ?? currentResponsible;
+            await syncProjectUsersOnApi(projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
+        } else if (body.responsibleId) {
+            await addProjectUsersOnApi(projectId, [body.responsibleId], current.users);
+        }
 
+        // Only the state Project API persisted is returned (priority, labels and dueDate are not stored).
+        const bundle = await fetchProjectBundle(projectId);
         return res.status(200).json({
-            project: {
-                ...baseProject,
-                ...buildProjectResponseOverridesFromUpdateBody(bodyResult.data),
-                permissions: baseProject.permissions,
-            },
+            project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
             taskItems: await Promise.all(bundle.tasks.map((task) =>
                 buildTaskDtoForUser(user, projectId, task, bundle.users),
             )),

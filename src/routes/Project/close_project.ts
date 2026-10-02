@@ -5,7 +5,7 @@ import {
   buildTaskDtoForUser,
   fetchProjectBundle,
   handleUnknownError,
-  parsePublicId,
+  parseProjectId,
   sendValidationError,
 } from './project_helpers';
 import { requireProjectManagement } from './project_access';
@@ -38,23 +38,20 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   if (!paramsResult.success) return sendValidationError(res, 'params', paramsResult.error.issues);
   if (!bodyResult.success) return sendValidationError(res, 'body', bodyResult.error.issues);
 
-  const projectId = parsePublicId(paramsResult.data.projectId);
-  if (projectId === null) return sendValidationError(res, 'params', [{ path: ['projectId'], message: 'projectId must end with a numeric identifier' }]);
+  const projectId = parseProjectId(paramsResult.data.projectId);
+  if (projectId === null) return sendValidationError(res, 'params', [{ path: ['projectId'], message: 'projectId must be a project-<id> identifier' }]);
 
   try {
-    const user = await requireProjectManagement(res, projectId);
-    if (!user) return;
-    // Project_API ne sait que clôturer (PATCH /projects/{project_id}/close, sans suspension) et ne permet pas de
+    const access = await requireProjectManagement(res, projectId);
+    if (!access) return;
+    const { user } = access;
+    // Both statuses go through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
     await setProjectClosed(projectId, bodyResult.data.status === 'done' ? 'completed' : 'suspended');
 
     const bundle = await fetchProjectBundle(projectId);
-    const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);
+    // The re-read status (Completed → done, Suspended → review) is returned, not the submitted one.
     return res.status(200).json({
-      project: {
-        ...baseProject,
-        status: bodyResult.data.status,
-        statusLabel: bodyResult.data.status === 'done' ? 'Terminé' : 'En revue',
-      },
+      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
       taskItems: await Promise.all(bundle.tasks.map((task) =>
         buildTaskDtoForUser(user, projectId, task, bundle.users),
       )),

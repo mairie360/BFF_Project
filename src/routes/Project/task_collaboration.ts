@@ -9,7 +9,7 @@ import {
   registry,
 } from '../../openapi-registry';
 import { addTaskComment, getTaskCollaboration } from '../../services/projectData';
-import { handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
+import { handleUnknownError, parseProjectId, parseTaskId, sendValidationError } from './project_helpers';
 import { requireTaskComment, requireTaskView } from './project_access';
 
 const router = Router();
@@ -52,10 +52,10 @@ function parseTaskParams(req: Request, res: Response): { projectId: number; task
     sendValidationError(res, 'params', paramsResult.error.issues);
     return null;
   }
-  const projectId = parsePublicId(paramsResult.data.projectId);
-  const taskId = parsePublicId(paramsResult.data.taskId);
+  const projectId = parseProjectId(paramsResult.data.projectId);
+  const taskId = parseTaskId(paramsResult.data.taskId);
   if (projectId === null || taskId === null) {
-    sendValidationError(res, 'params', [{ message: 'projectId and taskId must end with numeric identifiers' }]);
+    sendValidationError(res, 'params', [{ message: 'projectId and taskId must be project-<id> and task-<id> identifiers' }]);
     return null;
   }
   return { projectId, taskId };
@@ -65,8 +65,7 @@ router.get('/:projectId/tasks/:taskId/collaboration', async (req: Request, res: 
   const params = parseTaskParams(req, res);
   if (!params) return;
   try {
-    const user = await requireTaskView(res, params.projectId, params.taskId);
-    if (!user) return;
+    if (!await requireTaskView(res, params.projectId, params.taskId)) return;
     return res.status(200).json(await getTaskCollaboration(params.projectId, params.taskId));
   } catch (error) {
     return handleUnknownError(res, error, COLLABORATION_ERROR_STATUSES);
@@ -80,8 +79,9 @@ router.post('/:projectId/tasks/:taskId/comments', async (req: Request, res: Resp
   if (!bodyResult.success) return sendValidationError(res, 'body', bodyResult.error.issues);
 
   try {
-    const user = await requireTaskComment(res, params.projectId, params.taskId);
-    if (!user) return;
+    const access = await requireTaskComment(res, params.projectId, params.taskId);
+    if (!access) return;
+    const { user } = access;
     return res.status(201).json(await addTaskComment(params.projectId, params.taskId, user, bodyResult.data.message));
   } catch (error) {
     return handleUnknownError(res, error, COMMENT_ERROR_STATUSES);

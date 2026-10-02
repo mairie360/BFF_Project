@@ -7,7 +7,8 @@ import {
     buildTaskDtoForUser,
     mapTaskStatusToBackend,
     patchTaskOnApi,
-    parsePublicId,
+    parseProjectId,
+    parseTaskId,
     sendValidationError,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
@@ -79,31 +80,21 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
         return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
-    const taskId = parsePublicId(paramsResult.data.taskId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
+    const taskId = parseTaskId(paramsResult.data.taskId);
 
     if (projectId === null || taskId === null) {
         return sendValidationError(res, 'params', [
             {
-                message: 'projectId and taskId must end with numeric identifiers',
+                message: 'projectId and taskId must be project-<id> and task-<id> identifiers',
             },
         ]);
     }
 
     try {
-        const bundle = await fetchProjectBundle(projectId);
-        const task = bundle.tasks.find((entry) => entry.id === taskId);
-
-        if (!task) {
-            return sendError(res, 404, 'Task not found');
-        }
-        const user = await requireTaskStatusUpdate(
-            res,
-            projectId,
-            taskId,
-            task.assigned_to,
-        );
-        if (!user) return;
+        const access = await requireTaskStatusUpdate(res, projectId, taskId);
+        if (!access) return;
+        const { user, task } = access;
 
         await patchTaskOnApi(projectId, taskId, {
             status: mapTaskStatusToBackend(bodyResult.data.status),

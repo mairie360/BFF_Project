@@ -34,7 +34,7 @@ Le module lit et écrit tout via des APIs : Project API pour les projets, tâche
 
 ## Périmètre et limites
 
-Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches.
+Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches : la priorité, les étiquettes et l’échéance d’un projet ne sont pas persistées par Project API, et les réponses d’écriture ne renvoient que l’état persisté.
 
 ## Pour développer ou exploiter ce module
 

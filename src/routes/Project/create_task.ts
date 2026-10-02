@@ -7,7 +7,7 @@ import {
     handleUnknownError,
     sendError,
     mapTaskInputToBackend,
-    parsePublicId,
+    parseProjectId,
     sendValidationError,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
@@ -79,20 +79,21 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
 
     if (projectId === null) {
         return sendValidationError(res, 'params', [
             {
                 path: ['projectId'],
-                message: 'projectId must end with a numeric identifier',
+                message: 'projectId must be a project-<id> identifier',
             },
         ]);
     }
 
     try {
-        const user = await requireProjectManagement(res, projectId);
-        if (!user) return;
+        const access = await requireProjectManagement(res, projectId);
+        if (!access) return;
+        const { user } = access;
         if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
         const createdTask = await createTaskOnApi(
             projectId,

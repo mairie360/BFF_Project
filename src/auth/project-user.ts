@@ -123,8 +123,21 @@ function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
   });
 }
 
-function getUserBffUrl(): string {
-  return (process.env.USER_BFF_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
+/**
+ * BFF User base URL. The local default only applies outside production: a production BFF without
+ * USER_BFF_URL must fail loudly instead of silently resolving sessions against localhost.
+ */
+export function getUserBffUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.USER_BFF_URL?.trim();
+  if (!configured) {
+    if (env.NODE_ENV === 'production') {
+      console.error('[BFF Project] USER_BFF_URL is not configured');
+      throw new HttpError(502, 'The user service is unavailable.');
+    }
+    return 'http://localhost:4000';
+  }
+  const url = new URL(/^https?:\/\//i.test(configured) ? configured : `http://${configured}`);
+  return url.toString().replace(/\/+$/, '');
 }
 
 export async function loadProjectUserContext(): Promise<ProjectUserContext> {

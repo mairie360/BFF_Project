@@ -33,7 +33,6 @@ import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
-  listVisibleProjects,
   type ProjectPermissions,
   type TaskPermissions,
 } from "../../services/projectData";
@@ -82,12 +81,6 @@ export interface BffCreateProjectInput {
       "title" | "status" | "priority" | "assigneeIds" | "labels" | "dueDate"
     >
   >;
-}
-
-export interface BffUpdateProjectInput extends Partial<
-  Omit<BffCreateProjectInput, "taskItems">
-> {
-  taskItems?: BffCreateProjectInput["taskItems"];
 }
 
 export interface BffCreateTaskInput extends TaskInputLike {
@@ -198,37 +191,10 @@ export function sendRouteError(res: Response, error: unknown, declared: readonly
   return sendError(res, mapped.status, mapped.message, mapped.details);
 }
 
-export async function fetchProjects() {
-  return { projects: await listVisibleProjects() };
-}
-
-/** Project API n'expose que les projets visibles par l'appelant. */
-export async function fetchProjectsForUser(_user: ProjectUserContext) {
-  return fetchProjects();
-}
-
 export async function fetchProjectUsers(projectId: number): Promise<User[]> {
   const result = (await projectClient.getProjectUsers(projectId)).data;
 
   return result.users;
-}
-
-export async function fetchProjectUsersOrEmpty(
-  projectId: number,
-): Promise<User[]> {
-  try {
-    return await fetchProjectUsers(projectId);
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchProjectTasks(
-  projectId: number,
-): Promise<TaskView[]> {
-  const result = (await projectClient.getProjectTasks(projectId)).data;
-
-  return result.tasks;
 }
 
 export async function fetchProjectBundle(projectId: number): Promise<{
@@ -254,26 +220,64 @@ export async function createProjectOnApi(
   return result;
 }
 
-export async function syncProjectUsersOnApi(projectId: number, userIds: string[]): Promise<void> {
+/**
+ * Makes the project's members exactly `userIds` (public `user-<id>` ids): adds the missing ones and removes
+ * the others. `currentUsers` are the members already read by the caller (a fresh project has none);
+ * when omitted they are read from Project API.
+ */
+export async function syncProjectUsersOnApi(
+  projectId: number,
+  userIds: string[],
+  currentUsers?: User[],
+): Promise<void> {
   const desiredUserIds = new Set(
     userIds
-      .map((userId) => parsePublicId(userId))
+      .map((userId) => parseUserId(userId))
       .filter((userId): userId is number => userId !== null),
   );
-
-  if (desiredUserIds.size === 0) return;
-
-  const currentUsers = await fetchProjectUsersOrEmpty(projectId);
-  const currentUserIds = new Set(currentUsers.map((user) => user.id));
+  const members = currentUsers ?? await fetchProjectUsers(projectId);
+  const currentUserIds = new Set(members.map((user) => user.id));
 
   await Promise.all([
     ...Array.from(desiredUserIds)
       .filter((userId) => !currentUserIds.has(userId))
       .map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })),
-    ...currentUsers
+    ...members
       .filter((user) => !desiredUserIds.has(user.id))
       .map((user) => projectClient.removeUserFromProject(projectId, user.id)),
   ]);
+}
+
+/** Adds the given members (public `user-<id>` ids) that are not already in `currentUsers`; removes nobody. */
+export async function addProjectUsersOnApi(
+  projectId: number,
+  userIds: string[],
+  currentUsers: User[],
+): Promise<void> {
+  const currentUserIds = new Set(currentUsers.map((user) => user.id));
+  const missing = new Set(
+    userIds
+      .map((userId) => parseUserId(userId))
+      .filter((userId): userId is number => userId !== null && !currentUserIds.has(userId)),
+  );
+  await Promise.all(Array.from(missing).map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })));
+}
+
+/**
+ * Runs the writes that follow the creation of a project; if one fails, deletes the project (best effort)
+ * so that a client retrying after the error does not leave a partial duplicate behind, then rethrows.
+ */
+export async function withCreatedProjectRollback<T>(projectId: number, steps: () => Promise<T>): Promise<T> {
+  try {
+    return await steps();
+  } catch (error) {
+    try {
+      await projectClient.deleteProject(projectId);
+    } catch (rollbackError) {
+      console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, rollbackError);
+    }
+    throw error;
+  }
 }
 
 export async function createTaskOnApi(
@@ -306,19 +310,28 @@ export async function deleteTaskOnApi(
   await projectClient.deleteTask(projectId, taskId);
 }
 
-export function parsePublicId(value: string | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const match = value.match(/(\d+)$/);
-
-  if (!match) {
-    return null;
-  }
-
+// Public ids are `<prefix>-<digits>` and nothing else: `user-5` is not a project and `abc12` is not 12.
+function parsePrefixedId(prefix: "project" | "task" | "user", value: string | undefined): number | null {
+  if (!value) return null;
+  const match = new RegExp(`^${prefix}-(\\d+)$`).exec(value);
+  if (!match) return null;
   const parsed = Number(match[1]);
-  return Number.isNaN(parsed) ? null : parsed;
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+/** `project-<id>` → id, `null` for anything else. */
+export function parseProjectId(value: string | undefined): number | null {
+  return parsePrefixedId("project", value);
+}
+
+/** `task-<id>` → id, `null` for anything else. */
+export function parseTaskId(value: string | undefined): number | null {
+  return parsePrefixedId("task", value);
+}
+
+/** `user-<id>` → id, `null` for anything else. */
+export function parseUserId(value: string | undefined): number | null {
+  return parsePrefixedId("user", value);
 }
 
 export function projectPublicId(projectId: number): string {
@@ -447,28 +460,6 @@ export function deriveProjectStatus(tasks: TaskView[]): BffProjectStatus {
   return "todo";
 }
 
-export function deriveBackendProjectStatus(
-  tasks: TaskView[],
-): ProjetView["status"] {
-  if (tasks.length === 0) {
-    return "Active";
-  }
-
-  const completed = tasks.filter(
-    (task) => mapTaskStatus(task.status) === "done",
-  ).length;
-
-  if (completed === tasks.length) {
-    return "Completed";
-  }
-
-  if (completed > 0) {
-    return "Active";
-  }
-
-  return "Active";
-}
-
 export function deriveProjectDueDate(tasks: TaskView[]): string {
   if (tasks.length === 0) {
     return nowIso();
@@ -517,6 +508,7 @@ export function mapProjectToDto(
     labels: [],
     progress: deriveProjectProgress(tasks),
     dueDate: deriveProjectDueDate(tasks),
+    // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
     tasks: {
       total: tasks.length,
@@ -560,15 +552,15 @@ export function mapTaskToDto(
     // Le contrat du BFF impose une échéance : une tâche sans date affiche la date du jour.
     dueDate: task.due_date ?? nowIso(),
     completed: status === "done",
+    // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
-    updatedAt: nowIso(),
     permissions,
   };
 }
 
 export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   const assignedTo = task.responsibleId
-    ? parsePublicId(task.responsibleId)
+    ? parseUserId(task.responsibleId)
     : null;
 
   return {
@@ -601,7 +593,7 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
   if (typeof task.title === "string") body.name = task.title;
   if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
   if (typeof task.priority === "string") body.priority = bffTaskPriorityToBackendMap[task.priority];
-  if (typeof task.responsibleId === "string") body.assigned_to = parsePublicId(task.responsibleId);
+  if (typeof task.responsibleId === "string") body.assigned_to = parseUserId(task.responsibleId);
   if (typeof task.dueDate === "string") body.due_date = task.dueDate;
 
   return body;
@@ -613,31 +605,6 @@ export function mapProjectCreateBodyToBackend(
   return {
     name: body.title,
     description: body.description,
-  };
-}
-
-export function buildProjectResponseFromState(options: {
-  project: ProjetView;
-  tasks: TaskView[];
-  users: User[];
-  permissions?: ProjectPermissions;
-  override?: Partial<BffProjectListItem>;
-}): BffProjectListItem {
-  return {
-    ...mapProjectToDto(options.project, options.tasks, options.users, options.permissions),
-    ...options.override,
-  };
-}
-
-export function buildTaskResponseFromState(options: {
-  task: TaskView;
-  users: User[];
-  permissions?: TaskPermissions;
-  override?: Partial<BffProjectTask>;
-}): BffProjectTask {
-  return {
-    ...mapTaskToDto(options.task, options.users, options.permissions),
-    ...options.override,
   };
 }
 
@@ -763,133 +730,6 @@ export function buildPagination(
     total,
     hasNextPage: currentPage * currentLimit < total,
   };
-}
-
-export function buildProjectResponseOverridesFromCreateBody(
-  body: BffCreateProjectInput,
-): Partial<BffProjectListItem> {
-  return {
-    title: body.title,
-    description: body.description,
-    status: body.status,
-    statusLabel: mapProjectStatusLabel(body.status),
-    priority: body.priority,
-    priorityLabel: mapProjectPriorityLabel(body.priority),
-    labels: body.labels,
-    dueDate: body.dueDate,
-    tasks: {
-      total: body.taskItems?.length ?? 0,
-      completed:
-        body.taskItems?.filter((task) => task.status === "done").length ?? 0,
-    },
-    progress:
-      body.taskItems && body.taskItems.length > 0
-        ? Math.round(
-            (body.taskItems.filter((task) => task.status === "done").length /
-              body.taskItems.length) *
-              100,
-          )
-        : 0,
-  };
-}
-
-export function buildProjectResponseOverridesFromUpdateBody(
-  body: BffUpdateProjectInput,
-): Partial<BffProjectListItem> {
-  const override: Partial<BffProjectListItem> = {};
-
-  if (typeof body.title === "string") {
-    override.title = body.title;
-  }
-
-  if (typeof body.description === "string") {
-    override.description = body.description;
-  }
-
-  if (typeof body.status === "string") {
-    override.status = body.status;
-    override.statusLabel = mapProjectStatusLabel(body.status);
-  }
-
-  if (typeof body.priority === "string") {
-    override.priority = body.priority;
-    override.priorityLabel = mapProjectPriorityLabel(body.priority);
-  }
-
-  if (Array.isArray(body.labels)) {
-    override.labels = body.labels;
-  }
-
-  if (typeof body.dueDate === "string") {
-    override.dueDate = body.dueDate;
-  }
-
-  if (Array.isArray(body.taskItems)) {
-    override.tasks = {
-      total: body.taskItems.length,
-      completed: body.taskItems.filter((task) => task.status === "done").length,
-    };
-
-    override.progress =
-      body.taskItems.length === 0
-        ? 0
-        : Math.round(
-            (body.taskItems.filter((task) => task.status === "done").length /
-              body.taskItems.length) *
-              100,
-          );
-  }
-
-  return override;
-}
-
-export function buildTaskResponseOverridesFromCreateBody(
-  body: BffCreateTaskInput,
-): Partial<BffProjectTask> {
-  return {
-    title: body.title,
-    status: body.status,
-    statusLabel: mapTaskStatusLabel(body.status),
-    priority: body.priority,
-    priorityLabel: mapTaskPriorityLabel(body.priority),
-    labels: body.labels,
-    dueDate: body.dueDate,
-    completed: body.status === "done",
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-  };
-}
-
-export function buildTaskResponseOverridesFromUpdateBody(
-  body: BffUpdateTaskInput,
-): Partial<BffProjectTask> {
-  const override: Partial<BffProjectTask> = {};
-
-  if (typeof body.title === "string") {
-    override.title = body.title;
-  }
-
-  if (typeof body.status === "string") {
-    override.status = body.status;
-    override.statusLabel = mapTaskStatusLabel(body.status);
-    override.completed = body.status === "done";
-  }
-
-  if (typeof body.priority === "string") {
-    override.priority = body.priority;
-    override.priorityLabel = mapTaskPriorityLabel(body.priority);
-  }
-
-  if (Array.isArray(body.labels)) {
-    override.labels = body.labels;
-  }
-
-  if (typeof body.dueDate === "string") {
-    override.dueDate = body.dueDate;
-  }
-
-  override.updatedAt = nowIso();
-  return override;
 }
 
 export function handleUnknownError(res: Response, error: unknown, declared: readonly number[]): Response {

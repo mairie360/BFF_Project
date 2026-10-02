@@ -35,8 +35,8 @@ registry.registerPath({
   },
 });
 
-// Chaque API est sondée par l'opération /health de son contrat. L'URL de Project API est relue à chaque
-// appel : la configuration peut changer sans recharger le module.
+// Each API is probed through the /health operation of its contract. The Project API address is read on
+// every call: the configuration may change without reloading the module.
 async function isReachable(probe: () => Promise<unknown>): Promise<boolean> {
   try {
     await probe();
@@ -46,21 +46,27 @@ async function isReachable(probe: () => Promise<unknown>): Promise<boolean> {
   }
 }
 
-function projectApiHealthOptions() {
-  const host = process.env.PROJECT_API_URL;
-  const port = process.env.PROJECT_API_PORT;
-  if (!host || !port) throw new Error('PROJECT_API is not configured');
-
-  const baseUrl = /^https?:\/\//i.test(host) ? host : `http://${host}`;
-  return { baseURL: `${baseUrl.replace(/\/+$/, '')}:${port}`, timeout: 5_000 };
+/**
+ * Base URL of Project API from PROJECT_API_URL (host or URL, with or without a port) and PROJECT_API_PORT,
+ * which only applies when the URL has no port of its own (e.g. `http://project-api:3001` from the chart).
+ */
+export function projectApiHealthBaseUrl(
+  host = process.env.PROJECT_API_URL,
+  port = process.env.PROJECT_API_PORT,
+): string {
+  if (!host?.trim()) throw new Error('PROJECT_API_URL is not configured');
+  const trimmed = host.trim();
+  const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`);
+  if (!url.port && port?.trim()) url.port = port.trim();
+  return url.toString().replace(/\/+$/, '');
 }
 
 router.get('/', async (_, res) => {
-  // Les deux API sont sondées indépendamment : une panne de l'une ne masque pas l'état de l'autre,
-  // et aucun détail réseau n'est renvoyé au client.
+  // Both APIs are probed independently: one failing does not hide the state of the other, and no network
+  // detail is returned to the client.
   const [coreReachable, projectReachable] = await Promise.all([
     isReachable(checkCoreApi),
-    isReachable(async () => projectClient.health(projectApiHealthOptions())),
+    isReachable(async () => projectClient.health({ baseURL: projectApiHealthBaseUrl(), timeout: 5_000 })),
   ]);
   const result: CheckApiResponse = {
     status: coreReachable && projectReachable ? 'OK' : 'Error',

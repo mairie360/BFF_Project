@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, CreateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
-  buildProjectResponseOverridesFromCreateBody,
   buildProjectDtoForUser,
   buildTaskDtoForUser,
   createProjectOnApi,
@@ -12,9 +11,10 @@ import {
   mapTaskInputToBackend,
   sendValidationError,
   syncProjectUsersOnApi,
+  withCreatedProjectRollback,
 } from './project_helpers';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
-import { appendTaskHistory } from '../../services/projectData';
+import { appendTaskHistory, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
@@ -25,7 +25,8 @@ registry.registerPath({
   method: 'post',
   path: '/projects',
   tags: ['Projects'],
-  summary: 'Créer un projet',
+  summary: 'Create a project',
+  description: 'Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.',
 
   request: {
     body: {
@@ -41,7 +42,7 @@ registry.registerPath({
   responses: {
     ...apiErrorResponses(...ERROR_STATUSES),
     201: {
-      description: 'Projet créé',
+      description: 'Project created, as re-read from Project API',
       content: {
         'application/json': {
           schema: ProjectDetailsResponse,
@@ -72,15 +73,20 @@ router.post('/', async (req: Request, res: Response) => {
     if (!user) return;
     if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
     const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
-    await syncProjectUsersOnApi(createdProject.project_id, [
-      bodyResult.data.responsibleId,
-      ...bodyResult.data.assigneeIds,
-    ]);
+    const projectId = createdProject.project_id;
 
-    if (Array.isArray(bodyResult.data.taskItems)) {
-      for (const task of bodyResult.data.taskItems) {
+    // Project API has no atomic creation: the members, the status and the tasks are written one call at a
+    // time, and the project is deleted again if one of them fails.
+    const bundle = await withCreatedProjectRollback(projectId, async () => {
+      const memberIds = [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds].filter(Boolean);
+      if (memberIds.length > 0) await syncProjectUsersOnApi(projectId, memberIds);
+      // A new project is Active ("in-progress"); only a closed or suspended status needs a write.
+      if (bodyResult.data.status === 'done' || bodyResult.data.status === 'review') {
+        await updateProjectRecord(projectId, { status: bodyResult.data.status });
+      }
+      for (const task of bodyResult.data.taskItems ?? []) {
         await createTaskOnApi(
-          createdProject.project_id,
+          projectId,
           mapTaskInputToBackend({
             title: task.title,
             status: task.status,
@@ -91,23 +97,20 @@ router.post('/', async (req: Request, res: Response) => {
           }),
         );
       }
-    }
 
-    const bundle = await fetchProjectBundle(createdProject.project_id);
-    await Promise.all(bundle.tasks.map((task) =>
-      appendTaskHistory(createdProject.project_id, task.id, user, 'task_created', `Tâche « ${task.title} » créée.`),
-    ));
-    const baseProject = await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users);
-    const projectResponse = {
-      ...baseProject,
-      ...buildProjectResponseOverridesFromCreateBody(bodyResult.data),
-      permissions: baseProject.permissions,
-    };
+      const created = await fetchProjectBundle(projectId);
+      await Promise.all(created.tasks.map((task) =>
+        appendTaskHistory(projectId, task.id, user, 'task_created', `Tâche « ${task.title} » créée.`),
+      ));
+      return created;
+    });
 
+    // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and
+    // are derived from the tasks.
     return res.status(201).json({
-      project: projectResponse,
+      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
       taskItems: await Promise.all(bundle.tasks.map((task) =>
-        buildTaskDtoForUser(user, createdProject.project_id, task, bundle.users),
+        buildTaskDtoForUser(user, projectId, task, bundle.users),
       )),
     });
   } catch (error) {

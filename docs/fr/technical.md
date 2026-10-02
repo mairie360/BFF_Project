@@ -59,9 +59,9 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 | Variable ou priorité | Exemple / repli indiqué | Rôle |
 | --- | --- | --- |
 | `PORT` | 4001 | Port de cet exemple local. |
-| `USER_BFF_URL` | http://localhost:4000 | Service de session, route `/me`. |
+| `USER_BFF_URL` | http://localhost:4000 | Service de session, route `/me`. Obligatoire quand `NODE_ENV=production` (les sessions répondent alors 502 au lieu de retomber sur localhost). |
 | `PROJECT_API_BASE_PATH` | http://localhost:3001 | Adresse explicite prioritaire; les chemins `/api/v1/...` viennent du client. |
-| `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Adresse alternative et paramètres de diagnostic. |
+| `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Adresse alternative et paramètres de diagnostic. `PROJECT_API_URL` peut porter son propre port (`http://project-api:3001`, comme le chart Helm le définit) ; `PROJECT_API_PORT` ne s’applique que s’il n’en a pas. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Configuration du client Core et du diagnostic. |
 
 ## Routes et contrat de données
@@ -91,6 +91,16 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 `/projects-page` et `/projects` exigent un Bearer et un contexte utilisateur valide. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
 
 Les erreurs utilisent l’enveloppe commune à tous les BFFs, `ErrorResponse` de `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` déduit du statut : `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Une validation échouée répond 400 avec une entrée `details` par valeur invalide, `{ path, message }`, où `path` commence par `body.`, `params.` ou `query.`. 401 pour une session absente ou refusée, 502 si BFF User, Project API ou Core API est injoignable ou répond en 5xx. Un 4xx amont n’est conservé, avec un message générique, que si la route déclare ce statut ; tout autre statut amont (501 compris) devient 502. Ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Une route inconnue répond un 404 JSON et un corps JSON mal formé un 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
+
+Les identifiants publics sont lus avec leur seul préfixe : `project-<id>`, `task-<id>` et `user-<id>`. Toute autre valeur (`user-5` comme projet, `abc12`, `project-5x`) répond 400.
+
+## Écritures, membres et données persistées
+
+- `PATCH /projects/{projectId}` est partiel. Les membres ne sont réécrits que si `assigneeIds` est envoyé, à partir de l’état fusionné : `responsibleId` s’il est envoyé, sinon le responsable actuel (le premier membre), plus `assigneeIds`. Un `responsibleId` envoyé seul ajoute ce membre sans en retirer aucun. Sans ces deux champs, les membres ne sont pas modifiés.
+- Project API ne stocke que le nom, la description, le statut et les membres d’un projet. `priority`, `labels` et `dueDate` sont acceptés par `POST /projects` et `PATCH /projects/{projectId}` mais non persistés : chaque écriture répond l’état relu dans Project API, où priorité, avancement et échéance sont dérivés des tâches et `labels` est vide. Le statut du projet est persisté via la correspondance de Project API (`todo`/`in-progress` → Active, `review` → Suspended, `done` → Completed), donc `todo` revient en `in-progress`.
+- `createdAt` (projets et tâches) reste obligatoire dans le contrat mais Project API ne l’expose pas : le BFF y met l’heure de la réponse. Les réponses de tâche ne portent plus le `updatedAt` inventé (facultatif dans le contrat).
+- Project API n’offre pas de création atomique. `POST /projects` et `POST /projects/{projectId}/duplicate` créent le projet, puis ses membres, son statut et ses tâches un appel à la fois ; si l’une de ces étapes échoue, le BFF supprime le projet créé (au mieux, avec un log si la suppression échoue aussi) avant de répondre l’erreur, pour qu’une nouvelle tentative ne laisse pas de doublon partiel.
+- Chaque garde d’accès lit le bundle du projet une seule fois et le transmet à la route ; une écriture le relit ensuite une fois pour répondre. `/projects-page` applique la recherche et le filtre de statut à la liste des projets avant de lire le moindre bundle, puis lit les bundles restants 5 par 5 ; les bundles de tous les projets retenus restent nécessaires aux filtres de priorité et d’échéance, au résumé et aux compteurs Kanban.
 
 ## Synchronisation et vérifications
 

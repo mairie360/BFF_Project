@@ -34,7 +34,7 @@ The module reads and writes everything through APIs: Project API for projects, t
 
 ## Scope and limitations
 
-Disabling SQL access changes capabilities and persistence; that mode does not validate a full deployment. Public identifiers and statuses are normalized by helpers, while some project fields are derived from tasks.
+Disabling SQL access changes capabilities and persistence; that mode does not validate a full deployment. Public identifiers and statuses are normalized by helpers, while some project fields are derived from tasks: a project's priority, labels and due date are not persisted by Project API, and write responses only return the persisted state.
 
 ## Developing or operating this module
 

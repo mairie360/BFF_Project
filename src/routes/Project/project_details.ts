@@ -3,9 +3,8 @@ import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, Proj
 import {
   buildProjectDtoForUser,
   buildTaskDtoForUser,
-  fetchProjectBundle,
   handleUnknownError,
-  parsePublicId,
+  parseProjectId,
   sendValidationError,
 } from './project_helpers';
 import { requireProjectView } from './project_access';
@@ -54,21 +53,21 @@ router.get('/:projectId', async (req: Request, res: Response) => {
     return sendValidationError(res, 'params', paramsResult.error.issues);
   }
 
-  const projectId = parsePublicId(paramsResult.data.projectId);
+  const projectId = parseProjectId(paramsResult.data.projectId);
 
   if (projectId === null) {
     return sendValidationError(res, 'params', [
       {
         path: ['projectId'],
-        message: 'projectId must end with a numeric identifier',
+        message: 'projectId must be a project-<id> identifier',
       },
     ]);
   }
 
   try {
-    const user = await requireProjectView(res, projectId);
-    if (!user) return;
-    const bundle = await fetchProjectBundle(projectId);
+    const access = await requireProjectView(res, projectId);
+    if (!access) return;
+    const { user, bundle } = access;
     const taskItems = (await Promise.all(
       bundle.tasks.map(async (task) => buildTaskDtoForUser(user, projectId, task, bundle.users)),
     )).filter((task) => task.permissions.canView);
