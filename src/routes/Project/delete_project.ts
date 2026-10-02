@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, DeletedProjectIdParams, ErrorResponse } from '../../openapi-registry';
-import { deleteProjectOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
+import { deleteProjectOnApi, handleUnknownError, parseProjectId, sendValidationError } from './project_helpers';
 import { requireProjectManagement } from './project_access';
 
 const router = Router();
@@ -42,20 +42,19 @@ router.delete('/:projectId', async (req: Request, res: Response) => {
         return sendValidationError(res, 'params', paramsResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
 
     if (projectId === null) {
         return sendValidationError(res, 'params', [
             {
                 path: ['projectId'],
-                message: 'projectId must end with a numeric identifier',
+                message: 'projectId must be a project-<id> identifier',
             },
         ]);
     }
 
     try {
-        const user = await requireProjectManagement(res, projectId);
-        if (!user) return;
+        if (!await requireProjectManagement(res, projectId)) return;
         await deleteProjectOnApi(projectId);
         return res.status(204).send();
     } catch (error) {

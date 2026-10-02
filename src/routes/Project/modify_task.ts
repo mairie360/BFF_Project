@@ -7,7 +7,8 @@ import {
     mapTaskUpdateBodyToBackend,
     buildTaskDtoForUser,
     patchTaskOnApi,
-    parsePublicId,
+    parseProjectId,
+    parseTaskId,
     sendValidationError,
 } from './project_helpers';
 import { requireAssignableUsers, requireTaskManagement } from './project_access';
@@ -79,32 +80,26 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
         return sendValidationError(res, 'body', bodyResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
-    const taskId = parsePublicId(paramsResult.data.taskId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
+    const taskId = parseTaskId(paramsResult.data.taskId);
 
     if (projectId === null || taskId === null) {
         return sendValidationError(res, 'params', [
             {
-                message: 'projectId and taskId must end with numeric identifiers',
+                message: 'projectId and taskId must be project-<id> and task-<id> identifiers',
             },
         ]);
     }
 
     try {
-        const user = await requireTaskManagement(res, projectId, taskId);
-        if (!user) return;
+        const access = await requireTaskManagement(res, projectId, taskId);
+        if (!access) return;
+        const { user, task } = access;
         const requestedUserIds = [
             ...(bodyResult.data.responsibleId ? [bodyResult.data.responsibleId] : []),
             ...(bodyResult.data.assigneeIds ?? []),
         ];
         if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
-        const initialBundle = await fetchProjectBundle(projectId);
-        const task = initialBundle.tasks.find((entry) => entry.id === taskId);
-
-        if (!task) {
-            return sendError(res, 404, 'Task not found');
-        }
-
         const backendPayload = mapTaskUpdateBodyToBackend(bodyResult.data);
         if (Object.keys(backendPayload).length > 0) {
             await patchTaskOnApi(projectId, taskId, backendPayload);

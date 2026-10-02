@@ -221,7 +221,8 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.body.summary.totalProjects).toBe(1);
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
-      expect(upstreamSequence().sort()).toEqual([called('GET', projectApiUrls.getGetProjectsUrl()), called('GET', projectApiUrls.getGetProjectUrl(1)), called('GET', projectApiUrls.getGetProjectUrl(2))]);
+      // The status filter runs on the list: the bundle of the Completed project is never read.
+      expect(upstreamSequence().sort()).toEqual([called('GET', projectApiUrls.getGetProjectsUrl()), called('GET', projectApiUrls.getGetProjectUrl(1))]);
     });
 
     test('GET /projects/:id returns the project an employee may see, with only their tasks', async () => {
@@ -624,6 +625,178 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     });
   });
 
+  describe('MAIR-399 audit fixes', () => {
+    const members = [alice, marie, admin];
+    const memberUrl = (projectId: number, userId: number) => called('DELETE', projectApiUrls.getRemoveUserFromProjectUrl(projectId, userId));
+    const removedMembers = () => projectApi.calls(PROJECT.user, 'DELETE').map((call) => `${call.method} ${call.url.pathname}`);
+    const addedMembers = () => projectApi.calls(PROJECT.users, 'POST').map((call) => call.body);
+
+    test('a PATCH with only responsibleId adds that member and removes nobody', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice, marie]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-1' });
+
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(addedMembers()).toEqual([{ user_id: admin.id }]);
+      expect(removedMembers()).toEqual([]);
+      // Nothing to change on the project record itself.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+    });
+
+    test('a PATCH with only other fields leaves the members untouched', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], members) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ description: 'Nouvelle description' });
+
+      expect(response.status).toBe(200);
+      expect(addedMembers()).toEqual([]);
+      expect(removedMembers()).toEqual([]);
+    });
+
+    test('a PATCH with assigneeIds rewrites the members from the merged state and keeps the current responsible', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], members) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ assigneeIds: [] });
+
+      expect(response.status).toBe(200);
+      // alice is the current responsible (first member): she stays, the others are removed.
+      expect(removedMembers().sort()).toEqual([memberUrl(1, marie.id), memberUrl(1, admin.id)].sort());
+      expect(addedMembers()).toEqual([]);
+    });
+
+    test('a PATCH with responsibleId and assigneeIds makes the members exactly that set', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice, marie]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-1', assigneeIds: ['user-3'] });
+
+      expect(response.status).toBe(200);
+      expect(addedMembers()).toEqual([{ user_id: admin.id }]);
+      expect(removedMembers()).toEqual([memberUrl(1, alice.id)]);
+    });
+
+    test('PATCH /projects/:id returns the re-read state, not the unpersisted submitted fields', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { priority: 'Low', due_date: '2026-10-15T00:00:00.000Z' })], [admin]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin)
+        .send({ priority: 'high', labels: ['urgent'], dueDate: '2030-01-01T00:00:00Z', status: 'todo' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.project).toMatchObject({
+        priority: 'low', labels: [], dueDate: '2026-10-15T00:00:00.000Z', status: 'in-progress',
+      });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Active' });
+    });
+
+    test('POST /projects returns the re-read state and persists a closed status', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: {
+        12: projectBundle(projetView(12, { name: 'Fête', status: 'Completed' }), [taskView(30, { priority: 'Low', status: 'Completed' })], [alice]),
+      } });
+
+      const response = await as(request(app).post('/projects'), admin).send({
+        title: 'Fête', description: 'Organisation', status: 'done', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: ['événement'], dueDate: '2030-07-14T00:00:00Z',
+        taskItems: [{ title: 'Salle', status: 'done', priority: 'low', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+      });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects', response);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Completed' });
+      expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
+      expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
+    });
+
+    test('POST /projects deletes the created project when a later step fails', async () => {
+      signIn(admin);
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockProjectApi({ createdProjectId: 12 });
+      projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
+
+      const response = await as(request(app).post('/projects'), admin).send({
+        title: 'Fête', description: 'Organisation', status: 'todo', priority: 'medium',
+        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+        taskItems: [{ title: 'Salle', status: 'todo', priority: 'low', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
+      });
+
+      expect(response.status).toBe(502);
+      expectBffContract('post', '/projects', response);
+      expect(upstreamSequence()).toEqual([
+        called('POST', projectApiUrls.getCreateProjectUrl()),
+        called('POST', projectApiUrls.getCreateTaskUrl(12)),
+        called('DELETE', projectApiUrls.getDeleteProjectUrl(12)),
+      ]);
+    });
+
+    test('POST /projects/:id/duplicate deletes the duplicate when a later step fails', async () => {
+      signIn(admin);
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
+      projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
+      projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
+
+      const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+      expect(response.status).toBe(502);
+      expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
+    });
+
+    test('the access guards read the project bundle once per request', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: {
+        1: projectBundle(projetView(1), [taskView(2)], [admin]),
+        12: projectBundle(projetView(12), [taskView(30)], [admin]),
+      } });
+      const reads = () => projectApi.calls(PROJECT.project, 'GET').length;
+
+      await as(request(app).get('/projects/project-1'), admin);
+      const details = reads();
+      await as(request(app).patch('/projects/project-1'), admin).send({ title: 'Voirie' });
+      const update = reads() - details;
+      expect((await as(request(app).post('/projects/project-1/duplicate'), admin).send({})).status).toBe(201);
+      const duplicate = reads() - details - update;
+      await as(request(app).delete('/projects/project-1/tasks/task-2'), admin);
+      const deleteTask = reads() - details - update - duplicate;
+
+      // details: guard only; update: guard + re-read; duplicate: guard + re-read of the copy; delete: guard only.
+      expect({ details, update, duplicate, deleteTask }).toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 1 });
+      expect(userBff.calls(USER_BFF.me, 'get')).toHaveLength(4);
+    });
+
+    test.each([
+      ['get', '/projects/user-1'],
+      ['get', '/projects/abc1'],
+      ['get', '/projects/project-1x'],
+      ['delete', '/projects/project-1/tasks/project-2'],
+      ['get', '/projects/task-1/tasks/task-2/collaboration'],
+    ] as const)('%s %s answers 400: ids are parsed with their own prefix only', async (method, url) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const response = await as(request(app)[method](url), admin);
+
+      expect(response.status).toBe(400);
+      expectBffContract(method, url, response);
+      expect(upstreamSequence()).toEqual([]);
+    });
+
+    test('an unknown task answers 404 from the guard without any write', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const response = await as(request(app).patch('/projects/project-1/tasks/task-9/status'), admin).send({ status: 'done' });
+
+      expect(response.status).toBe(404);
+      expectBffContract('patch', '/projects/project-1/tasks/task-9/status', response);
+      expect(projectApi.calls(PROJECT.task, 'PATCH')).toHaveLength(0);
+    });
+  });
+
   describe('GET /check_apis', () => {
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
@@ -650,6 +823,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expect(response.body).toMatchObject({ status: 'Error', ...expected });
+    });
+
+    test('accepts a PROJECT_API_URL that already carries its port (as the Helm chart sets it)', async () => {
+      process.env.PROJECT_API_URL = projectApi.url;
+      delete process.env.PROJECT_API_PORT;
+
+      const response = await request(app).get('/check_apis');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
     });
   });
 });

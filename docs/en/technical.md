@@ -59,9 +59,9 @@ Values below are local examples or explicitly described behavior, not production
 | Variable or precedence | Example / stated fallback | Purpose |
 | --- | --- | --- |
 | `PORT` | 4001 | Port used by this local example. |
-| `USER_BFF_URL` | http://localhost:4000 | Session service, `/me` route. |
+| `USER_BFF_URL` | http://localhost:4000 | Session service, `/me` route. Required when `NODE_ENV=production` (sessions then answer 502 instead of falling back to localhost). |
 | `PROJECT_API_BASE_PATH` | http://localhost:3001 | Explicit base address takes precedence; `/api/v1/...` paths come from the client. |
-| `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Alternative address and diagnostic settings. |
+| `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Alternative address and diagnostic settings. `PROJECT_API_URL` may carry its own port (`http://project-api:3001`, as the Helm chart sets it); `PROJECT_API_PORT` only applies when it does not. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Core client and diagnostic configuration. |
 
 ## Routes and data contract
@@ -91,6 +91,16 @@ Inventory extracted from `contracts/openapi.json`. Replace brace parameters with
 `/projects-page` and `/projects` require a Bearer token and a valid user context. Recognized roles are `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibility and changes use server rules and returned permissions. User-context calls and the Project client have a 5-second timeout.
 
 Errors use the envelope shared by every BFF, `ErrorResponse` from `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` derived from the status: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Validation failures answer 400 with one `details` entry per invalid value, `{ path, message }`, where `path` starts with `body.`, `params.` or `query.`. 401 for a missing or rejected session, 502 when BFF User, Project API or Core API is unreachable or answers 5xx. An upstream 4xx is kept, with a generic message, only when the route declares that status; any other upstream status (including 501) becomes 502. Neither the upstream body nor network details are returned, and an unexpected error becomes a logged generic 500. Unknown routes answer a JSON 404 and a malformed JSON body a 400 in the same envelope instead of the Express HTML page. Bodies are validated before any upstream call: `<` and `>` are refused in titles, descriptions, labels and comments, and people are referenced by a public id (`user-<id>`; an empty `responsibleId` means nobody); `/projects-page` refuses a `dueBefore`/`dueAfter` that is not a date. `/check_apis` probes Core API and Project API independently (`*_API_URL` + `*_API_PORT` read per request) and returns 502 with each API state when one fails.
+
+Public ids are parsed with their own prefix only: `project-<id>`, `task-<id>` and `user-<id>`. Any other value (`user-5` as a project, `abc12`, `project-5x`) answers 400.
+
+## Writes, membership and persisted data
+
+- `PATCH /projects/{projectId}` is partial. The members are rewritten only when `assigneeIds` is sent, from the merged state: `responsibleId` when sent, otherwise the current responsible (the first member), plus `assigneeIds`. A `responsibleId` sent alone only adds that member and removes nobody. Without either field, the members are not touched.
+- Project API stores only the name, the description, the status and the members of a project. `priority`, `labels` and `dueDate` are accepted by `POST /projects` and `PATCH /projects/{projectId}` but not persisted: every write answers the state re-read from Project API, where priority, progress and due date are derived from the tasks and `labels` is empty. The project status is persisted through the Project API mapping (`todo`/`in-progress` → Active, `review` → Suspended, `done` → Completed), so `todo` comes back as `in-progress`.
+- `createdAt` (projects and tasks) is still required by the contract but Project API does not expose it: the BFF fills it with the response time. Task responses no longer carry the invented `updatedAt` (optional in the contract).
+- Project API has no atomic creation. `POST /projects` and `POST /projects/{projectId}/duplicate` create the project, then its members, status and tasks one call at a time; when one of those steps fails, the BFF deletes the created project (best effort, logged when the delete fails too) before answering the error, so a retry does not leave a partial duplicate behind.
+- Each access guard reads the project bundle once and hands it to the route; a write then re-reads it once to answer. `/projects-page` applies the search and status filters to the project list before reading any bundle, and reads the remaining bundles 5 at a time; the bundles of every matching project are still needed for the priority/due-date filters, the summary and the Kanban counts.
 
 ## Synchronization and verification
 

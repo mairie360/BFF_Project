@@ -2817,7 +2817,8 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Créer un projet",
+        "summary": "Create a project",
+        "description": "Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2960,7 +2961,7 @@
         },
         "responses": {
           "201": {
-            "description": "Projet créé",
+            "description": "Project created, as re-read from Project API",
             "content": {
               "application/json": {
                 "schema": {
@@ -3877,7 +3878,8 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Met à jour un projet existant",
+        "summary": "Partially update a project",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
         "parameters": [
           {
             "schema": {
@@ -4023,7 +4025,7 @@
         },
         "responses": {
           "200": {
-            "description": "Projet mis à jour avec succès",
+            "description": "Project updated, as re-read from Project API",
             "content": {
               "application/json": {
                 "schema": {
@@ -5464,7 +5466,8 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Duplique un projet existant",
+        "summary": "Duplicate a project",
+        "description": "Recreates the project with its members and its tasks; if a step fails, the partial duplicate is deleted again.",
         "parameters": [
           {
             "schema": {
@@ -5480,7 +5483,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Projet dupliqué avec succès",
+            "description": "Project duplicated, as re-read from Project API",
             "content": {
               "application/json": {
                 "schema": {

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, DeletedTaskParams, ErrorResponse } from '../../openapi-registry';
-import { deleteTaskOnApi, handleUnknownError, parsePublicId, sendValidationError } from './project_helpers';
+import { deleteTaskOnApi, handleUnknownError, parseProjectId, parseTaskId, sendValidationError } from './project_helpers';
 import { requireTaskManagement } from './project_access';
 
 const router = Router();
@@ -42,20 +42,19 @@ router.delete('/:projectId/tasks/:taskId', async (req: Request, res: Response) =
         return sendValidationError(res, 'params', paramsResult.error.issues);
     }
 
-    const projectId = parsePublicId(paramsResult.data.projectId);
-    const taskId = parsePublicId(paramsResult.data.taskId);
+    const projectId = parseProjectId(paramsResult.data.projectId);
+    const taskId = parseTaskId(paramsResult.data.taskId);
 
     if (projectId === null || taskId === null) {
         return sendValidationError(res, 'params', [
             {
-                message: 'projectId and taskId must end with numeric identifiers',
+                message: 'projectId and taskId must be project-<id> and task-<id> identifiers',
             },
         ]);
     }
 
     try {
-        const user = await requireTaskManagement(res, projectId, taskId);
-        if (!user) return;
+        if (!await requireTaskManagement(res, projectId, taskId)) return;
         await deleteTaskOnApi(projectId, taskId);
         return res.status(204).send();
     } catch (error) {
