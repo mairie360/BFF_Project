@@ -54,6 +54,7 @@ services:
       retries: 10
 
   liquibase:
+    # Database >= MAIR-413 only seeds the template admin (users.id = 1) with -Dallow_template_admin=true.
     image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:1.3.0}
     container_name: bff-project-perf-liquibase
     depends_on:
@@ -67,6 +68,7 @@ services:
     command: >
       --changelog-file=changelog.xml
       update
+      -Dallow_template_admin=true
     networks:
       - backend
 
@@ -81,7 +83,7 @@ services:
     environment:
       PGPASSWORD: password
     command: >
-      sh -c "psql -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
+      sh -c "psql -v ON_ERROR_STOP=1 -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
     networks:
       - backend
 
@@ -112,6 +114,16 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     environment:
+      # Lift the API rate limit (MAIR-425): the scan and the load test hammer it as one user.
+      RATE_LIMIT_ENABLED: "false"
+      # mairie360_api_lib >= 2.0 refuses the well-known b"secret" without this flag. Throwaway test
+      # stack only: a deployment uses a random secret of at least 32 bytes (MAIR-428).
+      JWT_ALLOW_WEAK_SECRET: "true"
+      EMAIL_FROM: "noreply.mairie360@test.local"
+      SMTP_HOST: "localhost"
+      SMTP_PORT: "1025"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
       <<: *db-env
       HOST: "0.0.0.0"
       PORT: 3000
@@ -150,6 +162,9 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     environment:
+      # mairie360_api_lib >= 2.0 refuses the well-known b"secret" without this flag. Throwaway test
+      # stack only: a deployment uses a random secret of at least 32 bytes (MAIR-428).
+      JWT_ALLOW_WEAK_SECRET: "true"
       <<: *db-env
       HOST: "0.0.0.0"
       PORT: 3001

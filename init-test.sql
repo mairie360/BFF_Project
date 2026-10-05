@@ -7,10 +7,12 @@
 -- project-1 (with task-1) is read and updated, and project-2 and task-2 are the examples of the
 -- DELETE routes. User 1 owns them and is their responsible / assignee (`user-1` in the examples).
 
+-- Passwords must be argon2id hashes (chk_users_password_hashed, MAIR-169): this is the
+-- Database template hash, nobody signs in with it (the tests use forged JWTs).
 INSERT INTO users (id, first_name, last_name, email, password, status)
 VALUES
-    (1, 'Security', 'Admin', 'security-admin@mairie360.fr', 'dummy', 'active'),
-    (2, 'Perf', 'Tester', 'perf-tester@mairie360.fr', 'dummy', 'active')
+    (1, 'Security', 'Admin', 'security-admin@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active'),
+    (2, 'Perf', 'Tester', 'perf-tester@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active')
 ON CONFLICT (id) DO NOTHING;
 
 -- Core API >= 1.1.1 requires at least one role on the user for GET /user/me
