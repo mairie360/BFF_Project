@@ -6,7 +6,7 @@
 
 Serveur Express 5.2.1 écrit en TypeScript. Les schémas Zod et leur registre OpenAPI décrivent les objets échangés; les routeurs adaptent les services amont aux besoins des interfaces.
 
-`src/app.ts` installe le contexte de jeton puis le contexte utilisateur obtenu auprès de BFF User. Les routeurs Project utilisent les helpers de normalisation, le client Project et le dépôt SQL. Le client HTTP transmet l’autorisation de la requête; `PROJECT_API_BASE_PATH` est prioritaire sur l’hôte et le port séparés.
+`src/app.ts` installe le contexte de jeton puis le contexte utilisateur obtenu auprès de BFF User. Les routeurs Project utilisent les helpers de normalisation, le client Project et le dépôt SQL. Les clients HTTP transmettent l’autorisation de la requête. Chaque adresse amont est relue à chaque appel depuis `<SERVICE>_URL` (+ `<SERVICE>_PORT` facultatif) par `baseUrl` de la bibliothèque partagée ; il n’y a aucune valeur par défaut `localhost`.
 
 ## Données et persistance
 
@@ -16,7 +16,7 @@ Désactiver l’accès SQL change les capacités et la persistance; ce mode ne c
 
 ## Installation et lancement local
 
-Utiliser Node.js 22 pour reproduire le job de contrats et npm avec le fichier de verrouillage versionné. Les versions des autres jobs et de Docker sont précisées plus bas.
+Utiliser Node.js 24 pour reproduire les jobs de CI et npm avec le fichier de verrouillage versionné. Les versions des autres jobs et de Docker sont précisées plus bas.
 
 Les dépendances privées `@mairie360/*` nécessitent un accès GitHub Packages. Configurer `NODE_AUTH_TOKEN` dans l’environnement avec un jeton autorisé à lire ces packages, conformément à `.npmrc`. Ne pas enregistrer la valeur dans Git.
 
@@ -29,14 +29,12 @@ Créer `.env` à la racine. Exemple de configuration HTTP locale à adapter aux 
 ```dotenv
 PORT=4001
 USER_BFF_URL=http://localhost:4000
-PROJECT_API_BASE_PATH=http://localhost:3001
-PROJECT_API_URL=localhost
-PROJECT_API_PORT=3001
+PROJECT_API_URL=http://localhost:3001
 CORE_API_URL=localhost
 CORE_API_PORT=3000
 ```
 
-Aucune variable de base de données n’est nécessaire : le BFF ne dialogue qu’avec BFF User, Project API et Core API.
+Aucune variable de base de données n’est nécessaire : le BFF ne dialogue qu’avec BFF User, Project API et Core API. `.env` est chargé par `import 'dotenv/config'`, première ligne de `src/index.ts`. Le serveur refuse de démarrer si `USER_BFF_URL`, `PROJECT_API_URL` ou `CORE_API_URL` est absente ou invalide, en nommant chaque variable fautive.
 
 ```bash
 npm run start
@@ -60,10 +58,11 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 | --- | --- | --- |
 | `PORT` | 4001 | Port de cet exemple local. |
 | `TRUST_PROXY` | absent (aucun proxy de confiance) | Réglage Express `trust proxy` (`true`, un nombre de sauts ou des adresses/sous-réseaux séparés par des virgules), pour que `req.ip` soit le vrai client derrière l’ingress. |
-| `USER_BFF_URL` | http://localhost:4000 | Service de session, route `/me`. Obligatoire quand `NODE_ENV=production` (les sessions répondent alors 502 au lieu de retomber sur localhost). |
-| `PROJECT_API_BASE_PATH` | http://localhost:3001 | Adresse explicite prioritaire; les chemins `/api/v1/...` viennent du client. |
-| `PROJECT_API_URL` / `PROJECT_API_PORT` | localhost / 3001 | Adresse alternative et paramètres de diagnostic. `PROJECT_API_URL` peut porter son propre port (`http://project-api:3001`, comme le chart Helm le définit) ; `PROJECT_API_PORT` ne s’applique que s’il n’en a pas. |
-| `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Configuration du client Core et du diagnostic. |
+| `USER_BFF_URL` / `USER_BFF_PORT` | http://localhost:4000 / — | Service de session, route `/me`. Obligatoire. |
+| `PROJECT_API_URL` / `PROJECT_API_PORT` | http://localhost:3001 / — | Project API, pour les appels et la sonde de `/check_apis`. Obligatoire. |
+| `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Core API (annuaire et sonde de `/check_apis`). Obligatoire. |
+
+Chaque `<SERVICE>_URL` est un hôte ou une URL (schéma facultatif, `http` par défaut) ; `<SERVICE>_PORT` ne s’applique que si l’URL ne porte pas de port (`http://project-api:3001`, comme le chart Helm le définit, garde 3001). Ces variables sont obligatoires : le démarrage échoue sans elles, et une requête qui devrait joindre un service non configuré répond 503. `PROJECT_API_BASE_PATH` n’existe plus : utiliser `PROJECT_API_URL`.
 
 ## Routes et contrat de données
 
@@ -73,25 +72,25 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 502 |
-| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 502 |
-| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 502 |
-| DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502 |
-| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 502 |
-| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 502 |
-| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 502 |
-| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 502 |
-| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 502 |
-| GET | `/projects-page` | — | 200, 400, 401, 500, 502 |
-| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502 |
-| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 404, 500, 502 |
+| PATCH | `/projects/{projectId}/close` | application/json | 200, 400, 401, 403, 404, 500, 502, 503 |
+| POST | `/projects` | application/json | 201, 400, 401, 403, 500, 502, 503 |
+| POST | `/projects/{projectId}/tasks` | application/json | 201, 400, 401, 403, 404, 500, 502, 503 |
+| DELETE | `/projects/{projectId}` | — | 204, 400, 401, 403, 404, 500, 502, 503 |
+| PATCH | `/projects/{projectId}` | application/json | 200, 400, 401, 403, 404, 500, 502, 503 |
+| GET | `/projects/{projectId}` | — | 200, 400, 401, 404, 500, 502, 503 |
+| DELETE | `/projects/{projectId}/tasks/{taskId}` | — | 204, 400, 401, 403, 404, 500, 502, 503 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}` | application/json | 200, 400, 401, 403, 404, 500, 502, 503 |
+| POST | `/projects/{projectId}/duplicate` | — | 201, 400, 401, 403, 404, 500, 502, 503 |
+| PATCH | `/projects/{projectId}/tasks/{taskId}/status` | application/json | 200, 400, 401, 403, 404, 500, 502, 503 |
+| GET | `/projects-page` | — | 200, 400, 401, 500, 502, 503 |
+| GET | `/projects/{projectId}/tasks/{taskId}/collaboration` | — | 200, 400, 401, 403, 404, 500, 502, 503 |
+| POST | `/projects/{projectId}/tasks/{taskId}/comments` | application/json | 201, 400, 401, 403, 404, 500, 502, 503 |
 
 ## Session, permissions et erreurs
 
 `/projects-page` et `/projects` exigent un en-tête `Authorization: Bearer <token>` (seul identifiant accepté : les cookies, `x-session-token` et les autres schémas sont ignorés ; le proxy des fronts transforme le cookie `accessToken` en cet en-tête) et un contexte utilisateur valide. Sans Bearer, ils répondent 401 avant tout appel amont, et chaque réponse porte `Cache-Control: no-store`. L’en-tête de l’appelant, normalisé en `Bearer <token>`, est transmis à BFF User, Project API et Core API ; `/health` et `/check_apis` ne le transmettent jamais. Quand `/me` de BFF User ne renvoie pas `user.id`, l’identifiant de l’appelant est lu dans le `sub` du jeton que BFF User vient d’accepter. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
 
-Les erreurs utilisent l’enveloppe commune à tous les BFFs, `ErrorResponse` de `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` déduit du statut : `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Une validation échouée répond 400 avec une entrée `details` par valeur invalide, `{ path, message }`, où `path` commence par `body.`, `params.` ou `query.`. 401 pour une session absente ou refusée, 502 si BFF User, Project API ou Core API est injoignable ou répond en 5xx. Un 4xx amont n’est conservé, avec un message générique, que si la route déclare ce statut ; tout autre statut amont (501 compris) devient 502. Ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Une route inconnue répond un 404 JSON et un corps JSON mal formé un 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` sonde Core API et Project API indépendamment (`*_API_URL` + `*_API_PORT` relus à chaque requête) et renvoie 502 avec l’état de chaque API si l’une échoue.
+Les erreurs utilisent l’enveloppe commune à tous les BFFs, `ErrorResponse` de `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` déduit du statut : `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Une validation échouée répond 400 avec une entrée `details` par valeur invalide, `{ path, message }`, où `path` commence par `body.`, `params.` ou `query.`. 401 pour une session absente ou refusée, 502 si BFF User, Project API ou Core API est injoignable ou répond en 5xx, 503 si l’une de leurs URL n’est pas configurée. Un 4xx amont n’est conservé, avec un message générique, que si la route déclare ce statut ; tout autre statut amont (501 compris) devient 502. Ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Une route inconnue répond un 404 JSON et un corps JSON mal formé un 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` sonde Core API et Project API indépendamment, avec les mêmes `<SERVICE>_URL` + `<SERVICE>_PORT` que les vrais appels (relus à chaque requête ; une API non configurée est `Unreachable`), et renvoie 502 avec l’état de chaque API si l’une échoue.
 
 Les identifiants publics sont lus avec leur seul préfixe : `project-<id>`, `task-<id>` et `user-<id>`. Toute autre valeur (`user-5` comme projet, `abc12`, `project-5x`) répond 400.
 
@@ -119,11 +118,11 @@ Le générateur de types est fixé à `openapi-typescript@7.10.1` dans `scripts/
 
 ## CI/CD et exécution Docker
 
-Le job `contracts.yml` utilise Node.js 22, `actions/checkout@v7` et `actions/setup-node@v7`. Il s’exécute sur push, pull request et lancement manuel; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
+Le job `contracts.yml` utilise Node.js 24, `actions/checkout@v7` et `actions/setup-node@v7`. Il s’exécute sur push, pull request et lancement manuel; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
 
-`cicd.yml` appelle `mairie360/CICD/.github/workflows/BFFs-cicd.yml@v3.0.0`, avec `cicd_version: v3.0.0` et `node_version: "22"`. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
+`cicd.yml` appelle `mairie360/CICD/.github/workflows/BFFs-cicd.yml@v3.2.0`, avec `cicd_version: v3.2.0` et `node_version: "24"`. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
 
-Le Dockerfile utilise encore `node:20-alpine` pour la construction et l’exécution; la commande de l’image est `["npx", "tsx", "dist/index.js"]`. Cette version est distincte du job de contrats Node.js 22.
+`Dockerfile` et `development.Dockerfile` utilisent `node:24-alpine` épinglé par digest, la même version de Node.js que les jobs de CI ; l’image de production lance `["node", "dist/index.js"]` (bundle esbuild).
 
 `security_test.sh` et `performance_test.sh` testent l’image désignée par `IMAGE_REF`: en CI, l’image que `release-dev` vient de publier, soit l’artefact ensuite promu en staging puis en prod. Quand `IMAGE_REF` est vide (usage local), ils construisent d’abord `bff-project:local` depuis `development.Dockerfile`, ce qui demande `NODE_AUTH_TOKEN` et `./.npmrc`.
 

@@ -29,7 +29,17 @@ Single test: `npx jest tests/projects.test.ts` or `npx jest -t "returns a projec
 Note `npx jest` skips the `pretest` typecheck — run `npm test` (or `tsc -p tsconfig.test.json`) to catch type errors.
 CI runs tests with `--runInBand`.
 
-`PORT` env var is **required** — `src/index.ts` exits if it is unset.
+`PORT` env var is **required** — `src/index.ts` exits if it is unset. `src/index.ts` starts with
+`import 'dotenv/config'` and, under `require.main === module`, calls the lib's
+`assertConfigured(UPSTREAM_SERVICES)`: startup fails when `USER_BFF_URL`, `PROJECT_API_URL` or
+`CORE_API_URL` is missing or invalid.
+
+### Upstream configuration
+
+Every upstream address is `<SERVICE>_URL` (+ optional `<SERVICE>_PORT`, used only when the URL has no port)
+for `USER_BFF`, `PROJECT_API`, `CORE_API`, read **on every call** through the lib's `baseUrl` (no
+`localhost` default, no URL frozen at import): a missing one answers 503, declared on every `/projects*`
+route. `/check_apis` probes with the same variables. `PROJECT_API_BASE_PATH` no longer exists.
 
 ### Contracts (run after any route/schema change)
 
@@ -129,7 +139,7 @@ and message unless it is an undeclared 4xx (then 502); anything else is logged a
 `apiErrorResponses(...)` (`openapi-registry.ts`) and `handleUnknownError`, so the contract and the runtime
 cannot drift; the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
 axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
-`*_API_URL` + `*_API_PORT` read per request.
+`<SERVICE>_URL` + `<SERVICE>_PORT` read per request, like the real calls.
 
 ### ZAP / k6 OpenAPI coverage gate
 
@@ -162,8 +172,8 @@ against `contracts/openapi.json` (status documented + schema).
 - `tests/projects.upstream-mocks.test.ts` — the whole app against Project API, Core API and BFF User
   mocks: session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
-- `projectClient` reads `PROJECT_API_BASE_PATH` at import, so the suite sets it then `await import('../src/app')`;
-  `USER_BFF_URL` and `*_API_URL`/`*_API_PORT` are read per request and set in `beforeEach`.
+- `USER_BFF_URL`, `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
+  deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
 
 ## Pull request reviewers

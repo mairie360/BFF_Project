@@ -1,6 +1,5 @@
-import 'dotenv/config';
 import { isAxiosError } from 'axios';
-import { authorization, buildErrorResponse, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
+import { authorization, baseUrl, buildErrorResponse, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { userBffClient } from '../clients/userBffClient';
 
@@ -103,23 +102,6 @@ function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
   });
 }
 
-/**
- * BFF User base URL. The local default only applies outside production: a production BFF without
- * USER_BFF_URL must fail loudly instead of silently resolving sessions against localhost.
- */
-export function getUserBffUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const configured = env.USER_BFF_URL?.trim();
-  if (!configured) {
-    if (env.NODE_ENV === 'production') {
-      console.error('[BFF Project] USER_BFF_URL is not configured');
-      throw new HttpError(502, 'The user service is unavailable.');
-    }
-    return 'http://localhost:4000';
-  }
-  const url = new URL(/^https?:\/\//i.test(configured) ? configured : `http://${configured}`);
-  return url.toString().replace(/\/+$/, '');
-}
-
 export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Promise<ProjectUserContext> {
   // 401 before any upstream call when the request carries no Bearer token.
   const header = authorization(req);
@@ -127,7 +109,7 @@ export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Pro
   let body: UserBffResponse;
   try {
     const response = await userBffClient.getMe({
-      baseURL: getUserBffUrl(),
+      baseURL: baseUrl('USER_BFF'),
       headers: { Authorization: header },
       timeout: 5_000,
     });

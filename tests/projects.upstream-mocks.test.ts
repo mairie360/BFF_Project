@@ -47,8 +47,6 @@ let app: Express;
 
 beforeAll(async () => {
   await Promise.all(mocks.map((mock) => mock.start()));
-  // projectClient lit PROJECT_API_BASE_PATH au chargement : l'application est importée après.
-  process.env.PROJECT_API_BASE_PATH = projectApi.url;
   app = (await import('../src/app')).default;
 });
 afterAll(async () => { await Promise.all(mocks.map((mock) => mock.stop())); });
@@ -56,7 +54,7 @@ afterAll(async () => { await Promise.all(mocks.map((mock) => mock.stop())); });
 beforeEach(() => {
   for (const mock of mocks) mock.reset();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
-  // project-user.ts et coreDirectory relisent leurs URL à chaque requête.
+  // Every upstream URL (<SERVICE>_URL + <SERVICE>_PORT) is read again on every call.
   process.env.USER_BFF_URL = userBff.url;
   const coreApiUrl = new URL(coreApi.url);
   process.env.CORE_API_URL = coreApiUrl.hostname;
@@ -843,6 +841,51 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     });
   });
 
+  describe('upstream configuration', () => {
+    test.each([
+      ['USER_BFF', () => userBff.requests],
+      ['PROJECT_API', () => projectApi.requests],
+      ['CORE_API', () => coreApi.requests],
+    ] as const)('answers 503 without any call to %s when its URL is missing (no localhost default)', async (service, received) => {
+      signIn(marie);
+      mockProjectApi({ projects: [projetView(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      delete process.env[`${service}_URL`];
+      delete process.env[`${service}_PORT`];
+
+      const response = await as(request(app).get('/projects-page'), marie);
+
+      expect(response.status).toBe(503);
+      expectBffContract('get', '/projects-page', response);
+      expect(response.body.error).toEqual({ code: 'SERVICE_UNAVAILABLE', message: `The ${service} service is not configured.`, details: [] });
+      expect(received()).toEqual([]);
+    });
+
+    test('a write route declares and answers 503 when Project API is not configured', async () => {
+      signIn(marie);
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      delete process.env.PROJECT_API_URL;
+
+      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'done' });
+
+      expect(response.status).toBe(503);
+      expectBffContract('patch', '/projects/project-1/close', response);
+      expect(projectApi.requests).toEqual([]);
+    });
+
+    test('a URL carrying its own port wins over <SERVICE>_PORT', async () => {
+      signIn(admin);
+      mockProjectApi();
+      process.env.PROJECT_API_URL = projectApi.url;
+      process.env.PROJECT_API_PORT = '1';
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.requests).toHaveLength(1);
+    });
+  });
+
   describe('GET /check_apis', () => {
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
@@ -872,6 +915,18 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expect(response.body).toMatchObject({ status: 'Error', ...expected });
+    });
+
+    test('reports an unconfigured API as unreachable, probing the same variables as the real calls', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      delete process.env.PROJECT_API_URL;
+
+      const response = await request(app).get('/check_apis');
+
+      expect(response.status).toBe(502);
+      expectBffContract('get', '/check_apis', response);
+      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable' });
+      expect(projectApi.requests).toEqual([]);
     });
 
     test('accepts a PROJECT_API_URL that already carries its port (as the Helm chart sets it)', async () => {

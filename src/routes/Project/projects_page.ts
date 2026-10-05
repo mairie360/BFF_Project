@@ -40,7 +40,7 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
 }
 
 // Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
-const ERROR_STATUSES = [400, 401, 500, 502] as const satisfies readonly ApiErrorStatus[];
+const ERROR_STATUSES = [400, 401, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: "get",

@@ -1,28 +1,36 @@
-import { HttpError } from '@mairie360/bffs-lib';
-import { getUserBffUrl } from '../src/auth/project-user';
-import { projectApiHealthBaseUrl } from '../src/routes/check_apis';
+import { assertConfigured } from '@mairie360/bffs-lib';
+import { UPSTREAM_SERVICES } from '../src/index';
 import { parseProjectId, parseTaskId, parseUserId } from '../src/routes/Project/project_helpers';
 
 describe('upstream URL configuration', () => {
-  test.each([
-    ['project-api', '3001', 'http://project-api:3001'],
-    ['http://project-api:3001', undefined, 'http://project-api:3001'],
-    ['http://project-api:3001/', '9999', 'http://project-api:3001'],
-    ['https://project.example.org', '', 'https://project.example.org'],
-  ])('projectApiHealthBaseUrl(%p, %p) is %p', (host, port, expected) => {
-    expect(projectApiHealthBaseUrl(host, port)).toBe(expected);
+  const saved = { ...process.env };
+  afterEach(() => { process.env = { ...saved }; });
+
+  test('the entry point checks every upstream the BFF calls', () => {
+    expect([...UPSTREAM_SERVICES].sort()).toEqual(['CORE_API', 'PROJECT_API', 'USER_BFF']);
   });
 
-  test('projectApiHealthBaseUrl refuses a missing PROJECT_API_URL', () => {
-    expect(() => projectApiHealthBaseUrl('', '3001')).toThrow('PROJECT_API_URL is not configured');
+  test('startup fails naming every missing or invalid upstream URL, without a localhost default', () => {
+    for (const service of UPSTREAM_SERVICES) {
+      delete process.env[`${service}_URL`];
+      delete process.env[`${service}_PORT`];
+    }
+    process.env.CORE_API_URL = 'core-api';
+    process.env.PROJECT_API_URL = 'http://project-api:3001';
+    process.env.PROJECT_API_PORT = 'not-a-port';
+
+    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('Missing or invalid upstream configuration: USER_BFF_URL');
+    delete process.env.PROJECT_API_URL;
+    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('USER_BFF_URL, PROJECT_API_URL');
   });
 
-  test('getUserBffUrl defaults to localhost outside production only', () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(getUserBffUrl({ NODE_ENV: 'development' })).toBe('http://localhost:4000');
-    expect(getUserBffUrl({ NODE_ENV: 'production', USER_BFF_URL: 'bff-user:4000/' })).toBe('http://bff-user:4000');
-    expect(() => getUserBffUrl({ NODE_ENV: 'production' })).toThrow(HttpError);
-    jest.restoreAllMocks();
+  test('startup passes once every upstream is configured', () => {
+    process.env.USER_BFF_URL = 'http://bff-user:4000';
+    process.env.PROJECT_API_URL = 'project-api';
+    process.env.PROJECT_API_PORT = '3001';
+    process.env.CORE_API_URL = 'core-api:3000';
+
+    expect(() => assertConfigured(UPSTREAM_SERVICES)).not.toThrow();
   });
 });
 

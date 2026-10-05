@@ -16,7 +16,6 @@ module.exports = [
       'jest.config.ts',
       'scripts/export-swagger.ts',
       'load-test.js',
-      'next.config.js',
     ],
   },
   js.configs.recommended,
