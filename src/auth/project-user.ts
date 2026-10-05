@@ -1,7 +1,6 @@
-import { isAxiosError } from 'axios';
-import { authorization, baseUrl, buildErrorResponse, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
+import { asCaller, authorization, callUpstream, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
-import { userBffClient } from '../clients/userBffClient';
+import { userBffApi } from '../clients/userBffClient';
 
 export const PROJECT_ROLES = ['Admin', 'Maire', 'Responsable', 'User', 'Guest'] as const;
 
@@ -103,28 +102,14 @@ function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
 }
 
 export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Promise<ProjectUserContext> {
-  // 401 before any upstream call when the request carries no Bearer token.
-  const header = authorization(req);
-
-  let body: UserBffResponse;
-  try {
-    const response = await userBffClient.getMe({
-      baseURL: baseUrl('USER_BFF'),
-      headers: { Authorization: header },
-      timeout: 5_000,
-    });
-    body = response.data as UserBffResponse;
-  } catch (error) {
-    if (!isAxiosError(error)) throw error;
-    const status = error.response?.status;
-    if (status === undefined) throw new HttpError(502, 'The user service is unavailable.');
-    if (status === 401) throw new HttpError(401, 'The session has expired.');
-    throw new HttpError(502, 'The user context is unavailable.');
-  }
+  // 401 before any upstream call when the request carries no Bearer token, 503 when USER_BFF_URL is missing;
+  // a BFF User 401 (rejected session) is relayed, any other failure becomes a 502.
+  const { data } = await callUpstream('USER_BFF', () => userBffApi.getMe(asCaller('USER_BFF', req, 5_000)), { declared: [401] });
+  const body = data as UserBffResponse;
 
   // axios keeps the raw body when it is not parsable JSON.
   if (typeof body !== 'object' || body === null) {
-    throw new HttpError(502, 'The user context is unavailable.');
+    throw new HttpError(502, 'The USER_BFF answer is invalid.');
   }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
@@ -133,7 +118,7 @@ export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Pro
   // when /me does not return `user.id` (optional in its contract).
   const id = Number.isInteger(explicitId) && explicitId > 0
     ? explicitId
-    : unverifiedSubject(header);
+    : unverifiedSubject(authorization(req));
 
   if (!id) {
     throw new HttpError(401, 'Unable to identify the signed-in user.');
@@ -162,18 +147,13 @@ export function canManageProjects(role: ProjectRole): boolean {
   return isGlobalProjectRole(role) || role === 'Responsable';
 }
 
-export async function projectUserContextMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<Response | void> {
+/** Resolves the caller's session once per request; failures end in the app's `errorHandler`. */
+export async function projectUserContextMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     res.locals.projectUser = await loadProjectUserContext(req);
-    return next();
+    next();
   } catch (error) {
-    // Only the messages of the HttpErrors raised above are meant for the client.
-    const failure = error instanceof HttpError ? error : new HttpError(502, 'The user context is unavailable.');
-    return res.status(failure.status).json(buildErrorResponse(failure.code, failure.message));
+    next(error);
   }
 }
 

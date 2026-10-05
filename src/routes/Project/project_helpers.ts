@@ -1,14 +1,6 @@
-import type { Response } from "express";
-import axios from "axios";
-import {
-  buildErrorResponse,
-  codeForStatus,
-  HttpError,
-  mapUpstreamError,
-  type ErrorDetail,
-} from "@mairie360/bffs-lib";
+import { HttpError, validationError } from "@mairie360/bffs-lib";
 import { z } from "zod";
-import projectClient from "../../clients/projectClient";
+import { projectApi } from "../../clients/projectClient";
 import type {
   CreateProjectResultView,
   CreateProjectView,
@@ -33,6 +25,8 @@ import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
+  projectCall,
+  type Caller,
   type ProjectPermissions,
   type TaskPermissions,
 } from "../../services/projectData";
@@ -43,11 +37,10 @@ export type BffPerson = z.infer<typeof PersonSchema>;
 export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
 
-// Project_API 0.4.1 n'expose plus que l'id ; le nom vient de la base quand elle est accessible.
-// Le nom d'un membre peut être absent dans Project API (utilisateur supprimé) ; le contrat du BFF le remplace.
+// A member's name may be missing in Project API (deleted user): the BFF contract replaces it.
 export type User = ApiUser;
 
-// Project_API 0.4.1 ne publie plus PATCH /tasks/{task_id} : payload conservé pour le mode base de données.
+/** Body of Project API `PATCH /api/v1/projects/{project_id}/tasks/{task_id}`. */
 export interface PatchTaskView {
   name?: string;
   status?: ApiTaskStatus;
@@ -146,72 +139,47 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Where an invalid value was read, used as the first segment of `details[].path`. */
-export type ValidationLocation = "body" | "params" | "query";
-
-type ValidationIssue = { path?: ReadonlyArray<PropertyKey>; message: string };
-
-/** zod issues (or hand-written ones) as the envelope's `details`: `{ path: "body.title", message }`. */
-export function toErrorDetails(location: ValidationLocation, issues: ReadonlyArray<ValidationIssue>): ErrorDetail[] {
-  return issues.map((issue) => ({
-    path: [location, ...(issue.path ?? []).map(String)].join("."),
-    message: issue.message,
-  }));
-}
-
-/** Answers the shared envelope `{ error: { code, message, details } }`; the code derives from the status. */
-export function sendError(res: Response, status: number, message: string, details: ErrorDetail[] = []): Response {
-  return res.status(status).json(buildErrorResponse(codeForStatus(status), message, details));
-}
-
-export function sendValidationError(
-  res: Response,
-  location: ValidationLocation,
-  issues: ReadonlyArray<ValidationIssue>,
-): Response {
-  return sendError(res, 400, "Validation failed", toErrorDetails(location, issues));
-}
-
-/**
- * Answers an error caught by a route. `declared` are the error statuses of the route's contract:
- * - an upstream 4xx (Project API, Core API) is kept only when declared, with a generic message; any other
- *   upstream status and network failures become 502, never with the upstream body or host;
- * - an `HttpError` of the BFF keeps its status and message, unless it is a 4xx the route does not declare
- *   (then 502: the BFF never answers a status its contract does not declare);
- * - anything else is logged and becomes a generic 500.
- */
-export function sendRouteError(res: Response, error: unknown, declared: readonly number[]): Response {
-  const upstream = axios.isAxiosError(error) ? mapUpstreamError(error, declared) : error;
-  if (!(upstream instanceof HttpError)) {
-    // The detail of an unexpected error (bug, invalid payload) stays in the logs.
-    console.error("[BFF Project] Unexpected error", error);
-    return sendError(res, 500, "Internal server error");
+/** `project-<id>` path parameter → id, or the 400 of a validation failure on `params.projectId`. */
+export function requireProjectIdParam(value: string): number {
+  const projectId = parseProjectId(value);
+  if (projectId === null) {
+    throw validationError("params", [{ path: ["projectId"], message: "projectId must be a project-<id> identifier" }]);
   }
-  const mapped = upstream.status < 500 && !declared.includes(upstream.status) ? new HttpError(502) : upstream;
-  return sendError(res, mapped.status, mapped.message, mapped.details);
+  return projectId;
 }
 
-export async function fetchProjectUsers(projectId: number): Promise<User[]> {
-  const result = (await projectClient.getProjectUsers(projectId)).data;
+/** `project-<id>` and `task-<id>` path parameters → ids, or the 400 of a validation failure on `params`. */
+export function requireTaskParams(params: { projectId: string; taskId: string }): { projectId: number; taskId: number } {
+  const projectId = parseProjectId(params.projectId);
+  const taskId = parseTaskId(params.taskId);
+  if (projectId === null || taskId === null) {
+    throw validationError("params", [{ path: [], message: "projectId and taskId must be project-<id> and task-<id> identifiers" }]);
+  }
+  return { projectId, taskId };
+}
+
+export async function fetchProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
+  const result = (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, options), true)).data;
 
   return result.users;
 }
 
-export async function fetchProjectBundle(projectId: number): Promise<{
+export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<{
   project: ProjetView;
   tasks: TaskView[];
   users: User[];
 }> {
-  const bundle = await getProjectBundle(projectId);
+  const bundle = await getProjectBundle(caller, projectId);
   if (!bundle) throw new HttpError(404, 'Project not found.');
 
   return bundle;
 }
 
 export async function createProjectOnApi(
+  caller: Caller,
   body: CreateProjectView,
 ): Promise<CreateProjectResultView> {
-  const result = (await projectClient.createProject(body)).data;
+  const result = (await projectCall(caller, (options) => projectApi.createProject(body, options))).data;
 
   if (!result || !Number.isInteger(result.project_id) || result.project_id <= 0) {
     throw new HttpError(502, 'Project API answered an invalid body when creating the project.');
@@ -226,6 +194,7 @@ export async function createProjectOnApi(
  * when omitted they are read from Project API.
  */
 export async function syncProjectUsersOnApi(
+  caller: Caller,
   projectId: number,
   userIds: string[],
   currentUsers?: User[],
@@ -235,21 +204,22 @@ export async function syncProjectUsersOnApi(
       .map((userId) => parseUserId(userId))
       .filter((userId): userId is number => userId !== null),
   );
-  const members = currentUsers ?? await fetchProjectUsers(projectId);
+  const members = currentUsers ?? await fetchProjectUsers(caller, projectId);
   const currentUserIds = new Set(members.map((user) => user.id));
 
   await Promise.all([
     ...Array.from(desiredUserIds)
       .filter((userId) => !currentUserIds.has(userId))
-      .map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })),
+      .map((userId) => projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId }, options))),
     ...members
       .filter((user) => !desiredUserIds.has(user.id))
-      .map((user) => projectClient.removeUserFromProject(projectId, user.id)),
+      .map((user) => projectCall(caller, (options) => projectApi.removeUserFromProject(projectId, user.id, options))),
   ]);
 }
 
 /** Adds the given members (public `user-<id>` ids) that are not already in `currentUsers`; removes nobody. */
 export async function addProjectUsersOnApi(
+  caller: Caller,
   projectId: number,
   userIds: string[],
   currentUsers: User[],
@@ -260,19 +230,21 @@ export async function addProjectUsersOnApi(
       .map((userId) => parseUserId(userId))
       .filter((userId): userId is number => userId !== null && !currentUserIds.has(userId)),
   );
-  await Promise.all(Array.from(missing).map((userId) => projectClient.addUserToProject(projectId, { user_id: userId })));
+  await Promise.all(Array.from(missing).map((userId) =>
+    projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId }, options)),
+  ));
 }
 
 /**
  * Runs the writes that follow the creation of a project; if one fails, deletes the project (best effort)
  * so that a client retrying after the error does not leave a partial duplicate behind, then rethrows.
  */
-export async function withCreatedProjectRollback<T>(projectId: number, steps: () => Promise<T>): Promise<T> {
+export async function withCreatedProjectRollback<T>(caller: Caller, projectId: number, steps: () => Promise<T>): Promise<T> {
   try {
     return await steps();
   } catch (error) {
     try {
-      await projectClient.deleteProject(projectId);
+      await deleteProjectOnApi(caller, projectId);
     } catch (rollbackError) {
       console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, rollbackError);
     }
@@ -281,33 +253,36 @@ export async function withCreatedProjectRollback<T>(projectId: number, steps: ()
 }
 
 export async function createTaskOnApi(
+  caller: Caller,
   projectId: number,
   body: CreateTaskView,
 ): Promise<CreateTaskResultView> {
-  const result = (await projectClient.createTask(projectId, body)).data;
+  const result = (await projectCall(caller, (options) => projectApi.createTask(projectId, body, options))).data;
   if (!result || !Number.isInteger(result.task_id) || result.task_id <= 0) {
     throw new HttpError(502, 'Project API answered an invalid body when creating the task.');
   }
   return result;
 }
 
-export async function deleteProjectOnApi(projectId: number): Promise<void> {
-  await projectClient.deleteProject(projectId);
+export async function deleteProjectOnApi(caller: Caller, projectId: number): Promise<void> {
+  await projectCall(caller, (options) => projectApi.deleteProject(projectId, options));
 }
 
 export async function patchTaskOnApi(
+  caller: Caller,
   projectId: number,
   taskId: number,
   body: PatchTaskView,
 ): Promise<void> {
-  await projectClient.patchTask(projectId, taskId, body);
+  await projectCall(caller, (options) => projectApi.patchTask(projectId, taskId, body, options));
 }
 
 export async function deleteTaskOnApi(
+  caller: Caller,
   projectId: number,
   taskId: number,
 ): Promise<void> {
-  await projectClient.deleteTask(projectId, taskId);
+  await projectCall(caller, (options) => projectApi.deleteTask(projectId, taskId, options));
 }
 
 // Public ids are `<prefix>-<digits>` and nothing else: `user-5` is not a project and `abc12` is not 12.
@@ -465,7 +440,7 @@ export function deriveProjectDueDate(tasks: TaskView[]): string {
     return nowIso();
   }
 
-  // Une tâche sans échéance (Project API la déclare facultative) est repoussée en fin de tri.
+  // A task without a due date (optional in Project API) is sorted last.
   const sorted = [...tasks].sort((left, right) =>
     (left.due_date ?? '').localeCompare(right.due_date ?? ''),
   );
@@ -549,7 +524,7 @@ export function mapTaskToDto(
     priority,
     priorityLabel: mapTaskPriorityLabel(priority),
     labels: [],
-    // Le contrat du BFF impose une échéance : une tâche sans date affiche la date du jour.
+    // The BFF contract requires a due date: a task without one shows today's date.
     dueDate: task.due_date ?? nowIso(),
     completed: status === "done",
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
@@ -732,34 +707,20 @@ export function buildPagination(
   };
 }
 
-export function handleUnknownError(res: Response, error: unknown, declared: readonly number[]): Response {
-  return sendRouteError(res, error, declared);
-}
-
-export async function buildProjectDtoForUser(
+export function buildProjectDtoForUser(
   user: ProjectUserContext,
   project: ProjetView,
   tasks: TaskView[],
   users: User[],
-): Promise<BffProjectListItem> {
-  return mapProjectToDto(
-    project,
-    tasks,
-    users,
-    // Le projet vient d'un bundle déjà lu : il est donc visible, inutile de le relire.
-    await getProjectPermissions(user, project.id, true),
-  );
+): BffProjectListItem {
+  // The project comes from a bundle already read: it is visible to the caller.
+  return mapProjectToDto(project, tasks, users, getProjectPermissions(user, true));
 }
 
-export async function buildTaskDtoForUser(
+export function buildTaskDtoForUser(
   user: ProjectUserContext,
-  projectId: number,
   task: TaskView,
   users: User[],
-): Promise<BffProjectTask> {
-  return mapTaskToDto(
-    task,
-    users,
-    await getTaskPermissions(user, projectId, task.id, task.assigned_to),
-  );
+): BffProjectTask {
+  return mapTaskToDto(task, users, getTaskPermissions(user, task.assigned_to));
 }

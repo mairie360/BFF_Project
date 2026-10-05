@@ -443,14 +443,15 @@ registry.register(
 export const ErrorResponse = registry.register('ErrorResponse', ErrorResponseSchema.clone());
 
 // Error statuses answered with ErrorResponse. The /projects* routes require a Bearer token and resolve the
-// session with BFF User (401, 502), and answer 503 when an upstream URL is not configured. Each route passes the same list to sendRouteError (project_helpers.ts):
-// an upstream 4xx is only kept when the route declares it, any other upstream status becomes 502.
+// session with BFF User (401, 502), and answer 503 when an upstream URL is not configured. Each route passes the
+// same list to `callerOf(req, ERROR_STATUSES)` (services/projectData.ts): an upstream 4xx is only relayed when
+// the route declares it, any other upstream status becomes 502 (`callUpstream` of @mairie360/bffs-lib).
 const apiErrorDescriptions = {
   400: 'Invalid request',
   401: 'Missing, invalid or expired session',
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
-  500: 'Internal server error',
+  500: 'Unexpected server error',
   502: 'BFF User, Project API or Core API is unreachable or failed',
   503: 'BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)',
 } as const;

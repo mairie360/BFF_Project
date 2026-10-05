@@ -2208,26 +2208,43 @@
           "error"
         ]
       },
-      "CheckApiResponse": {
+      "CheckApisResponse": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "example": "OK"
+            "enum": [
+              "OK",
+              "Error"
+            ]
           },
           "core_api": {
             "type": "string",
-            "example": "Connected"
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
           },
           "project_api": {
             "type": "string",
-            "example": "Connected"
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
+          },
+          "user_bff": {
+            "type": "string",
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
           }
         },
         "required": [
           "status",
           "core_api",
-          "project_api"
+          "project_api",
+          "user_bff"
         ]
       }
     },
@@ -2254,24 +2271,24 @@
         "tags": [
           "Connectivity"
         ],
-        "summary": "Vérifie la connexion avec l'API Core et Project (Rust)",
+        "summary": "Checks that Core API, Project API and BFF User are reachable",
         "responses": {
           "200": {
-            "description": "Connexion réussie",
+            "description": "Every upstream is reachable",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckApiResponse"
+                  "$ref": "#/components/schemas/CheckApisResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "API Core injoignable ou API Project injoignable",
+            "description": "At least one upstream is unreachable or not configured",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckApiResponse"
+                  "$ref": "#/components/schemas/CheckApisResponse"
                 }
               }
             }
@@ -2790,7 +2807,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3431,7 +3448,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3787,7 +3804,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3883,7 +3900,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4535,7 +4552,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5046,7 +5063,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5153,7 +5170,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5509,7 +5526,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6033,7 +6050,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6354,7 +6371,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7277,7 +7294,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7445,7 +7462,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {

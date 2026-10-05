@@ -38,7 +38,7 @@ const PROJECT = {
   health: '/health',
 } as const;
 const CORE = { directory: '/api/v1/user/', health: '/health' } as const;
-const USER_BFF = { me: '/me' } as const;
+const USER_BFF = { me: '/me', health: '/health' } as const;
 const bffContract = OpenApiContract.load(path.join(__dirname, '..', 'contracts', 'openapi.json'));
 
 const { admin, alice, marie } = agents;
@@ -127,16 +127,27 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
 }
 
 describe('Project BFF with contract-driven BFF User, Project API and Core API mocks', () => {
-  test('every response carries the helmet security headers and no X-Powered-By', async () => {
-    const response = await request(app).get('/health');
+  test('every response carries the shared security headers and no X-Powered-By', async () => {
+    const [api, docs, malformed] = await Promise.all([
+      request(app).get('/health'),
+      request(app).get('/docs/'),
+      as(request(app).patch('/projects/project-1/close'), admin).set('Content-Type', 'application/json').send('{"status":'),
+    ]);
 
-    expect(response.status).toBe(200);
-    expect(response.headers['x-powered-by']).toBeUndefined();
-    expect(response.headers['x-content-type-options']).toBe('nosniff');
-    expect(response.headers['cross-origin-resource-policy']).toBe('same-origin');
-    expect(response.headers['content-security-policy']).toContain("default-src 'self'");
-    expect(response.headers['content-security-policy']).not.toContain('upgrade-insecure-requests');
-    expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
+    for (const response of [api, docs, malformed]) {
+      expect(response.headers['x-powered-by']).toBeUndefined();
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
+      expect(response.headers['content-security-policy']).not.toContain('upgrade-insecure-requests');
+    }
+    // The JSON API surface (body-parse errors included) gets the strict API-only headers; /docs keeps the
+    // shared policy its scripts and styles need.
+    for (const response of [api, malformed]) {
+      expect(response.headers['content-security-policy']).toBe("default-src 'none'");
+      expect(response.headers['cross-origin-resource-policy']).toBe('same-origin');
+      expect(response.headers['permissions-policy']).toBe('geolocation=(), camera=(), microphone=()');
+    }
+    expect(docs.headers['content-security-policy']).toContain("default-src 'self'");
   });
 
   describe('session resolution through BFF User GET /me', () => {
@@ -210,11 +221,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     });
 
     test.each([
-      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'The user context is unavailable.'],
-      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'The user context is unavailable.'],
-      ['a dropped connection', { dropConnection: true }, 'The user service is unavailable.'],
+      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'Upstream service error'],
+      ['a BFF User 403', { status: 403, body: { message: 'forbidden' }, outOfContract: true }, 'Upstream service error'],
+      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'The USER_BFF answer is invalid.'],
+      ['a dropped connection', { dropConnection: true }, 'The USER_BFF service is unavailable.'],
     ] as Array<[string, MockReply, string]>)('maps %s to 502 without leaking details', async (_label, reply, message) => {
       signIn(alice, reply);
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
       const response = await as(request(app).get('/projects-page'), alice);
 
@@ -228,12 +241,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const refused = await as(request(app).get('/projects-page'), alice);
 
       process.env.USER_BFF_URL = await unreachableUrl();
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
       const unreachable = await as(request(app).get('/projects-page'), alice);
 
       expect(refused.status).toBe(401);
-      expect(refused.body.error.message).toBe('The session has expired.');
+      expect(refused.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Authentication required', details: [] });
       expect(unreachable.status).toBe(502);
-      expect(unreachable.body.error.message).toBe('The user service is unavailable.');
+      expect(unreachable.body.error.message).toBe('The USER_BFF service is unavailable.');
     });
   });
 
@@ -330,6 +344,36 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expectBffContract('get', '/projects-page', response);
       expect(response.body.error).toEqual({ code: 'BAD_GATEWAY', message: 'Upstream service error', details: [] });
       expect(JSON.stringify(response.body)).not.toContain('database');
+    });
+
+    test('retries an idempotent Project API read once after a transient failure', async () => {
+      signIn(admin);
+      mockProjectApi();
+      let calls = 0;
+      projectApi.on('get', PROJECT.projects, () => (++calls === 1
+        ? { status: 503, raw: 'busy', contentType: 'text/plain', outOfContract: true }
+        : { body: projectsResult([]) }));
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.projects, 'get')).toHaveLength(2);
+    });
+
+    test('never retries a write', async () => {
+      signIn(admin);
+      mockProjectApi();
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      projectApi.on('post', PROJECT.projects, { status: 503, raw: 'busy', contentType: 'text/plain', outOfContract: true });
+
+      const response = await as(request(app).post('/projects'), admin).send({
+        title: 'Fête', description: 'Organisation', status: 'todo', priority: 'medium',
+        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+      });
+
+      expect(response.status).toBe(502);
+      expectBffContract('post', '/projects', response);
+      expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(1);
     });
 
     test.each([403, 404, 409, 501])('maps a Project API %i the route does not declare to 502', async (status) => {
@@ -463,6 +507,21 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
       expect(projectApi.calls(PROJECT.history, 'POST')[0].body).toMatchObject({ action: 'task_created' });
       expect(response.body).toMatchObject({ id: 'task-30', title: 'Réserver la salle' });
+    });
+
+    test('POST /projects/:id/tasks still succeeds when Project API writes the history itself (MAIR-393: no history endpoint)', async () => {
+      signIn(marie);
+      mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30, { title: 'Réserver la salle', assigned_to: alice.id })], [alice, marie]) } });
+      projectApi.on('post', PROJECT.history, { status: 404, raw: 'Not Found', contentType: 'text/plain', outOfContract: true });
+
+      const response = await as(request(app).post('/projects/project-1/tasks'), marie).send({
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: ['user-2'], labels: ['Urgent'], dueDate: '2026-06-25T00:00:00Z',
+      });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/tasks', response);
+      expect(projectApi.calls(PROJECT.history, 'POST')).toHaveLength(1);
     });
 
     test('POST /projects/:id/tasks answers 404 when the created task is missing from the bundle', async () => {
@@ -890,42 +949,46 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
       coreApi.on('get', CORE.health, { raw: 'OK', contentType: 'text/plain' });
+      userBff.on('get', USER_BFF.health, { raw: 'OK', contentType: 'text/plain' });
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
 
-    test('reports both APIs connected through their /health operations', async () => {
+    test('reports every upstream connected through its /health operation', async () => {
       // A public probe: the caller's Authorization header is never forwarded upstream.
       const response = await request(app).get('/check_apis').set('Authorization', bearer(admin.id));
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
       expect(upstreamSequence()).toEqual([called('GET', projectApiUrls.getHealthUrl())]);
       expect(coreApi.requests.map((call) => call.url.pathname)).toEqual([coreApiUrls.getHealthUrl()]);
-      expect([...projectApi.requests, ...coreApi.requests].map((call) => call.headers.authorization)).toEqual([undefined, undefined]);
+      expect(userBff.requests.map((call) => call.url.pathname)).toEqual([userBffUrls.getGetHealthUrl()]);
+      expect(mocks.flatMap((mock) => mock.requests).map((call) => call.headers.authorization)).toEqual([undefined, undefined, undefined]);
       expect(response.headers['cache-control']).toBeUndefined();
     });
 
     test.each([
-      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable' }],
-      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected' }],
+      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' }],
+      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected', user_bff: 'Connected' }],
+      ['BFF User', () => userBff.on('get', USER_BFF.health, { status: 503, raw: 'down', contentType: 'text/plain', outOfContract: true }), { core_api: 'Connected', project_api: 'Connected', user_bff: 'Unreachable' }],
     ])('answers 502 when %s is unreachable', async (_service, breakService, expected) => {
       breakService();
 
       const response = await request(app).get('/check_apis');
 
       expect(response.status).toBe(502);
-      expect(response.body).toMatchObject({ status: 'Error', ...expected });
+      expectBffContract('get', '/check_apis', response);
+      expect(response.body).toEqual({ status: 'Error', ...expected });
     });
 
     test('reports an unconfigured API as unreachable, probing the same variables as the real calls', async () => {
-      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
       delete process.env.PROJECT_API_URL;
 
       const response = await request(app).get('/check_apis');
 
       expect(response.status).toBe(502);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable' });
+      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' });
       expect(projectApi.requests).toEqual([]);
     });
 
@@ -936,7 +999,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const response = await request(app).get('/check_apis');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
     });
   });
 });

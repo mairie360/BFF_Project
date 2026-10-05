@@ -6,21 +6,22 @@ import {
     createProjectOnApi,
     createTaskOnApi,
     fetchProjectBundle,
-    handleUnknownError,
     mapTaskInputToBackend,
     mapTaskPriority,
     mapTaskStatus,
-    parseProjectId,
-    sendValidationError,
+    requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
     withCreatedProjectRollback,
 } from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
 import { requireProjectManagement } from './project_access';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -57,64 +58,44 @@ registry.registerPath({
 });
 
 router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
-    const paramsResult = ProjectIdParams.safeParse(req.params);
+    const params = parseRequest(ProjectIdParams, req.params, 'params');
+    const projectId = requireProjectIdParam(params.projectId);
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
-    }
+    const { user, bundle: source } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    const createdProject = await createProjectOnApi(caller, {
+        name: source.project.name,
+        description: source.project.description,
+    });
+    const duplicateId = createdProject.project_id;
 
-    const projectId = parseProjectId(paramsResult.data.projectId);
+    // Same compensation as POST /projects: a failed step deletes the partial duplicate.
+    const bundle = await withCreatedProjectRollback(caller, duplicateId, async () => {
+        const memberIds = source.users.map((member) => userPublicId(member.id));
+        if (memberIds.length > 0) await syncProjectUsersOnApi(caller, duplicateId, memberIds);
 
-    if (projectId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                path: ['projectId'],
-                message: 'projectId must be a project-<id> identifier',
-            },
-        ]);
-    }
+        for (const task of source.tasks) {
+            await createTaskOnApi(
+                caller,
+                duplicateId,
+                mapTaskInputToBackend({
+                    title: task.title,
+                    status: mapTaskStatus(task.status),
+                    priority: mapTaskPriority(task.priority),
+                    assigneeIds: [],
+                    labels: [],
+                    dueDate: task.due_date ?? new Date().toISOString(),
+                }),
+            );
+        }
 
-    try {
-        const access = await requireProjectManagement(res, projectId);
-        if (!access) return;
-        const { user, bundle: source } = access;
-        const createdProject = await createProjectOnApi({
-            name: source.project.name,
-            description: source.project.description,
-        });
-        const duplicateId = createdProject.project_id;
+        return fetchProjectBundle(caller, duplicateId);
+    });
 
-        // Same compensation as POST /projects: a failed step deletes the partial duplicate.
-        const bundle = await withCreatedProjectRollback(duplicateId, async () => {
-            const memberIds = source.users.map((member) => userPublicId(member.id));
-            if (memberIds.length > 0) await syncProjectUsersOnApi(duplicateId, memberIds);
-
-            for (const task of source.tasks) {
-                await createTaskOnApi(
-                    duplicateId,
-                    mapTaskInputToBackend({
-                        title: task.title,
-                        status: mapTaskStatus(task.status),
-                        priority: mapTaskPriority(task.priority),
-                        assigneeIds: [],
-                        labels: [],
-                        dueDate: task.due_date ?? new Date().toISOString(),
-                    }),
-                );
-            }
-
-            return fetchProjectBundle(duplicateId);
-        });
-
-        return res.status(201).json({
-            project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-            taskItems: await Promise.all(bundle.tasks.map((task) =>
-                buildTaskDtoForUser(user, duplicateId, task, bundle.users),
-            )),
-        });
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    res.status(201).json({
+        project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+    });
 });
 
 export default router;

@@ -6,7 +6,7 @@
 
 Serveur Express 5.2.1 écrit en TypeScript. Les schémas Zod et leur registre OpenAPI décrivent les objets échangés; les routeurs adaptent les services amont aux besoins des interfaces.
 
-`src/app.ts` installe le contexte de jeton puis le contexte utilisateur obtenu auprès de BFF User. Les routeurs Project utilisent les helpers de normalisation, le client Project et le dépôt SQL. Les clients HTTP transmettent l’autorisation de la requête. Chaque adresse amont est relue à chaque appel depuis `<SERVICE>_URL` (+ `<SERVICE>_PORT` facultatif) par `baseUrl` de la bibliothèque partagée ; il n’y a aucune valeur par défaut `localhost`.
+`src/app.ts` (l’application Express, importée par les tests) installe les en-têtes de sécurité partagés de `@mairie360/bffs-lib` (`securityHeaders`, `apiOnlyHeaders()`), puis, sur les routeurs liés à la session, `noStore`, `requireBearer` et le contexte utilisateur obtenu auprès de BFF User ; `src/index.ts` charge `.env`, vérifie la configuration et écoute (`PORT`, 4001 par défaut). Chaque appel amont reçoit ses options de la bibliothèque (`asCaller(service, req)`, `withoutSession(service)` pour les sondes), qui transmet explicitement l’en-tête `Authorization` de l’appelant, et passe par `callUpstream`. Les routeurs Project utilisent les helpers de normalisation et les clients générés de Project API et Core API via `src/services/projectData.ts`. Chaque adresse amont est relue à chaque appel depuis `<SERVICE>_URL` (+ `<SERVICE>_PORT` facultatif) par `baseUrl` de la bibliothèque partagée ; il n’y a aucune valeur par défaut `localhost`.
 
 ## Données et persistance
 
@@ -40,7 +40,7 @@ Aucune variable de base de données n’est nécessaire : le BFF ne dialogue qu�
 npm run start
 ```
 
-`PORT` est obligatoire pour ce BFF; cet exemple utilise `4001`.
+`PORT` vaut `4001` par défaut, le port documenté de ce BFF.
 
 Vérifier le processus puis consulter la documentation interactive:
 
@@ -56,9 +56,9 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 
 | Variable ou priorité | Exemple / repli indiqué | Rôle |
 | --- | --- | --- |
-| `PORT` | 4001 | Port de cet exemple local. |
+| `PORT` | 4001 (défaut) | Port d’écoute. |
 | `TRUST_PROXY` | absent (aucun proxy de confiance) | Réglage Express `trust proxy` (`true`, un nombre de sauts ou des adresses/sous-réseaux séparés par des virgules), pour que `req.ip` soit le vrai client derrière l’ingress. |
-| `USER_BFF_URL` / `USER_BFF_PORT` | http://localhost:4000 / — | Service de session, route `/me`. Obligatoire. |
+| `USER_BFF_URL` / `USER_BFF_PORT` | http://localhost:4000 / — | Service de session, route `/me` et sonde de `/check_apis`. Obligatoire. |
 | `PROJECT_API_URL` / `PROJECT_API_PORT` | http://localhost:3001 / — | Project API, pour les appels et la sonde de `/check_apis`. Obligatoire. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Core API (annuaire et sonde de `/check_apis`). Obligatoire. |
 
@@ -88,9 +88,9 @@ Inventaire extrait de `contracts/openapi.json`. Les paramètres entre accolades 
 
 ## Session, permissions et erreurs
 
-`/projects-page` et `/projects` exigent un en-tête `Authorization: Bearer <token>` (seul identifiant accepté : les cookies, `x-session-token` et les autres schémas sont ignorés ; le proxy des fronts transforme le cookie `accessToken` en cet en-tête) et un contexte utilisateur valide. Sans Bearer, ils répondent 401 avant tout appel amont, et chaque réponse porte `Cache-Control: no-store`. L’en-tête de l’appelant, normalisé en `Bearer <token>`, est transmis à BFF User, Project API et Core API ; `/health` et `/check_apis` ne le transmettent jamais. Quand `/me` de BFF User ne renvoie pas `user.id`, l’identifiant de l’appelant est lu dans le `sub` du jeton que BFF User vient d’accepter. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels de contexte utilisateur et du client Project ont un délai de 5 secondes.
+`/projects-page` et `/projects` exigent un en-tête `Authorization: Bearer <token>` (seul identifiant accepté : les cookies, `x-session-token` et les autres schémas sont ignorés ; le proxy des fronts transforme le cookie `accessToken` en cet en-tête) et un contexte utilisateur valide. Sans Bearer, ils répondent 401 avant tout appel amont, et chaque réponse porte `Cache-Control: no-store`. L’en-tête de l’appelant, normalisé en `Bearer <token>`, est transmis à BFF User, Project API et Core API ; `/health` et `/check_apis` ne le transmettent jamais. Quand `/me` de BFF User ne renvoie pas `user.id`, l’identifiant de l’appelant est lu dans le `sub` du jeton que BFF User vient d’accepter. Les rôles reconnus sont `Admin`, `Maire`, `Responsable`, `User`, `Guest`; visibilité et modifications passent par les règles serveur et les permissions renvoyées. Les appels à BFF User, Project API et Core API ont un délai de 5 secondes ; les lectures idempotentes (`GET`) de Project API et Core API sont retentées une fois en l’absence de réponse ou sur 502, 503 ou 504, jamais les écritures.
 
-Les erreurs utilisent l’enveloppe commune à tous les BFFs, `ErrorResponse` de `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` déduit du statut : `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Une validation échouée répond 400 avec une entrée `details` par valeur invalide, `{ path, message }`, où `path` commence par `body.`, `params.` ou `query.`. 401 pour une session absente ou refusée, 502 si BFF User, Project API ou Core API est injoignable ou répond en 5xx, 503 si l’une de leurs URL n’est pas configurée. Un 4xx amont n’est conservé, avec un message générique, que si la route déclare ce statut ; tout autre statut amont (501 compris) devient 502. Ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Une route inconnue répond un 404 JSON et un corps JSON mal formé un 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` sonde Core API et Project API indépendamment, avec les mêmes `<SERVICE>_URL` + `<SERVICE>_PORT` que les vrais appels (relus à chaque requête ; une API non configurée est `Unreachable`), et renvoie 502 avec l’état de chaque API si l’une échoue.
+Les erreurs utilisent l’enveloppe commune à tous les BFFs, `ErrorResponse` de `@mairie360/bffs-lib` (`{ error: { code, message, details } }`, `code` déduit du statut : `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `BAD_GATEWAY`...). Une validation échouée répond 400 `Validation failed` (`parseRequest` / `validationError` de la bibliothèque) avec une entrée `details` par valeur invalide, `{ path, message }`, où `path` commence par `body.`, `params.` ou `query.`. 401 pour une session absente ou refusée, 502 si BFF User, Project API ou Core API est injoignable ou répond en 5xx, 503 si l’une de leurs URL n’est pas configurée. Un 4xx amont n’est conservé, avec un message générique, que si la route déclare ce statut ; tout autre statut amont (501 compris) devient 502. Ni le corps amont ni le détail réseau ne sont renvoyés, et une erreur imprévue produit un 500 générique journalisé. Une route inconnue répond un 404 JSON et un corps JSON mal formé un 400 dans la même enveloppe au lieu de la page HTML d’Express. Les corps sont validés avant tout appel amont : `<` et `>` sont refusés dans les titres, descriptions, étiquettes et commentaires, et les personnes sont désignées par un identifiant public (`user-<id>`; un `responsibleId` vide signifie personne); `/projects-page` refuse un `dueBefore`/`dueAfter` qui n’est pas une date. `/check_apis` (`checkApis` de la bibliothèque) sonde indépendamment le `/health` de Core API, Project API et BFF User, sans session et avec les mêmes `<SERVICE>_URL` + `<SERVICE>_PORT` que les vrais appels (relus à chaque requête ; un amont non configuré est `Unreachable`). Il répond `{ status, core_api, project_api, user_bff }` (`CheckApisResponse`), 200 si chaque amont est `Connected`, 502 sinon.
 
 Les identifiants publics sont lus avec leur seul préfixe : `project-<id>`, `task-<id>` et `user-<id>`. Toute autre valeur (`user-5` comme projet, `abc12`, `project-5x`) répond 400.
 
@@ -143,7 +143,6 @@ Si le contexte utilisateur échoue, vérifier BFF User avant Project API. Si les
 ## Repères dans le dépôt
 
 - [src/app.ts](../../src/app.ts)
-- [src/auth/token.ts](../../src/auth/token.ts)
 - [src/auth/project-user.ts](../../src/auth/project-user.ts)
 - [src/routes/Project/project_helpers.ts](../../src/routes/Project/project_helpers.ts)
 - [src/routes/Project/project_access.ts](../../src/routes/Project/project_access.ts)

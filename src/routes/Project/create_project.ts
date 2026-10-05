@@ -6,19 +6,19 @@ import {
   createProjectOnApi,
   createTaskOnApi,
   fetchProjectBundle,
-  handleUnknownError,
   mapProjectCreateBodyToBackend,
   mapTaskInputToBackend,
-  sendValidationError,
   syncProjectUsersOnApi,
   withCreatedProjectRollback,
 } from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
-import { appendTaskHistory, updateProjectRecord } from '../../services/projectData';
+import { getProjectUserContext } from '../../auth/project-user';
+import { appendTaskHistory, callerOf, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -62,60 +62,52 @@ registry.registerPath({
 });
 
 router.post('/', async (req: Request, res: Response) => {
-  const bodyResult = CreateProjectBody.safeParse(req.body);
+  const body = parseRequest(CreateProjectBody, req.body, 'body');
+  const caller = callerOf(req, ERROR_STATUSES);
+  const user = getProjectUserContext(res);
 
-  if (!bodyResult.success) {
-    return sendValidationError(res, 'body', bodyResult.error.issues);
-  }
+  requireManagerRole(user);
+  await requireAssignableUsers(caller, user, [body.responsibleId, ...body.assigneeIds]);
+  const createdProject = await createProjectOnApi(caller, mapProjectCreateBodyToBackend(body));
+  const projectId = createdProject.project_id;
 
-  try {
-    const user = requireManagerRole(res);
-    if (!user) return;
-    if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
-    const createdProject = await createProjectOnApi(mapProjectCreateBodyToBackend(bodyResult.data));
-    const projectId = createdProject.project_id;
+  // Project API has no atomic creation: the members, the status and the tasks are written one call at a
+  // time, and the project is deleted again if one of them fails.
+  const bundle = await withCreatedProjectRollback(caller, projectId, async () => {
+    const memberIds = [body.responsibleId, ...body.assigneeIds].filter(Boolean);
+    if (memberIds.length > 0) await syncProjectUsersOnApi(caller, projectId, memberIds);
+    // A new project is Active ("in-progress"); only a closed or suspended status needs a write.
+    if (body.status === 'done' || body.status === 'review') {
+      await updateProjectRecord(caller, projectId, { status: body.status });
+    }
+    for (const task of body.taskItems ?? []) {
+      await createTaskOnApi(
+        caller,
+        projectId,
+        mapTaskInputToBackend({
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          assigneeIds: task.assigneeIds,
+          labels: task.labels,
+          dueDate: task.dueDate,
+        }),
+      );
+    }
 
-    // Project API has no atomic creation: the members, the status and the tasks are written one call at a
-    // time, and the project is deleted again if one of them fails.
-    const bundle = await withCreatedProjectRollback(projectId, async () => {
-      const memberIds = [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds].filter(Boolean);
-      if (memberIds.length > 0) await syncProjectUsersOnApi(projectId, memberIds);
-      // A new project is Active ("in-progress"); only a closed or suspended status needs a write.
-      if (bodyResult.data.status === 'done' || bodyResult.data.status === 'review') {
-        await updateProjectRecord(projectId, { status: bodyResult.data.status });
-      }
-      for (const task of bodyResult.data.taskItems ?? []) {
-        await createTaskOnApi(
-          projectId,
-          mapTaskInputToBackend({
-            title: task.title,
-            status: task.status,
-            priority: task.priority,
-            assigneeIds: task.assigneeIds,
-            labels: task.labels,
-            dueDate: task.dueDate,
-          }),
-        );
-      }
+    const created = await fetchProjectBundle(caller, projectId);
+    await Promise.all(created.tasks.map((task) =>
+      appendTaskHistory(caller, projectId, task.id, 'task_created', `Tâche « ${task.title} » créée.`),
+    ));
+    return created;
+  });
 
-      const created = await fetchProjectBundle(projectId);
-      await Promise.all(created.tasks.map((task) =>
-        appendTaskHistory(projectId, task.id, user, 'task_created', `Tâche « ${task.title} » créée.`),
-      ));
-      return created;
-    });
-
-    // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and
-    // are derived from the tasks.
-    return res.status(201).json({
-      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-      taskItems: await Promise.all(bundle.tasks.map((task) =>
-        buildTaskDtoForUser(user, projectId, task, bundle.users),
-      )),
-    });
-  } catch (error) {
-    return handleUnknownError(res, error, ERROR_STATUSES);
-  }
+  // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and
+  // are derived from the tasks.
+  res.status(201).json({
+    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+  });
 });
 
 export default router;

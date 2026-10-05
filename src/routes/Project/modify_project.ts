@@ -1,22 +1,22 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
+import { parseRequest } from '@mairie360/bffs-lib';
 import {
     addProjectUsersOnApi,
     buildProjectDtoForUser,
     buildTaskDtoForUser,
     fetchProjectBundle,
-    handleUnknownError,
-    parseProjectId,
-    sendValidationError,
+    requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { updateProjectRecord } from '../../services/projectData';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -70,65 +70,38 @@ registry.registerPath({
 });
 
 router.patch('/:projectId', async (req: Request, res: Response) => {
-    const paramsResult = ProjectIdParams.safeParse(req.params);
-    const bodyResult = UpdateProjectBody.safeParse(req.body);
+    const params = parseRequest(ProjectIdParams, req.params, 'params');
+    const body = parseRequest(UpdateProjectBody, req.body, 'body');
+    const projectId = requireProjectIdParam(params.projectId);
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
+    const { user, bundle: current } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await requireAssignableUsers(caller, user, [
+        ...(body.responsibleId ? [body.responsibleId] : []),
+        ...(body.assigneeIds ?? []),
+    ]);
+
+    if (body.title !== undefined || body.description !== undefined || body.status !== undefined) {
+        await updateProjectRecord(caller, projectId, body);
     }
 
-    if (!bodyResult.success) {
-        return sendValidationError(res, 'body', bodyResult.error.issues);
+    // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
+    // the merged state (the current responsible, the first member, stays unless `responsibleId` is sent).
+    // A `responsibleId` alone only adds that member and removes nobody.
+    if (body.assigneeIds !== undefined) {
+        const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
+        const responsible = body.responsibleId ?? currentResponsible;
+        await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
+    } else if (body.responsibleId) {
+        await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users);
     }
 
-    const projectId = parseProjectId(paramsResult.data.projectId);
-
-    if (projectId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                path: ['projectId'],
-                message: 'projectId must be a project-<id> identifier',
-            },
-        ]);
-    }
-
-    try {
-        const access = await requireProjectManagement(res, projectId);
-        if (!access) return;
-        const { user, bundle: current } = access;
-        const body = bodyResult.data;
-        const requestedUserIds = [
-            ...(body.responsibleId ? [body.responsibleId] : []),
-            ...(body.assigneeIds ?? []),
-        ];
-        if (!await requireAssignableUsers(res, user, requestedUserIds)) return;
-
-        if (body.title !== undefined || body.description !== undefined || body.status !== undefined) {
-            await updateProjectRecord(projectId, body);
-        }
-
-        // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
-        // the merged state (the current responsible, the first member, stays unless `responsibleId` is sent).
-        // A `responsibleId` alone only adds that member and removes nobody.
-        if (body.assigneeIds !== undefined) {
-            const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
-            const responsible = body.responsibleId ?? currentResponsible;
-            await syncProjectUsersOnApi(projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
-        } else if (body.responsibleId) {
-            await addProjectUsersOnApi(projectId, [body.responsibleId], current.users);
-        }
-
-        // Only the state Project API persisted is returned (priority, labels and dueDate are not stored).
-        const bundle = await fetchProjectBundle(projectId);
-        return res.status(200).json({
-            project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-            taskItems: await Promise.all(bundle.tasks.map((task) =>
-                buildTaskDtoForUser(user, projectId, task, bundle.users),
-            )),
-        });
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    // Only the state Project API persisted is returned (priority, labels and dueDate are not stored).
+    const bundle = await fetchProjectBundle(caller, projectId);
+    res.status(200).json({
+        project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+    });
 });
 
 export default router;

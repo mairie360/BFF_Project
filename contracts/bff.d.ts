@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Vérifie la connexion avec l'API Core et Project (Rust) */
+        /** Checks that Core API, Project API and BFF User are reachable */
         get: {
             parameters: {
                 query?: never;
@@ -55,22 +55,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Connexion réussie */
+                /** @description Every upstream is reachable */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CheckApiResponse"];
+                        "application/json": components["schemas"]["CheckApisResponse"];
                     };
                 };
-                /** @description API Core injoignable ou API Project injoignable */
+                /** @description At least one upstream is unreachable or not configured */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CheckApiResponse"];
+                        "application/json": components["schemas"]["CheckApisResponse"];
                     };
                 };
             };
@@ -416,7 +416,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -804,7 +804,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1037,7 +1037,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1380,7 +1380,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1467,7 +1467,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1858,7 +1858,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1957,7 +1957,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2179,7 +2179,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2532,7 +2532,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2757,7 +2757,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -3199,7 +3199,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -3320,7 +3320,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -4378,13 +4378,15 @@ export interface components {
                 }[];
             };
         };
-        CheckApiResponse: {
-            /** @example OK */
-            status: string;
-            /** @example Connected */
-            core_api: string;
-            /** @example Connected */
-            project_api: string;
+        CheckApisResponse: {
+            /** @enum {string} */
+            status: "OK" | "Error";
+            /** @enum {string} */
+            core_api: "Connected" | "Unreachable";
+            /** @enum {string} */
+            project_api: "Connected" | "Unreachable";
+            /** @enum {string} */
+            user_bff: "Connected" | "Unreachable";
         };
     };
     responses: never;

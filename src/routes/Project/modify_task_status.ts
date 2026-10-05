@@ -1,22 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectTask, ErrorResponse } from '../../openapi-registry';
+import { HttpError, parseRequest } from '@mairie360/bffs-lib';
 import {
     fetchProjectBundle,
-    handleUnknownError,
-    sendError,
     buildTaskDtoForUser,
     mapTaskStatusToBackend,
     patchTaskOnApi,
-    parseProjectId,
-    parseTaskId,
-    sendValidationError,
+    requireTaskParams,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
-import { appendTaskHistory } from '../../services/projectData';
+import { getProjectUserContext } from '../../auth/project-user';
+import { appendTaskHistory, callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -69,58 +67,29 @@ registry.registerPath({
 });
 
 router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Response) => {
-    const paramsResult = ProjectTaskParams.safeParse(req.params);
-    const bodyResult = UpdateTaskStatusBody.safeParse(req.body);
+    const params = parseRequest(ProjectTaskParams, req.params, 'params');
+    const body = parseRequest(UpdateTaskStatusBody, req.body, 'body');
+    const { projectId, taskId } = requireTaskParams(params);
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
-    }
+    const { user, task } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
+    await patchTaskOnApi(caller, projectId, taskId, {
+        status: mapTaskStatusToBackend(body.status),
+    });
+    await appendTaskHistory(
+        caller,
+        projectId,
+        taskId,
+        'status_changed',
+        `Statut de « ${task.title} » modifié en ${body.status}.`,
+        { status: { from: task.status, to: body.status } },
+    );
 
-    if (!bodyResult.success) {
-        return sendValidationError(res, 'body', bodyResult.error.issues);
-    }
+    const updatedBundle = await fetchProjectBundle(caller, projectId);
+    const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);
+    if (!updatedTask) throw new HttpError(404, 'Task not found after update');
 
-    const projectId = parseProjectId(paramsResult.data.projectId);
-    const taskId = parseTaskId(paramsResult.data.taskId);
-
-    if (projectId === null || taskId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                message: 'projectId and taskId must be project-<id> and task-<id> identifiers',
-            },
-        ]);
-    }
-
-    try {
-        const access = await requireTaskStatusUpdate(res, projectId, taskId);
-        if (!access) return;
-        const { user, task } = access;
-
-        await patchTaskOnApi(projectId, taskId, {
-            status: mapTaskStatusToBackend(bodyResult.data.status),
-        });
-        await appendTaskHistory(
-            projectId,
-            taskId,
-            user,
-            'status_changed',
-            `Statut de « ${task.title} » modifié en ${bodyResult.data.status}.`,
-            { status: { from: task.status, to: bodyResult.data.status } },
-        );
-
-        const updatedBundle = await fetchProjectBundle(projectId);
-        const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);
-
-        if (!updatedTask) {
-            return sendError(res, 404, 'Task not found after update');
-        }
-
-        return res.status(200).json(
-            await buildTaskDtoForUser(user, projectId, updatedTask, updatedBundle.users),
-        );
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    res.status(200).json(buildTaskDtoForUser(user, updatedTask, updatedBundle.users));
 });
 
 export default router;

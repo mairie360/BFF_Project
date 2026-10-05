@@ -226,7 +226,7 @@ function cleanup(data) {
 // p(95) budget of an operation, per family.
 function budgetOf({ op, method }) {
   if (op === 'GET /health') return 50; // process probe
-  if (op === 'GET /check_apis') return 300; // -> Core + Project /health
+  if (op === 'GET /check_apis') return 300; // -> Core + Project + BFF User /health
   if (method === 'GET') return 500; // BFF User /me + Project API reads
   return 800; // writes: BFF User /me + Project API writes + re-read of the bundle
 }
