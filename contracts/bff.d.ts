@@ -416,7 +416,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -804,7 +804,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1037,7 +1037,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1380,7 +1380,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1467,7 +1467,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1858,7 +1858,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -1957,7 +1957,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2179,7 +2179,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2532,7 +2532,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -2757,7 +2757,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -3199,7 +3199,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
@@ -3320,7 +3320,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Internal server error */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;

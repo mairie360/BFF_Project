@@ -451,7 +451,7 @@ const apiErrorDescriptions = {
   401: 'Missing, invalid or expired session',
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
-  500: 'Internal server error',
+  500: 'Unexpected server error',
   502: 'BFF User, Project API or Core API is unreachable or failed',
   503: 'BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)',
 } as const;

@@ -2807,7 +2807,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3448,7 +3448,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3804,7 +3804,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3900,7 +3900,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4552,7 +4552,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5063,7 +5063,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5170,7 +5170,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5526,7 +5526,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6050,7 +6050,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6371,7 +6371,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7294,7 +7294,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7462,7 +7462,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
