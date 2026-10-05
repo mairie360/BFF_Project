@@ -1,9 +1,9 @@
+import 'dotenv/config';
 import { openApiDocument as swaggerSpec } from './openapi';
 import { errorHandler, noStore, notFoundHandler, parseTrustProxy, requireBearer } from '@mairie360/bffs-lib';
 import express from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
-import dotenv from 'dotenv';
 import healthRouter from './routes/health';
 import checkApis from './routes/check_apis';
 import projectsPageRouter from './routes/Project/projects_page';
@@ -20,8 +20,6 @@ import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
 import { tokenContextMiddleware } from './auth/token';
 import { projectUserContextMiddleware } from './auth/project-user';
-
-dotenv.config();
 
 
 const app = express();

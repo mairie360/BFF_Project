@@ -19,7 +19,7 @@ import { appendTaskHistory, updateProjectRecord } from '../../services/projectDa
 const router = Router();
 
 // Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
-const ERROR_STATUSES = [400, 401, 403, 500, 502] as const satisfies readonly ApiErrorStatus[];
+const ERROR_STATUSES = [400, 401, 403, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: 'post',

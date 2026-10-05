@@ -220,7 +220,6 @@ services:
       CORE_API_PORT: 3000
       PROJECT_API_URL: project-api
       PROJECT_API_PORT: 3001
-      PROJECT_API_BASE_PATH: http://project-api:3001
       USER_BFF_URL: http://bff-user:4000
     expose:
       - "4001"

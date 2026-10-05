@@ -1,6 +1,6 @@
 import { getCoreAPIMairie360 } from '@mairie360/core-api-openapi/endpoints/coreAPIMairie360';
 import type { DirectoryUser } from '@mairie360/core-api-openapi/model';
-import { HttpError, INVALID_SESSION_MESSAGE } from '@mairie360/bffs-lib';
+import { baseUrl, HttpError, INVALID_SESSION_MESSAGE } from '@mairie360/bffs-lib';
 import axios, { type AxiosRequestConfig } from 'axios';
 import { getAuthorizationHeader } from '../auth/token';
 
@@ -10,22 +10,12 @@ const coreApiAxios = axios.create({ timeout: 5_000, headers: { Accept: 'applicat
 
 const coreApi = getCoreAPIMairie360(coreApiAxios);
 
-function normalizeBaseUrl(value: string): string {
-  return /^https?:\/\//i.test(value) ? value : `http://${value}`;
-}
-
-/** URL read again on every call: the environment may change without a restart. */
-function coreBaseUrl(): string {
-  const url = new URL(normalizeBaseUrl(process.env.CORE_API_URL ?? 'localhost'));
-  if (!url.port && process.env.CORE_API_PORT) url.port = process.env.CORE_API_PORT;
-  return url.toString().replace(/\/+$/, '');
-}
-
 /** Options of a call on behalf of the caller of the current session-bound request. */
 function coreOptions(): AxiosRequestConfig {
   const authorization = getAuthorizationHeader();
   if (!authorization) throw new HttpError(401, INVALID_SESSION_MESSAGE);
-  return { baseURL: coreBaseUrl(), headers: { Authorization: authorization } };
+  // CORE_API_URL (+ CORE_API_PORT) is read on every call: 503 when it is missing.
+  return { baseURL: baseUrl('CORE_API'), headers: { Authorization: authorization } };
 }
 
 /** Non-archived agents, optionally restricted to some groups. */
@@ -42,5 +32,5 @@ export async function listDirectoryUsers(
 
 /** Availability probe of `/check_apis`: never forwards a session. */
 export async function checkCoreApi(): Promise<void> {
-  await coreApi.health({ baseURL: coreBaseUrl(), timeout: 5_000 });
+  await coreApi.health({ baseURL: baseUrl('CORE_API'), timeout: 5_000 });
 }

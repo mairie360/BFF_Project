@@ -15,9 +15,9 @@ import { requireTaskComment, requireTaskView } from './project_access';
 const router = Router();
 
 // Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
-const COLLABORATION_ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+const COLLABORATION_ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 // 404: Project API answers it when the task disappears between the rights check and the comment.
-const COMMENT_ERROR_STATUSES = [400, 401, 403, 404, 500, 502] as const satisfies readonly ApiErrorStatus[];
+const COMMENT_ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: 'get',

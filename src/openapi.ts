@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import { bearerAuth, registry } from './openapi-registry';
 import './routes/health';
