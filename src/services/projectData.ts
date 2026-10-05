@@ -1,5 +1,5 @@
 import type { ProjetView, TaskView, User } from '@mairie360/project-api-openapi/model';
-import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
+import { HttpError, asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
 import { projectApi } from '../clients/projectClient';
@@ -200,7 +200,12 @@ export async function addTaskComment(caller: Caller, projectId: number, taskId: 
   return data;
 }
 
-/** Records an action in the history of the task, signed by the caller. */
+/**
+ * Records an action in the history of the task, signed by the caller.
+ *
+ * Project API >= MAIR-393 writes the history itself (database trigger) and removed this endpoint: its 404 is
+ * expected there and ignored. Drop this call once the BFF moves to the project-api-openapi release of MAIR-393.
+ */
 export async function appendTaskHistory(
   caller: Caller,
   projectId: number,
@@ -209,9 +214,14 @@ export async function appendTaskHistory(
   label: string,
   changes?: Record<string, unknown>,
 ): Promise<void> {
-  await projectCall(caller, (options) => projectApi.appendTaskHistory(projectId, taskId, {
-    action,
-    label,
-    ...(changes ? { changes } : {}),
-  }, options));
+  try {
+    await projectCall({ ...caller, declared: [...caller.declared, 404] }, (options) => projectApi.appendTaskHistory(projectId, taskId, {
+      action,
+      label,
+      ...(changes ? { changes } : {}),
+    }, options));
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) return;
+    throw error;
+  }
 }

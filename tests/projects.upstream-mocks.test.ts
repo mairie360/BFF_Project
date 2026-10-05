@@ -509,6 +509,21 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.body).toMatchObject({ id: 'task-30', title: 'Réserver la salle' });
     });
 
+    test('POST /projects/:id/tasks still succeeds when Project API writes the history itself (MAIR-393: no history endpoint)', async () => {
+      signIn(marie);
+      mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30, { title: 'Réserver la salle', assigned_to: alice.id })], [alice, marie]) } });
+      projectApi.on('post', PROJECT.history, { status: 404, raw: 'Not Found', contentType: 'text/plain', outOfContract: true });
+
+      const response = await as(request(app).post('/projects/project-1/tasks'), marie).send({
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: ['user-2'], labels: ['Urgent'], dueDate: '2026-06-25T00:00:00Z',
+      });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/tasks', response);
+      expect(projectApi.calls(PROJECT.history, 'POST')).toHaveLength(1);
+    });
+
     test('POST /projects/:id/tasks answers 404 when the created task is missing from the bundle', async () => {
       signIn(marie);
       mockProjectApi({ createdTaskId: 99, bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
