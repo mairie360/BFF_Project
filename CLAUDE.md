@@ -52,15 +52,19 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 ### Request pipeline (`src/app.ts`)
 
-1. `tokenContextMiddleware` (`src/auth/token.ts`) — parses `Bearer` header into an `AsyncLocalStorage`
-   store. Downstream clients read it via `getAuthorizationHeader()` and forward it unchanged; there is
-   no request object threading for auth.
-2. `/projects*` routes additionally get `requireBearerToken` then `projectUserContextMiddleware`
-   (`src/auth/project-user.ts`) — calls BFF User `/me`, normalizes roles via `roleAliases`, falls back
-   to the JWT `sub`/`user_id`/`id` claim for the user id, and stores a `ProjectUserContext` on
-   `res.locals.projectUser`. Read it with `getProjectUserContext(res)`.
+`app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))`, then the session-bound routers
+(`/projects-page`, `/projects*`) get, in order:
 
-`/health` and `/check_apis` are unauthenticated.
+1. `noStore` (`Cache-Control: no-store`) and `requireBearer` from `@mairie360/bffs-lib` — 401 before any
+   upstream call without an `Authorization: Bearer <token>` header (the only credential accepted).
+2. `tokenContextMiddleware` (`src/auth/token.ts`) — stores the lib-normalised `authorization(req)` in an
+   `AsyncLocalStorage` store; the Project and Core clients read it via `getAuthorizationHeader()`.
+3. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me`, normalizes roles via
+   `roleAliases`, falls back to the lib's `unverifiedSubject` (token `sub`, only once BFF User accepted the
+   token) for the user id, and stores a `ProjectUserContext` on `res.locals.projectUser`. Read it with
+   `getProjectUserContext(res)`.
+
+`/health` and `/check_apis` are unauthenticated and never forward the caller's header.
 
 ### Everything goes through the APIs
 

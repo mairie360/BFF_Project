@@ -1,9 +1,8 @@
 import 'dotenv/config';
 import { isAxiosError } from 'axios';
-import { buildErrorResponse, HttpError } from '@mairie360/bffs-lib';
+import { authorization, buildErrorResponse, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { userBffClient } from '../clients/userBffClient';
-import { getAuthorizationHeader, getBearerToken } from './token';
 
 export const PROJECT_ROLES = ['Admin', 'Maire', 'Responsable', 'User', 'Guest'] as const;
 
@@ -85,25 +84,6 @@ function resolveRoles(body: UserBffResponse): ProjectRole[] {
   return PROJECT_ROLES.filter((role) => resolved.has(role));
 }
 
-function readJwtUserId(token: string | undefined): number | null {
-  if (!token) return null;
-  const segments = token.split('.');
-  if (segments.length !== 3) return null;
-
-  try {
-    const payload = JSON.parse(Buffer.from(segments[1], 'base64url').toString('utf8')) as {
-      sub?: unknown;
-      user_id?: unknown;
-      id?: unknown;
-    };
-    const candidate = payload.sub ?? payload.user_id ?? payload.id;
-    const userId = Number(candidate);
-    return Number.isInteger(userId) && userId > 0 ? userId : null;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
   if (!Array.isArray(value)) return [];
 
@@ -140,15 +120,15 @@ export function getUserBffUrl(env: NodeJS.ProcessEnv = process.env): string {
   return url.toString().replace(/\/+$/, '');
 }
 
-export async function loadProjectUserContext(): Promise<ProjectUserContext> {
-  const authorization = getAuthorizationHeader();
-  if (!authorization) throw new HttpError(401, 'Missing session.');
+export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Promise<ProjectUserContext> {
+  // 401 before any upstream call when the request carries no Bearer token.
+  const header = authorization(req);
 
   let body: UserBffResponse;
   try {
     const response = await userBffClient.getMe({
       baseURL: getUserBffUrl(),
-      headers: { Authorization: authorization },
+      headers: { Authorization: header },
       timeout: 5_000,
     });
     body = response.data as UserBffResponse;
@@ -160,16 +140,18 @@ export async function loadProjectUserContext(): Promise<ProjectUserContext> {
     throw new HttpError(502, 'The user context is unavailable.');
   }
 
-  // axios laisse le corps brut quand il n'est pas du JSON analysable.
+  // axios keeps the raw body when it is not parsable JSON.
   if (typeof body !== 'object' || body === null) {
     throw new HttpError(502, 'The user context is unavailable.');
   }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
   const explicitId = Number(body.user?.id);
+  // BFF User has just accepted this token, so its `sub` is only read (unverified) to identify the caller
+  // when /me does not return `user.id` (optional in its contract).
   const id = Number.isInteger(explicitId) && explicitId > 0
     ? explicitId
-    : readJwtUserId(getBearerToken());
+    : unverifiedSubject(header);
 
   if (!id) {
     throw new HttpError(401, 'Unable to identify the signed-in user.');
@@ -199,12 +181,12 @@ export function canManageProjects(role: ProjectRole): boolean {
 }
 
 export async function projectUserContextMiddleware(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<Response | void> {
   try {
-    res.locals.projectUser = await loadProjectUserContext();
+    res.locals.projectUser = await loadProjectUserContext(req);
     return next();
   } catch (error) {
     // Only the messages of the HttpErrors raised above are meant for the client.
