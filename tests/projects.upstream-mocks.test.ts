@@ -87,6 +87,12 @@ function expectBffContract(method: string, pathname: string, response: request.R
   if (schema) expect(bffContract.validate(schema, response.body)).toEqual([]);
 }
 
+/** A `/me` body without `user.id` (optional in the BFF User contract). */
+function withoutUserId(session: ReturnType<typeof sessionResponse>) {
+  const user = { ...session.user };
+  delete user.id;
+  return { ...session, user };
+}
 const signIn = (agent: Agent, reply: MockReply = { body: sessionResponse(agent) }) => userBff.on('get', USER_BFF.me, reply);
 const as = (call: request.Test, agent: Agent) => call.set('Authorization', bearer(agent.id));
 /** Appels reçus par Project API, sous la forme `MÉTHODE chemin` (chemin tel que le construit le client généré). */
@@ -140,11 +146,51 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const responses = await Promise.all([
         request(app).get('/projects-page'),
         request(app).get('/projects-page').set('Authorization', 'Basic YWRtaW46YWRtaW4='),
+        request(app).get('/projects-page').set('Authorization', 'Bearer'),
+        request(app).get('/projects-page').set('Authorization', 'Bearer two words'),
+        // The access token is only read from the Authorization header: cookies and x-session-token are ignored.
+        request(app).get('/projects-page').set('Cookie', 'accessToken=abc.def.ghi; session=abc.def.ghi'),
+        request(app).get('/projects-page').set('x-session-token', 'abc.def.ghi'),
+        request(app).post('/projects').send({}),
       ]);
 
-      expect(responses.map((response) => [response.status, response.body.error.code])).toEqual([[401, 'UNAUTHORIZED'], [401, 'UNAUTHORIZED']]);
-      responses.forEach((response) => expectBffContract('get', '/projects-page', response));
+      expect(responses.map((response) => [response.status, response.body.error.code])).toEqual(Array(7).fill([401, 'UNAUTHORIZED']));
+      expect(responses.map((response) => response.headers['cache-control'])).toEqual(Array(7).fill('no-store'));
+      responses.slice(0, 6).forEach((response) => expectBffContract('get', '/projects-page', response));
+      expectBffContract('post', '/projects', responses[6]);
       expect(mocks.flatMap((mock) => mock.requests)).toEqual([]);
+    });
+
+    test('session-bound answers are never cached and the normalised Bearer header is forwarded', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await request(app).get('/projects-page').set('Authorization', `  bearer   ${bearer(admin.id).slice('Bearer '.length)}  `);
+
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(userBff.calls(USER_BFF.me, 'get')[0].headers.authorization).toBe(bearer(admin.id));
+      expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(admin.id));
+      expect(coreApi.calls(CORE.directory, 'get')[0].headers.authorization).toBe(bearer(admin.id));
+    });
+
+    test('falls back on the token sub when BFF User returns no user id', async () => {
+      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: alice.id })], [alice]) } });
+
+      const response = await as(request(app).get('/projects/project-1'), alice);
+
+      expect(response.status).toBe(200);
+      // The task assigned to the caller (id read from the sub of the token BFF User accepted) is visible.
+      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2']);
+    });
+
+    test('answers 401 when neither BFF User nor the token identify the caller', async () => {
+      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+      const opaque = await request(app).get('/projects-page').set('Authorization', 'Bearer opaque-token');
+
+      expect(opaque.status).toBe(401);
+      expect(projectApi.requests).toHaveLength(0);
     });
 
     test('forwards the caller session to /me and normalizes role aliases', async () => {
@@ -804,13 +850,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     });
 
     test('reports both APIs connected through their /health operations', async () => {
-      const response = await request(app).get('/check_apis');
+      // A public probe: the caller's Authorization header is never forwarded upstream.
+      const response = await request(app).get('/check_apis').set('Authorization', bearer(admin.id));
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/check_apis', response);
       expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
       expect(upstreamSequence()).toEqual([called('GET', projectApiUrls.getHealthUrl())]);
       expect(coreApi.requests.map((call) => call.url.pathname)).toEqual([coreApiUrls.getHealthUrl()]);
+      expect([...projectApi.requests, ...coreApi.requests].map((call) => call.headers.authorization)).toEqual([undefined, undefined]);
+      expect(response.headers['cache-control']).toBeUndefined();
     });
 
     test.each([

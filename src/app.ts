@@ -1,5 +1,5 @@
 import { openApiDocument as swaggerSpec } from './openapi';
-import { errorHandler, notFoundHandler } from '@mairie360/bffs-lib';
+import { errorHandler, noStore, notFoundHandler, parseTrustProxy, requireBearer } from '@mairie360/bffs-lib';
 import express from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
@@ -18,13 +18,15 @@ import modifyTaskStatusRouter from './routes/Project/modify_task_status';
 import deleteTaskRouter from './routes/Project/delete_task';
 import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
-import { requireBearerToken, tokenContextMiddleware } from './auth/token';
+import { tokenContextMiddleware } from './auth/token';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 dotenv.config();
 
 
 const app = express();
+// Client IP (req.ip) behind the ingress: see parseTrustProxy.
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 // Security headers (CSP, X-Content-Type-Options, Permissions-Policy, CORP...) and removal of
 // X-Powered-By, same configuration as BFF User. upgrade-insecure-requests is dropped because the
 // BFF is served over HTTP behind the reverse proxy.
@@ -35,7 +37,6 @@ app.use(helmet({
   },
 }));
 app.use(express.json());
-app.use(tokenContextMiddleware);
 
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -47,8 +48,9 @@ app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
 
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
-app.use(['/projects-page', '/projects'], requireBearerToken);
-app.use(['/projects-page', '/projects'], projectUserContextMiddleware);
+// Session-bound routes: never cached, 401 before any upstream call without a Bearer token, then the
+// caller's session is resolved with BFF User.
+app.use(['/projects-page', '/projects'], noStore, requireBearer, tokenContextMiddleware, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);

@@ -1,51 +1,30 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { buildErrorResponse } from '@mairie360/bffs-lib';
+import { authorization } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 
 interface TokenContext {
-  authorization?: string;
+  authorization: string;
 }
 
 const tokenStorage = new AsyncLocalStorage<TokenContext>();
 
-export function readBearerToken(authorizationHeader: string | undefined): string | undefined {
-  if (!authorizationHeader) {
-    return undefined;
-  }
-
-  const match = authorizationHeader.match(/^Bearer\s+(.+)$/i);
-  const token = match?.[1]?.trim();
-
-  return token || undefined;
-}
-
-export function getBearerToken(): string | undefined {
-  const authorization = tokenStorage.getStore()?.authorization;
-  return authorization ? readBearerToken(authorization) : undefined;
-}
-
+/** The caller's `Authorization: Bearer <token>` header, as normalised by the lib, for the current session-bound request. */
 export function getAuthorizationHeader(): string | undefined {
   return tokenStorage.getStore()?.authorization;
 }
 
-export function buildAuthorizationHeaders(): Record<string, string> {
-  const authorization = getAuthorizationHeader();
-  return authorization ? { Authorization: authorization } : {};
-}
-
+/**
+ * Stores the caller's normalised `Authorization` header for the upstream clients of the current request.
+ * Mounted after `requireBearer` on the session-bound routers only, so public routes (`/health`,
+ * `/check_apis`) never forward anything upstream; a request without a Bearer token gets a 401 here too.
+ */
 export function tokenContextMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  const token = readBearerToken(req.header('authorization'));
-  tokenStorage.run({ authorization: token ? `Bearer ${token}` : undefined }, next);
-}
-
-export function requireBearerToken(req: Request, res: Response, next: NextFunction): Response | void {
-  if (!req.header('authorization')) {
-    return res.status(401).json(buildErrorResponse('UNAUTHORIZED', 'Missing bearer token'));
+  let header: string;
+  try {
+    header = authorization(req);
+  } catch (error) {
+    next(error);
+    return;
   }
-
-  if (!readBearerToken(req.header('authorization'))) {
-    return res.status(401).json(buildErrorResponse('UNAUTHORIZED', 'Invalid authorization header. Expected: Bearer <token>'));
-  }
-
-  return next();
+  tokenStorage.run({ authorization: header }, next);
 }

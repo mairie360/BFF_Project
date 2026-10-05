@@ -14,7 +14,7 @@ function getProjectApiBaseUrl(): string {
   return configuredPort && !new URL(host).port ? `${host}:${configuredPort}` : host;
 }
 
-// 1. Créer l'instance Axios dédiée au service distant
+// 1. Axios instance dedicated to Project API
 export const projectApiAxios = axios.create({
   baseURL: getProjectApiBaseUrl(),
   timeout: 5000,
@@ -23,7 +23,8 @@ export const projectApiAxios = axios.create({
   },
 });
 
-// Intercepteur pour injecter automatiquement le token
+// Forwards the caller's session of the current session-bound request. The availability probe of
+// /check_apis runs outside any session, so it never carries an Authorization header.
 projectApiAxios.interceptors.request.use(
   (config) => {
     const authorization = getAuthorizationHeader();
@@ -38,7 +39,7 @@ projectApiAxios.interceptors.request.use(
   },
 );
 
-// 2. Injecter l'instance dans le code généré par Orval
+// 2. Inject the instance into the orval-generated client
 const projectClient = getProjectAPIMairie360(projectApiAxios);
 
 export default projectClient;
