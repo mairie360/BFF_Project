@@ -1,15 +1,53 @@
 import type { ProjetView, TaskView, User } from '@mairie360/project-api-openapi/model';
+import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
-import projectClient from '../clients/projectClient';
-import { listDirectoryUsers } from '../clients/coreDirectory';
+import type { Request } from 'express';
+import { projectApi } from '../clients/projectClient';
+import { coreApi } from '../clients/coreClient';
 import {
   canManageProjects,
   isGlobalProjectRole,
   type ProjectUserContext,
 } from '../auth/project-user';
 
-// Toutes les données projet viennent de Project API (contrat @mairie360/project-api-openapi) et
-// l'annuaire des agents de Core API : le BFF n'interroge plus PostgreSQL.
+// Every project datum comes from Project API (contract @mairie360/project-api-openapi) and the directory of
+// agents from Core API: the BFF reads no database.
+
+/** Timeout of the Project API and Core API calls, in ms. */
+const UPSTREAM_TIMEOUT_MS = 5_000;
+
+/**
+ * The session-bound request an upstream call is made for (its Bearer token is forwarded) and the error
+ * statuses its route declares: an upstream 4xx is relayed only when declared, anything else becomes a 502.
+ */
+export interface Caller {
+  readonly req: Pick<Request, 'headers'>;
+  readonly declared: readonly number[];
+}
+
+export function callerOf(req: Pick<Request, 'headers'>, declared: readonly number[]): Caller {
+  return { req, declared };
+}
+
+type Call<T> = (options: UpstreamRequestOptions) => Promise<T>;
+
+/**
+ * A Project API call on behalf of `caller`: 401 without a session, 503 when PROJECT_API_URL is missing, the
+ * declared upstream 4xx relayed, anything else 502. `retry` only for idempotent reads.
+ */
+export function projectCall<T>(caller: Caller, call: Call<T>, retry = false): Promise<T> {
+  return callUpstream('PROJECT_API', () => call(asCaller('PROJECT_API', caller.req, UPSTREAM_TIMEOUT_MS)), {
+    declared: caller.declared,
+    retry,
+  });
+}
+
+function coreCall<T>(caller: Caller, call: Call<T>, retry = false): Promise<T> {
+  return callUpstream('CORE_API', () => call(asCaller('CORE_API', caller.req, UPSTREAM_TIMEOUT_MS)), {
+    declared: caller.declared,
+    retry,
+  });
+}
 
 export type ProjectPermissions = {
   canView: boolean;
@@ -35,41 +73,31 @@ export type ProjectBundle = {
   users: User[];
 };
 
-function isNotFound(error: unknown): boolean {
-  return isAxiosError(error) && error.response?.status === 404;
+/** Project visible to the caller, or `null` when it does not exist or is not visible to them (404). */
+export async function getProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle | null> {
+  const data = await projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getProject(projectId, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
+  return data && { project: data.project, tasks: data.tasks, users: data.users };
 }
 
-/** Projet visible par l'appelant, ou `null` s'il n'existe pas ou ne lui est pas visible (404). */
-export async function getProjectBundle(projectId: number): Promise<ProjectBundle | null> {
-  try {
-    const { data } = await projectClient.getProject(projectId);
-    return { project: data.project, tasks: data.tasks, users: data.users };
-  } catch (error) {
-    if (isNotFound(error)) return null;
-    throw error;
-  }
-}
-
-/** Projets visibles par l'appelant (Project API applique les règles de visibilité). */
-export async function listVisibleProjects(): Promise<ProjetView[]> {
-  const { data } = await projectClient.getProjects();
+/** Projects visible to the caller (Project API applies the visibility rules). */
+export async function listVisibleProjects(caller: Caller): Promise<ProjetView[]> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjects(options), true);
   return data.projects;
 }
 
-/**
- * Droits sur un projet. `visible` évite une lecture supplémentaire quand l'appelant sait déjà que le
- * projet lui est visible (il vient de la liste ou d'un bundle déjà chargé).
- */
-export async function getProjectPermissions(
-  user: ProjectUserContext,
-  projectId: number,
-  visible?: boolean,
-): Promise<ProjectPermissions> {
-  const canView = visible ?? (await getProjectBundle(projectId)) !== null;
-  const canManage = canView && canManageProjects(user.role);
+/** Rights on a project the caller can see (`visible`): managing it needs a manager role. */
+export function getProjectPermissions(user: ProjectUserContext, visible: boolean): ProjectPermissions {
+  const canManage = visible && canManageProjects(user.role);
 
   return {
-    canView,
+    canView: visible,
     canEdit: canManage,
     canDuplicate: canManage,
     canDelete: canManage,
@@ -79,24 +107,10 @@ export async function getProjectPermissions(
   };
 }
 
-/**
- * Droits sur une tâche. `assignedUserId` évite une lecture supplémentaire quand la tâche est déjà
- * connue (`undefined` la fait relire pour savoir si l'appelant en est l'assigné).
- */
-export async function getTaskPermissions(
-  user: ProjectUserContext,
-  projectId: number,
-  taskId: number,
-  assignedUserId?: number | null,
-): Promise<TaskPermissions> {
-  const bundle = assignedUserId === undefined ? await getProjectBundle(projectId) : undefined;
-  const canView = assignedUserId === undefined ? bundle !== null : true;
-  const projectPermissions = await getProjectPermissions(user, projectId, canView);
-  const canManage = projectPermissions.canEdit;
-  const assignedTo = assignedUserId === undefined
-    ? bundle?.tasks.find((task) => task.id === taskId)?.assigned_to ?? null
-    : assignedUserId;
-  const assignedToCurrentUser = projectPermissions.canView && assignedTo === user.id;
+/** Rights on a task of a project the caller can see, given the agent it is assigned to. */
+export function getTaskPermissions(user: ProjectUserContext, assignedUserId: number | null | undefined): TaskPermissions {
+  const canManage = getProjectPermissions(user, true).canEdit;
+  const assignedToCurrentUser = assignedUserId === user.id;
 
   return {
     canView: canManage || assignedToCurrentUser,
@@ -107,18 +121,27 @@ export async function getTaskPermissions(
   };
 }
 
+/** Non-archived agents of the Core directory, optionally restricted to some groups. */
+async function listDirectoryUsers(caller: Caller, groupIds: number[] = []) {
+  const { data } = await coreCall(caller, (options) => coreApi.listDirectoryUsers(
+    groupIds.length ? { group_ids: groupIds.join(',') } : {},
+    options,
+  ), true);
+  return data.users;
+}
+
 /**
- * Agents que l'appelant peut assigner : tous pour un Admin ou un Maire, les membres de ses groupes
- * pour un Responsable, lui-même sinon.
+ * Agents the caller may assign: everyone for an Admin or a Maire, the members of their groups for a
+ * Responsable, themselves otherwise.
  */
-export async function listAssignableUsers(user: ProjectUserContext): Promise<User[]> {
+export async function listAssignableUsers(caller: Caller, user: ProjectUserContext): Promise<User[]> {
   if (isGlobalProjectRole(user.role)) {
-    return toApiUsers(await listDirectoryUsers({}));
+    return toApiUsers(await listDirectoryUsers(caller));
   }
 
   if (user.role === 'Responsable') {
     const groupIds = user.groups.map((group) => group.id).filter((id): id is number => id !== undefined);
-    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers({ groupIds })) : selfOnly(user);
+    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers(caller, groupIds)) : selfOnly(user);
   }
 
   return selfOnly(user);
@@ -135,26 +158,28 @@ function toApiUsers(users: Array<{ id: number; first_name: string; last_name: st
   }));
 }
 
-/** Met à jour le titre, la description et/ou le statut d'un projet. */
+/** Updates the title, the description and/or the status of a project. */
 export async function updateProjectRecord(
+  caller: Caller,
   projectId: number,
   input: { title?: string; description?: string; status?: string },
 ): Promise<void> {
-  await projectClient.updateProject(projectId, {
+  await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     ...(input.title !== undefined ? { name: input.title } : {}),
     ...(input.description !== undefined ? { description: input.description } : {}),
     ...(input.status !== undefined ? { status: toApiProjectStatus(input.status) } : {}),
-  });
+  }, options));
 }
 
-/** Clôture (`completed`) ou suspend (`suspended`) un projet. */
+/** Closes (`completed`) or suspends (`suspended`) a project. */
 export async function setProjectClosed(
+  caller: Caller,
   projectId: number,
   status: 'completed' | 'suspended',
 ): Promise<void> {
-  await projectClient.updateProject(projectId, {
+  await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     status: status === 'completed' ? 'Completed' : 'Suspended',
-  });
+  }, options));
 }
 
 function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed' {
@@ -163,35 +188,30 @@ function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed
   return 'Active';
 }
 
-/** Commentaires et historique d'une tâche, tels que Project API les assemble. */
-export async function getTaskCollaboration(projectId: number, taskId: number) {
-  const { data } = await projectClient.getTaskCollaboration(projectId, taskId);
+/** Comments and history of a task, as Project API assembles them. */
+export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number) {
+  const { data } = await projectCall(caller, (options) => projectApi.getTaskCollaboration(projectId, taskId, options), true);
   return data;
 }
 
-/** Ajoute un commentaire signé par l'appelant. */
-export async function addTaskComment(
-  projectId: number,
-  taskId: number,
-  _user: ProjectUserContext,
-  message: string,
-) {
-  const { data } = await projectClient.addTaskComment(projectId, taskId, { message });
+/** Adds a comment signed by the caller (Project API reads the author from the forwarded session). */
+export async function addTaskComment(caller: Caller, projectId: number, taskId: number, message: string) {
+  const { data } = await projectCall(caller, (options) => projectApi.addTaskComment(projectId, taskId, { message }, options));
   return data;
 }
 
-/** Consigne une action dans l'historique de la tâche, signée par l'appelant. */
+/** Records an action in the history of the task, signed by the caller. */
 export async function appendTaskHistory(
+  caller: Caller,
   projectId: number,
   taskId: number,
-  _user: ProjectUserContext,
   action: string,
   label: string,
   changes?: Record<string, unknown>,
 ): Promise<void> {
-  await projectClient.appendTaskHistory(projectId, taskId, {
+  await projectCall(caller, (options) => projectApi.appendTaskHistory(projectId, taskId, {
     action,
     label,
     ...(changes ? { changes } : {}),
-  });
+  }, options));
 }

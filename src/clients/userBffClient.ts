@@ -1,10 +1,8 @@
 import { getBffUser } from '@mairie360/bff-user-openapi/endpoints/bffUser';
 import axios from 'axios';
 
-// La session de l'appelant est résolue par BFF User, via les opérations de son contrat publié
-// (@mairie360/bff-user-openapi).
+// The caller's session is resolved by BFF User, through the operations of its published contract
+// (@mairie360/bff-user-openapi). The base URL, the timeout and the session are passed on every call.
 const userBffAxios = axios.create({ headers: { Accept: 'application/json' } });
 
-export const userBffClient = getBffUser(userBffAxios);
-
-export default userBffClient;
+export const userBffApi = getBffUser(userBffAxios);

@@ -1,11 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, DeletedProjectIdParams, ErrorResponse } from '../../openapi-registry';
-import { deleteProjectOnApi, handleUnknownError, parseProjectId, sendValidationError } from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
+import { deleteProjectOnApi, requireProjectIdParam } from './project_helpers';
 import { requireProjectManagement } from './project_access';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -36,30 +39,13 @@ registry.registerPath({
 });
 
 router.delete('/:projectId', async (req: Request, res: Response) => {
-    const paramsResult = DeletedProjectIdParams.safeParse(req.params);
+    const params = parseRequest(DeletedProjectIdParams, req.params, 'params');
+    const projectId = requireProjectIdParam(params.projectId);
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
-    }
-
-    const projectId = parseProjectId(paramsResult.data.projectId);
-
-    if (projectId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                path: ['projectId'],
-                message: 'projectId must be a project-<id> identifier',
-            },
-        ]);
-    }
-
-    try {
-        if (!await requireProjectManagement(res, projectId)) return;
-        await deleteProjectOnApi(projectId);
-        return res.status(204).send();
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await deleteProjectOnApi(caller, projectId);
+    res.status(204).send();
 });
 
 export default router;

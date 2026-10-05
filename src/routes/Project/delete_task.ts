@@ -1,11 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, DeletedTaskParams, ErrorResponse } from '../../openapi-registry';
-import { deleteTaskOnApi, handleUnknownError, parseProjectId, parseTaskId, sendValidationError } from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
+import { deleteTaskOnApi, requireTaskParams } from './project_helpers';
 import { requireTaskManagement } from './project_access';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -36,30 +39,12 @@ registry.registerPath({
 });
 
 router.delete('/:projectId/tasks/:taskId', async (req: Request, res: Response) => {
-    const paramsResult = DeletedTaskParams.safeParse(req.params);
+    const { projectId, taskId } = requireTaskParams(parseRequest(DeletedTaskParams, req.params, 'params'));
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
-    }
-
-    const projectId = parseProjectId(paramsResult.data.projectId);
-    const taskId = parseTaskId(paramsResult.data.taskId);
-
-    if (projectId === null || taskId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                message: 'projectId and taskId must be project-<id> and task-<id> identifiers',
-            },
-        ]);
-    }
-
-    try {
-        if (!await requireTaskManagement(res, projectId, taskId)) return;
-        await deleteTaskOnApi(projectId, taskId);
-        return res.status(204).send();
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    await requireTaskManagement(caller, getProjectUserContext(res), projectId, taskId);
+    await deleteTaskOnApi(caller, projectId, taskId);
+    res.status(204).send();
 });
 
 export default router;

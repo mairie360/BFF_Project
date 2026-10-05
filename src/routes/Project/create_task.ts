@@ -1,21 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, CreateTaskBody, ProjectTask, ErrorResponse } from '../../openapi-registry';
+import { HttpError, parseRequest } from '@mairie360/bffs-lib';
 import {
     createTaskOnApi,
     buildTaskDtoForUser,
     fetchProjectBundle,
-    handleUnknownError,
-    sendError,
     mapTaskInputToBackend,
-    parseProjectId,
-    sendValidationError,
+    requireProjectIdParam,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
-import { appendTaskHistory } from '../../services/projectData';
+import { getProjectUserContext } from '../../auth/project-user';
+import { appendTaskHistory, callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -68,57 +67,33 @@ registry.registerPath({
 });
 
 router.post('/:projectId/tasks', async (req: Request, res: Response) => {
-    const paramsResult = ProjectIdParams.safeParse(req.params);
-    const bodyResult = CreateTaskBody.safeParse(req.body);
+    const params = parseRequest(ProjectIdParams, req.params, 'params');
+    const body = parseRequest(CreateTaskBody, req.body, 'body');
+    const projectId = requireProjectIdParam(params.projectId);
+    const caller = callerOf(req, ERROR_STATUSES);
 
-    if (!paramsResult.success) {
-        return sendValidationError(res, 'params', paramsResult.error.issues);
-    }
+    const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await requireAssignableUsers(caller, user, [body.responsibleId, ...body.assigneeIds]);
+    const createdTask = await createTaskOnApi(
+        caller,
+        projectId,
+        mapTaskInputToBackend({
+            title: body.title,
+            status: body.status,
+            priority: body.priority,
+            responsibleId: body.responsibleId,
+            assigneeIds: body.assigneeIds,
+            labels: body.labels,
+            dueDate: body.dueDate,
+        }),
+    );
 
-    if (!bodyResult.success) {
-        return sendValidationError(res, 'body', bodyResult.error.issues);
-    }
+    await appendTaskHistory(caller, projectId, createdTask.task_id, 'task_created', `Tâche « ${body.title} » créée.`);
+    const bundle = await fetchProjectBundle(caller, projectId);
+    const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
+    if (!task) throw new HttpError(404, 'Task not found after creation');
 
-    const projectId = parseProjectId(paramsResult.data.projectId);
-
-    if (projectId === null) {
-        return sendValidationError(res, 'params', [
-            {
-                path: ['projectId'],
-                message: 'projectId must be a project-<id> identifier',
-            },
-        ]);
-    }
-
-    try {
-        const access = await requireProjectManagement(res, projectId);
-        if (!access) return;
-        const { user } = access;
-        if (!await requireAssignableUsers(res, user, [bodyResult.data.responsibleId, ...bodyResult.data.assigneeIds])) return;
-        const createdTask = await createTaskOnApi(
-            projectId,
-            mapTaskInputToBackend({
-                title: bodyResult.data.title,
-                status: bodyResult.data.status,
-                priority: bodyResult.data.priority,
-                responsibleId: bodyResult.data.responsibleId,
-                assigneeIds: bodyResult.data.assigneeIds,
-                labels: bodyResult.data.labels,
-                dueDate: bodyResult.data.dueDate,
-            }),
-        );
-
-        await appendTaskHistory(projectId, createdTask.task_id, user, 'task_created', `Tâche « ${bodyResult.data.title} » créée.`);
-        const bundle = await fetchProjectBundle(projectId);
-        const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
-        if (!task) {
-            return sendError(res, 404, 'Task not found after creation');
-        }
-
-        return res.status(201).json(await buildTaskDtoForUser(user, projectId, task, bundle.users));
-    } catch (error) {
-        return handleUnknownError(res, error, ERROR_STATUSES);
-    }
+    res.status(201).json(buildTaskDtoForUser(user, task, bundle.users));
 });
 
 export default router;

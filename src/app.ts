@@ -1,8 +1,15 @@
 import 'dotenv/config';
 import { openApiDocument as swaggerSpec } from './openapi';
-import { errorHandler, noStore, notFoundHandler, parseTrustProxy, requireBearer } from '@mairie360/bffs-lib';
+import {
+  apiOnlyHeaders,
+  errorHandler,
+  noStore,
+  notFoundHandler,
+  parseTrustProxy,
+  requireBearer,
+  securityHeaders,
+} from '@mairie360/bffs-lib';
 import express from 'express';
-import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import healthRouter from './routes/health';
 import checkApis from './routes/check_apis';
@@ -18,22 +25,17 @@ import modifyTaskStatusRouter from './routes/Project/modify_task_status';
 import deleteTaskRouter from './routes/Project/delete_task';
 import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
-import { tokenContextMiddleware } from './auth/token';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 
 const app = express();
 // Client IP (req.ip) behind the ingress: see parseTrustProxy.
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
-// Security headers (CSP, X-Content-Type-Options, Permissions-Policy, CORP...) and removal of
-// X-Powered-By, same configuration as BFF User. upgrade-insecure-requests is dropped because the
-// BFF is served over HTTP behind the reverse proxy.
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: { 'upgrade-insecure-requests': null },
-  },
-}));
+// Security headers shared by every BFF on every response, /docs included; stricter API-only headers
+// (default-src 'none', no embedding) everywhere else, set before body parsing so that they also cover
+// body-parse errors.
+app.use(securityHeaders);
+app.use(apiOnlyHeaders());
 app.use(express.json());
 
 
@@ -48,7 +50,7 @@ app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
 // Session-bound routes: never cached, 401 before any upstream call without a Bearer token, then the
 // caller's session is resolved with BFF User.
-app.use(['/projects-page', '/projects'], noStore, requireBearer, tokenContextMiddleware, projectUserContextMiddleware);
+app.use(['/projects-page', '/projects'], noStore, requireBearer, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);

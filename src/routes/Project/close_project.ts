@@ -1,19 +1,14 @@
 import { Router, type Request, type Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, ErrorResponse, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
-import {
-  buildProjectDtoForUser,
-  buildTaskDtoForUser,
-  fetchProjectBundle,
-  handleUnknownError,
-  parseProjectId,
-  sendValidationError,
-} from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
+import { buildProjectDtoForUser, buildTaskDtoForUser, fetchProjectBundle, requireProjectIdParam } from './project_helpers';
 import { requireProjectManagement } from './project_access';
-import { setProjectClosed } from '../../services/projectData';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf, setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -33,32 +28,21 @@ registry.registerPath({
 });
 
 router.patch('/:projectId/close', async (req: Request, res: Response) => {
-  const paramsResult = ProjectIdParams.safeParse(req.params);
-  const bodyResult = CloseProjectBody.safeParse(req.body);
-  if (!paramsResult.success) return sendValidationError(res, 'params', paramsResult.error.issues);
-  if (!bodyResult.success) return sendValidationError(res, 'body', bodyResult.error.issues);
+  const params = parseRequest(ProjectIdParams, req.params, 'params');
+  const body = parseRequest(CloseProjectBody, req.body, 'body');
+  const projectId = requireProjectIdParam(params.projectId);
+  const caller = callerOf(req, ERROR_STATUSES);
 
-  const projectId = parseProjectId(paramsResult.data.projectId);
-  if (projectId === null) return sendValidationError(res, 'params', [{ path: ['projectId'], message: 'projectId must be a project-<id> identifier' }]);
+  const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  // Both statuses go through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
+  await setProjectClosed(caller, projectId, body.status === 'done' ? 'completed' : 'suspended');
 
-  try {
-    const access = await requireProjectManagement(res, projectId);
-    if (!access) return;
-    const { user } = access;
-    // Both statuses go through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
-    await setProjectClosed(projectId, bodyResult.data.status === 'done' ? 'completed' : 'suspended');
-
-    const bundle = await fetchProjectBundle(projectId);
-    // The re-read status (Completed → done, Suspended → review) is returned, not the submitted one.
-    return res.status(200).json({
-      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-      taskItems: await Promise.all(bundle.tasks.map((task) =>
-        buildTaskDtoForUser(user, projectId, task, bundle.users),
-      )),
-    });
-  } catch (error) {
-    return handleUnknownError(res, error, ERROR_STATUSES);
-  }
+  const bundle = await fetchProjectBundle(caller, projectId);
+  // The re-read status (Completed → done, Suspended → review) is returned, not the submitted one.
+  res.status(200).json({
+    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+  });
 });
 
 export default router;

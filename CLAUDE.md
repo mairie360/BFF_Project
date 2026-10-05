@@ -25,13 +25,13 @@ npm test                   # pretest runs `tsc --project tsconfig.test.json`, th
 npm run mock:project-api   # standalone in-memory Project API for local dev
 ```
 
-Single test: `npx jest tests/projects.test.ts` or `npx jest -t "returns a projects page payload"`.
+Single test: `npx jest tests/projects.upstream-mocks.test.ts` or `npx jest -t "never retries a write"`.
 Note `npx jest` skips the `pretest` typecheck — run `npm test` (or `tsc -p tsconfig.test.json`) to catch type errors.
 CI runs tests with `--runInBand`.
 
-`PORT` env var is **required** — `src/index.ts` exits if it is unset. `src/index.ts` starts with
+`PORT` defaults to `4001`. `src/app.ts` exports the Express app (the tests import it); `src/index.ts` starts with
 `import 'dotenv/config'` and, under `require.main === module`, calls the lib's
-`assertConfigured(UPSTREAM_SERVICES)`: startup fails when `USER_BFF_URL`, `PROJECT_API_URL` or
+`assertConfigured(UPSTREAM_SERVICES)` then `listen`: startup fails when `USER_BFF_URL`, `PROJECT_API_URL` or
 `CORE_API_URL` is missing or invalid.
 
 ### Upstream configuration
@@ -62,17 +62,20 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 ### Request pipeline (`src/app.ts`)
 
-`app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))`, then the session-bound routers
+`app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))`, the lib's `securityHeaders` and
+`apiOnlyHeaders()` (strict `default-src 'none'` everywhere but `/docs`), then the session-bound routers
 (`/projects-page`, `/projects*`) get, in order:
 
 1. `noStore` (`Cache-Control: no-store`) and `requireBearer` from `@mairie360/bffs-lib` — 401 before any
    upstream call without an `Authorization: Bearer <token>` header (the only credential accepted).
-2. `tokenContextMiddleware` (`src/auth/token.ts`) — stores the lib-normalised `authorization(req)` in an
-   `AsyncLocalStorage` store; the Project and Core clients read it via `getAuthorizationHeader()`.
-3. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me`, normalizes roles via
-   `roleAliases`, falls back to the lib's `unverifiedSubject` (token `sub`, only once BFF User accepted the
-   token) for the user id, and stores a `ProjectUserContext` on `res.locals.projectUser`. Read it with
-   `getProjectUserContext(res)`.
+2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me` through
+   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, falls back to the
+   lib's `unverifiedSubject` (token `sub`, only once BFF User accepted the token) for the user id, and stores a
+   `ProjectUserContext` on `res.locals.projectUser`. Read it with `getProjectUserContext(res)`.
+
+There is no request-scoped storage: every upstream call receives the request explicitly. Routes build a
+`Caller` with `callerOf(req, ERROR_STATUSES)` (`src/services/projectData.ts`) and pass it down; each call gets
+its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout, caller's `Authorization`).
 
 `/health` and `/check_apis` are unauthenticated and never forward the caller's header.
 
@@ -80,13 +83,16 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 `src/services/projectData.ts` is the only data layer:
 
-- `getProjectBundle(projectId)` → `GET /api/v1/projects/{id}/` (project + tasks + members); Project API
+- `projectCall(caller, (options) => projectApi.op(..., options), retry?)` wraps every Project API call in the
+  lib's `callUpstream('PROJECT_API', …)`; `retry` is set on idempotent GETs only. The `*OnApi` writers of
+  `project_helpers.ts` use it too.
+- `getProjectBundle(caller, projectId)` → `GET /api/v1/projects/{id}/` (project + tasks + members); Project API
   computes visibility, so a project the caller may not see gives a 404, which the service maps to `null`.
-- `listVisibleProjects()`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
+- `listVisibleProjects(caller)`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
   `addTaskComment`, `appendTaskHistory` → the matching Project API operations.
-- `listAssignableUsers(user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
-- `getProjectPermissions` / `getTaskPermissions` derive the rights from the role plus what Project API
-  exposes; pass `visible`/`assignedUserId` when a bundle has already been read to avoid re-reading it.
+- `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
+- `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
+  rights from the role and a bundle already read by the guards.
 
 Project API **0.5.0** is the minimum: it is the release that publishes GET project, PATCH project,
 PATCH task and the collaboration routes the BFF needs.
@@ -95,7 +101,7 @@ PATCH task and the collaboration routes the BFF needs.
 
 - `src/openapi-registry.ts` — the single source of truth for all Zod schemas + the `OpenAPIRegistry`.
 - Each route module calls `registry.registerPath({...})` at import time and also uses the schemas for
-  runtime `safeParse` validation.
+  runtime validation through the lib's `parseRequest(schema, value, 'body' | 'params' | 'query')`.
 - `src/openapi.ts` imports **every route module** to populate the registry, then builds the document.
 - `src/app.ts` mounts **every route module** as an Express router.
 
@@ -129,17 +135,22 @@ embeds the resolved `permissions` / `access` block for the frontend.
 Always `{ error: { code, message, details } }`, the envelope shared by every BFF: the `ErrorResponse` schema is
 `@mairie360/bffs-lib`'s `ErrorResponseSchema` (registered with `.clone()`, see `openapi-registry.ts`) and `code`
 derives from the status (`codeForStatus`). App-level `notFoundHandler` / `errorHandler()` from the lib close
-`src/app.ts`. In routes, `sendRouteError` / `handleUnknownError(res, error, ERROR_STATUSES)` (`project_helpers.ts`)
-normalizes thrown errors: an upstream 4xx is kept (generic message, via the lib's `mapUpstreamError`) only when
-the route's `ERROR_STATUSES` declares it, any other upstream status (5xx, 501, undeclared 4xx) and network
-failures become `502 BAD_GATEWAY`, never with the upstream body nor host/port; an `HttpError` keeps its status
-and message unless it is an undeclared 4xx (then 502); anything else is logged and becomes a generic 500.
-`sendValidationError(res, 'body' | 'params' | 'query', issues)` answers 400 with `details: [{ path, message }]`
-(`path` like `body.title`). Every route defines one `ERROR_STATUSES` list and passes it to both
-`apiErrorResponses(...)` (`openapi-registry.ts`) and `handleUnknownError`, so the contract and the runtime
-cannot drift; the upstream-mock tests fail on any undocumented status. Upstream calls (BFF User fetch, Project API
-axios) use a 5s timeout. `/check_apis` probes Core and Project `/health` independently from
-`<SERVICE>_URL` + `<SERVICE>_PORT` read per request, like the real calls.
+`src/app.ts`, and routes never write errors themselves: they **throw** (Express 5 forwards async rejections).
+
+- Validation: `parseRequest` throws 400 `Validation failed` with `details: [{ path, message }]` (`path` like
+  `body.title`); `requireProjectIdParam` / `requireTaskParams` (`project_helpers.ts`) throw the same 400 via
+  `validationError('params', …)` for ids without their prefix.
+- Guards (`project_access.ts`) throw 403/404 `HttpError`s.
+- Upstream failures: `callUpstream` relays an upstream 4xx (generic message) only when the route's
+  `ERROR_STATUSES` (passed to `callerOf`) declares it; any other status, network failures and unparsable
+  answers become `502 BAD_GATEWAY`, never with the upstream body nor host/port; a missing `<SERVICE>_URL` is a
+  503; anything unexpected is logged by `errorHandler` and becomes a generic 500.
+
+Every route defines one `ERROR_STATUSES` list and passes it to both `apiErrorResponses(...)`
+(`openapi-registry.ts`) and `callerOf`, so the contract and the runtime cannot drift; the upstream-mock tests
+fail on any undocumented status. `/check_apis` is the lib's `checkApis` with one probe per upstream
+(`core_api`, `project_api`, `user_bff`: their `/health` with `withoutSession(service, 5_000)`, so no session is
+forwarded) and the `CheckApisResponse` schema from `checkApisResponseSchema`.
 
 ### ZAP / k6 OpenAPI coverage gate
 
@@ -160,7 +171,7 @@ gets a `p(95)` threshold from its family (`budgetOf`).
 
 ## Tests
 
-Tests with contract-driven upstream mocks: the suites import the **whole app** with the real `project-user.ts`/axios and serve upstreams from
+Tests with contract-driven upstream mocks: the suites import the **whole app** (`src/app.ts`) with the real `project-user.ts`/axios and serve upstreams from
 local HTTP servers (`tests/support/contract-mock-server.ts`). Contracts are rebuilt at test time from the
 **installed** `@mairie360/bff-user-openapi` (devDependency, aligned with the `bff-user` image of the test
 stacks), `@mairie360/project-api-openapi` and `@mairie360/core-api-openapi` packages

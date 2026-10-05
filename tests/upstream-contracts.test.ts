@@ -24,7 +24,7 @@ const userBff = loadOrvalContract('@mairie360/bff-user-openapi');
 /** Chemin d'une opération tel que le client généré le construit (helper `get*Url`), sans sa query string. */
 const pathname = (url: string) => new URL(url, 'http://upstream').pathname;
 
-// Opérations amont réellement appelées (src/clients/{projectClient,coreDirectory,userBffClient}.ts,
+// Opérations amont réellement appelées (src/clients/{projectClient,coreClient,userBffClient}.ts,
 // src/services/projectData.ts, project_helpers.ts, auth/project-user.ts, routes/check_apis.ts), adressées par les
 // helpers d'URL des clients générés. Le BFF n'a plus d'accès direct à PostgreSQL : tout passe par ces opérations.
 const CONSUMED = [
@@ -48,6 +48,7 @@ const CONSUMED = [
   { contract: coreApi, operationId: 'listDirectoryUsers', method: 'get', url: coreApiUrls.getListDirectoryUsersUrl({ group_ids: '1' }) },
   { contract: coreApi, operationId: 'health', method: 'get', url: coreApiUrls.getHealthUrl() },
   { contract: userBff, operationId: 'getMe', method: 'get', url: userBffUrls.getGetMeUrl() },
+  { contract: userBff, operationId: 'getHealth', method: 'get', url: userBffUrls.getGetHealthUrl() },
 ] as const;
 
 function responseSchema(contract: OpenApiContract, method: string, url: string, status: number): JsonSchema {

@@ -9,7 +9,7 @@ Les chemins sont relatifs au BFF. Les proxies web conservent méthode, paramètr
 | Méthode | Route | Réponse / schéma |
 | --- | --- | --- |
 | GET | `/health` | 200 OK |
-| GET | `/check_apis` | 200 CheckApiResponse |
+| GET | `/check_apis` | 200/502 CheckApisResponse |
 | PATCH | `/projects/{projectId}/close` | 200 Projet clôturé ou suspendu |
 | POST | `/projects` | 201 Projet créé |
 | POST | `/projects/{projectId}/tasks` | 201 Tâche créée avec succès |

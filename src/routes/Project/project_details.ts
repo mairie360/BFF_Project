@@ -1,17 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
-import {
-  buildProjectDtoForUser,
-  buildTaskDtoForUser,
-  handleUnknownError,
-  parseProjectId,
-  sendValidationError,
-} from './project_helpers';
+import { parseRequest } from '@mairie360/bffs-lib';
+import { buildProjectDtoForUser, buildTaskDtoForUser, requireProjectIdParam } from './project_helpers';
 import { requireProjectView } from './project_access';
+import { getProjectUserContext } from '../../auth/project-user';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
-// Error statuses of the contract; sendRouteError answers 502 for any other upstream 4xx.
+// Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
@@ -47,38 +44,19 @@ registry.registerPath({
 });
 
 router.get('/:projectId', async (req: Request, res: Response) => {
-  const paramsResult = ProjectIdParams.safeParse(req.params);
+  const params = parseRequest(ProjectIdParams, req.params, 'params');
+  const projectId = requireProjectIdParam(params.projectId);
+  const caller = callerOf(req, ERROR_STATUSES);
 
-  if (!paramsResult.success) {
-    return sendValidationError(res, 'params', paramsResult.error.issues);
-  }
+  const { user, bundle } = await requireProjectView(caller, getProjectUserContext(res), projectId);
+  const taskItems = bundle.tasks
+    .map((task) => buildTaskDtoForUser(user, task, bundle.users))
+    .filter((task) => task.permissions.canView);
 
-  const projectId = parseProjectId(paramsResult.data.projectId);
-
-  if (projectId === null) {
-    return sendValidationError(res, 'params', [
-      {
-        path: ['projectId'],
-        message: 'projectId must be a project-<id> identifier',
-      },
-    ]);
-  }
-
-  try {
-    const access = await requireProjectView(res, projectId);
-    if (!access) return;
-    const { user, bundle } = access;
-    const taskItems = (await Promise.all(
-      bundle.tasks.map(async (task) => buildTaskDtoForUser(user, projectId, task, bundle.users)),
-    )).filter((task) => task.permissions.canView);
-
-    return res.status(200).json({
-      project: await buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-      taskItems,
-    });
-  } catch (error) {
-    return handleUnknownError(res, error, ERROR_STATUSES);
-  }
+  res.status(200).json({
+    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    taskItems,
+  });
 });
 
 export default router;
