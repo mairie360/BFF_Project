@@ -14,7 +14,7 @@ import {
 import { parseRequest } from '@mairie360/bffs-lib';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { appendTaskHistory, callerOf, updateProjectRecord } from '../../services/projectData';
+import { callerOf, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
@@ -95,11 +95,7 @@ router.post('/', async (req: Request, res: Response) => {
       );
     }
 
-    const created = await fetchProjectBundle(caller, projectId);
-    await Promise.all(created.tasks.map((task) =>
-      appendTaskHistory(caller, projectId, task.id, 'task_created', `Tâche « ${task.title} » créée.`),
-    ));
-    return created;
+    return fetchProjectBundle(caller, projectId);
   });
 
   // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and

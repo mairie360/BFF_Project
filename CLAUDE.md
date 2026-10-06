@@ -88,14 +88,17 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
   `project_helpers.ts` use it too.
 - `getProjectBundle(caller, projectId)` → `GET /api/v1/projects/{id}/` (project + tasks + members); Project API
   computes visibility, so a project the caller may not see gives a 404, which the service maps to `null`.
+- Project API lists are paginated (`limit`/`offset`, 100 by default, 500 max, with a `total`): `readAllPages`
+  asks for pages of 500 and reads until every total is reached, so callers always get complete lists. The bundle
+  pages its tasks and, past the 100 embedded members, reads them from `GET …/users/` (`listProjectUsers`).
 - `listVisibleProjects(caller)`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
-  `addTaskComment`, `appendTaskHistory` → the matching Project API operations.
+  `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
+  trigger, MAIR-393): the BFF never writes it.
 - `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
   rights from the role and a bundle already read by the guards.
 
-Project API **0.5.0** is the minimum: it is the release that publishes GET project, PATCH project,
-PATCH task and the collaboration routes the BFF needs.
+Project API **1.0.0** is the minimum: paginated lists with totals, and no history endpoint.
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
 

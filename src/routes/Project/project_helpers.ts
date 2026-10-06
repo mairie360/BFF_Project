@@ -25,6 +25,7 @@ import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
+  listProjectUsers,
   projectCall,
   type Caller,
   type ProjectPermissions,
@@ -159,9 +160,7 @@ export function requireTaskParams(params: { projectId: string; taskId: string })
 }
 
 export async function fetchProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
-  const result = (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, options), true)).data;
-
-  return result.users;
+  return listProjectUsers(caller, projectId);
 }
 
 export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<{

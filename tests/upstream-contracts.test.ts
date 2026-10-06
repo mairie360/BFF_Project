@@ -40,7 +40,6 @@ const CONSUMED = [
   { contract: projectApi, operationId: 'patchTask', method: 'patch', url: projectApiUrls.getPatchTaskUrl(4, 2) },
   { contract: projectApi, operationId: 'getTaskCollaboration', method: 'get', url: projectApiUrls.getGetTaskCollaborationUrl(4, 2) },
   { contract: projectApi, operationId: 'addTaskComment', method: 'post', url: projectApiUrls.getAddTaskCommentUrl(4, 2) },
-  { contract: projectApi, operationId: 'appendTaskHistory', method: 'post', url: projectApiUrls.getAppendTaskHistoryUrl(4, 2) },
   { contract: projectApi, operationId: 'getProjectUsers', method: 'get', url: projectApiUrls.getGetProjectUsersUrl(4) },
   { contract: projectApi, operationId: 'addUserToProject', method: 'post', url: projectApiUrls.getAddUserToProjectUrl(4) },
   { contract: projectApi, operationId: 'removeUserFromProject', method: 'delete', url: projectApiUrls.getRemoveUserFromProjectUrl(4, 2) },
@@ -85,13 +84,14 @@ describe('upstream contracts from the installed @mairie360 OpenAPI packages', ()
   });
 
   test('Project API publishes everything the BFF used to read from PostgreSQL', () => {
-    // Lecture d'un projet, modification d'une tâche, commentaires et historique : plus aucune requête SQL côté BFF.
+    // Reading a project, patching a task, comments and history: no SQL query left on the BFF side. Lists are
+    // paginated (MAIR-425): the BFF reads every page until it reaches the totals.
     const bundle = projectApi.match('GET', projectApiUrls.getGetProjectUrl(1))!;
-    expect(projectApi.schema('GetProjectResultView')).toMatchObject({ required: ['project', 'tasks', 'users'] });
+    expect(projectApi.schema('GetProjectResultView')).toMatchObject({ required: expect.arrayContaining(['project', 'tasks', 'tasks_total', 'users', 'users_total']) });
     expect(projectApi.responseSchema(bundle, 200).schema).toEqual({ $ref: '#/components/schemas/GetProjectResultView' });
     expect(projectApi.requestBodySchema(projectApi.match('PATCH', projectApiUrls.getPatchTaskUrl(1, 2))!))
       .toEqual({ required: true, schema: { $ref: '#/components/schemas/PatchTaskView' } });
-    expect(projectApi.schema('TaskCollaborationView')).toMatchObject({ required: ['comments', 'history'] });
+    expect(projectApi.schema('TaskCollaborationView')).toMatchObject({ required: expect.arrayContaining(['comments', 'comments_total', 'history', 'history_total']) });
   });
 });
 
@@ -99,7 +99,7 @@ describe('fixtures conform to the upstream contracts', () => {
   test.each([
     ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projetView(1), projetView(2, { status: 'Suspended' })])],
     ['Project API createProject 200', projectApi, 'post', projectApiUrls.getCreateProjectUrl(), createProjectResult(12)],
-    ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })] }],
+    ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })], total: 2 }],
     ['Project API createTask 200', projectApi, 'post', projectApiUrls.getCreateTaskUrl(1), createTaskResult(7, 'Tâche 7')],
     ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1 }, { id: 2 }])],
     ['Project API getProject 200', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1), [taskView(1)], [agents.alice])],

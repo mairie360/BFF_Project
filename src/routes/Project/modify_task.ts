@@ -10,7 +10,7 @@ import {
 } from './project_helpers';
 import { requireAssignableUsers, requireTaskManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { appendTaskHistory, callerOf } from '../../services/projectData';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
@@ -72,7 +72,7 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
     const { projectId, taskId } = requireTaskParams(params);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user, task } = await requireTaskManagement(caller, getProjectUserContext(res), projectId, taskId);
+    const { user } = await requireTaskManagement(caller, getProjectUserContext(res), projectId, taskId);
     await requireAssignableUsers(caller, user, [
         ...(body.responsibleId ? [body.responsibleId] : []),
         ...(body.assigneeIds ?? []),
@@ -81,14 +81,6 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
     if (Object.keys(backendPayload).length > 0) {
         await patchTaskOnApi(caller, projectId, taskId, backendPayload);
     }
-    await appendTaskHistory(
-        caller,
-        projectId,
-        taskId,
-        'task_updated',
-        `Tâche « ${body.title ?? task.title} » modifiée.`,
-        body,
-    );
 
     const updatedBundle = await fetchProjectBundle(caller, projectId);
     const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);

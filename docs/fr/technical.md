@@ -10,7 +10,7 @@ Serveur Express 5.2.1 écrit en TypeScript. Les schémas Zod et leur registre Op
 
 ## Données et persistance
 
-Le BFF ne possède aucune base. Visibilité, membres, projets, tâches et collaboration (commentaires et historique) sont lus et écrits via le contrat OpenAPI de Project API 0.5.0, et l’annuaire des personnes assignables vient de Core API (`GET /api/v1/user/`). Project API calcule elle-même la visibilité : un projet inaccessible à l’appelant répond 404.
+Le BFF ne possède aucune base. Visibilité, membres, projets, tâches et collaboration (commentaires et historique) sont lus et écrits via le contrat OpenAPI de Project API 1.0.0, et l’annuaire des personnes assignables vient de Core API (`GET /api/v1/user/`). Project API calcule elle-même la visibilité : un projet inaccessible à l’appelant répond 404. Ses listes sont paginées (100 éléments par défaut) : le BFF demande des pages de 500 et lit toutes les pages jusqu’au `total` renvoyé par Project API (projets, tâches et membres d’un projet, commentaires et historique d’une tâche). Project API écrit elle-même l’historique des tâches, le BFF ne l’écrit donc jamais.
 
 Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches.
 
