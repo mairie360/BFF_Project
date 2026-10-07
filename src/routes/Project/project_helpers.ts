@@ -1,4 +1,4 @@
-import { HttpError, validationError } from "@mairie360/bffs-lib";
+import { HttpError, upstreamStatus, validationError } from "@mairie360/bffs-lib";
 import { z } from "zod";
 import { projectApi } from "../../clients/projectClient";
 import type {
@@ -246,7 +246,10 @@ export async function withCreatedProjectRollback<T>(caller: Caller, projectId: n
     try {
       await deleteProjectOnApi(caller, projectId);
     } catch (rollbackError) {
-      console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, rollbackError);
+      // The id and the status only: the error of the call holds the caller's token and bodies (MAIR-290).
+      console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, {
+        status: upstreamStatus(rollbackError) ?? "no answer",
+      });
     }
     throw error;
   }
