@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { inspect } from 'node:util';
 import type { Express } from 'express';
 import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
@@ -838,7 +839,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
     test('POST /projects/:id/duplicate deletes the duplicate when a later step fails', async () => {
       signIn(admin);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const logged = jest.spyOn(console, 'error').mockImplementation(() => undefined);
       mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
       projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
@@ -847,6 +848,13 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
+      // The failed rollback is logged by the project id and the status, never with the axios error, which holds
+      // the caller's token and the request and response bodies (MAIR-290).
+      expect(logged).toHaveBeenCalledWith('[BFF Project] Could not delete the partially created project 12', { status: 502 });
+      const rollbackLogs = logged.mock.calls.filter(([message]) => String(message).includes('Could not delete'));
+      const output = rollbackLogs.map((args) => inspect(args, { depth: 10 })).join('\n');
+      expect(output).not.toContain(bearer(admin.id).slice('Bearer '.length));
+      expect(output).not.toContain('still down');
     });
 
     test('the access guards read the project bundle once per request', async () => {
