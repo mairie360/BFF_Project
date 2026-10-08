@@ -849,10 +849,10 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.status).toBe(502);
       expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
       // The failed rollback is logged by the project id and the status, never with the axios error, which holds
-      // the caller's token and the request and response bodies (MAIR-290).
+      // the caller's token and the request and response bodies (MAIR-290). Every console.error call is checked,
+      // the default error handler of @mairie360/bffs-lib (>= 1.2.1) included.
       expect(logged).toHaveBeenCalledWith('[BFF Project] Could not delete the partially created project 12', { status: 502 });
-      const rollbackLogs = logged.mock.calls.filter(([message]) => String(message).includes('Could not delete'));
-      const output = rollbackLogs.map((args) => inspect(args, { depth: 10 })).join('\n');
+      const output = logged.mock.calls.map((args) => inspect(args, { depth: 10 })).join('\n');
       expect(output).not.toContain(bearer(admin.id).slice('Bearer '.length));
       expect(output).not.toContain('still down');
     });
