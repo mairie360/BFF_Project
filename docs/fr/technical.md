@@ -61,6 +61,8 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 | `USER_BFF_URL` / `USER_BFF_PORT` | http://localhost:4000 / — | Service de session, route `/me` et sonde de `/check_apis`. Obligatoire. |
 | `PROJECT_API_URL` / `PROJECT_API_PORT` | http://localhost:3001 / — | Project API, pour les appels et la sonde de `/check_apis`. Obligatoire. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Core API (annuaire et sonde de `/check_apis`). Obligatoire. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | non défini (télémétrie désactivée) | Collecteur OpenTelemetry de l’instance, par ex. `http://otel-collector:4318` : les traces et les métriques HTTP y sont exportées en OTLP (MAIR-504). Seuls la méthode, le statut, la route paramétrée et l’hôte appelé sortent du BFF, jamais une URL, une query string, un en-tête, un identifiant ou une IP. |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `bff-project` ; non défini | Remplacent le nom du service ; attributs de ressource supplémentaires comme `service.version=<tag de l’image>,deployment.environment.name=prod`. `OTEL_SDK_DISABLED=true` désactive la télémétrie. |
 
 Chaque `<SERVICE>_URL` est un hôte ou une URL (schéma facultatif, `http` par défaut) ; `<SERVICE>_PORT` ne s’applique que si l’URL ne porte pas de port (`http://project-api:3001`, comme le chart Helm le définit, garde 3001). Ces variables sont obligatoires : le démarrage échoue sans elles, et une requête qui devrait joindre un service non configuré répond 503. `PROJECT_API_BASE_PATH` n’existe plus : utiliser `PROJECT_API_URL`.
 
