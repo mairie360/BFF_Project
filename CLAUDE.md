@@ -172,6 +172,13 @@ come back in the top-level `taskItems`), POST handlers create the disposable res
 handlers remove, and `cleanup()` deletes the working project and its duplicate. Every operation
 gets a `p(95)` threshold from its family (`budgetOf`).
 
+### Telemetry (MAIR-504)
+
+`src/telemetry.ts` calls the lib's `startTelemetry` and is imported by `src/index.ts` right after `dotenv/config`,
+before the app: the Express instrumentation only hooks Express if it is not loaded yet (Express stays external in
+the esbuild bundle). Off without `OTEL_EXPORTER_OTLP_ENDPOINT`; the lib exports only an attribute allowlist, so
+never add span attributes holding request values (ids, URLs, bodies, headers). Tests export nothing.
+
 ## Tests
 
 Tests with contract-driven upstream mocks: the suites import the **whole app** (`src/app.ts`) with the real `project-user.ts`/axios and serve upstreams from

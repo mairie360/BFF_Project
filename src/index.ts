@@ -1,4 +1,6 @@
 import 'dotenv/config';
+// Before the app: OpenTelemetry must hook Express before it is loaded (MAIR-504).
+import './telemetry';
 import { assertConfigured } from '@mairie360/bffs-lib';
 import app from './app';
 

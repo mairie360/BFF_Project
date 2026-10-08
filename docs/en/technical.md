@@ -61,6 +61,8 @@ Values below are local examples or explicitly described behavior, not production
 | `USER_BFF_URL` / `USER_BFF_PORT` | http://localhost:4000 / — | Session service, `/me` route and `/check_apis` probe. Required. |
 | `PROJECT_API_URL` / `PROJECT_API_PORT` | http://localhost:3001 / — | Project API, for the calls and the `/check_apis` probe. Required. |
 | `CORE_API_URL` / `CORE_API_PORT` | localhost / 3000 | Core API (directory and `/check_apis` probe). Required. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset (telemetry off) | OpenTelemetry collector of the instance, e.g. `http://otel-collector:4318`: traces and HTTP metrics are exported over OTLP (MAIR-504). Only the method, status, parameterised route and upstream host leave the BFF, never a URL, query string, header, id or IP. |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `bff-project`; unset | Override the service name; extra resource attributes such as `service.version=<image tag>,deployment.environment.name=prod`. `OTEL_SDK_DISABLED=true` turns telemetry off. |
 
 Each `<SERVICE>_URL` is a host or a URL (scheme optional, `http` by default); `<SERVICE>_PORT` only applies when the URL carries no port (`http://project-api:3001`, as the Helm chart sets it, keeps 3001). These variables are required: startup fails without them, and a request that would reach an unconfigured service answers 503. `PROJECT_API_BASE_PATH` no longer exists: use `PROJECT_API_URL`.
 
