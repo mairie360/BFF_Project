@@ -1,0 +1,113 @@
+# GDPR log marker journey (MAIR-290), played by mairie360/CICD tests/gdpr/marker.
+#
+# Projects, tasks, labels and comments are free text: they carry personal data ("call <name> at
+# <phone>"), and so does the project search. The marker's values go there, into query strings
+# and into deliberate errors; the logs of every container of docker-compose-gdpr-marker.yml (the
+# BFF, Project API, Core API, BFF User, Postgres, Redis) are then searched for them (see
+# gdpr_marker_test.sh). A log describes an error by its type and context, never by the value it
+# received.
+version: 1
+target: http://bff-project:4001
+wait: /health
+# The admin JWT of the stack (sub=1, the seeded Admin), the same one the ZAP scan uses.
+env: [ADMIN_JWT]
+steps:
+  - name: create a project naming the marker
+    request:
+      method: POST
+      path: /projects
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json:
+        title: "Move of {{marker.first_name}} {{marker.last_name}}"
+        description: "Reach {{marker.last_name}} at {{marker.phone}} or {{marker.email}}"
+        status: todo
+        priority: high
+        responsibleId: user-1
+        assigneeIds: [user-1]
+        labels: ["{{marker.last_name}}"]
+        dueDate: "2030-12-31T00:00:00Z"
+    expect: [201]
+    capture:
+      project_id: body.project.id
+  - name: create a project with a refused title (deliberate error)
+    request:
+      method: POST
+      path: /projects
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {title: "<{{marker.last_name}}>", description: "{{marker.email}}", status: todo, priority: high, responsibleId: user-1, assigneeIds: [], labels: [], dueDate: "2030-12-31T00:00:00Z"}
+    expect: [400]
+  - name: create a project with a responsible of the wrong form (deliberate error)
+    request:
+      method: POST
+      path: /projects
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {title: "Project {{marker.first_name}}", description: "x", status: todo, priority: high, responsibleId: "{{marker.email}}", assigneeIds: [], labels: [], dueDate: "{{marker.phone}}"}
+    expect: [400]
+  - name: search the projects for the marker (query string)
+    request: {method: GET, path: "/projects-page?q={{marker.last_name}}&view=table&page=1&limit=20", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+  - name: search the projects with a refused status (deliberate error, query string)
+    request: {method: GET, path: "/projects-page?q={{marker.email}}&status={{marker.first_name}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [400]
+  - name: add a task naming the marker
+    request:
+      method: POST
+      path: "/projects/{{project_id}}/tasks"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {title: "Call {{marker.first_name}} at {{marker.phone}}", status: todo, priority: medium, responsibleId: user-1, assigneeIds: [user-1], labels: ["{{marker.email}}"], dueDate: "2030-12-31T00:00:00Z"}
+    expect: [201]
+    capture:
+      task_id: body.id
+  - name: comment the task with the marker
+    request:
+      method: POST
+      path: "/projects/{{project_id}}/tasks/{{task_id}}/comments"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {message: "Done with {{marker.first_name}} {{marker.last_name}}, {{marker.email}}"}
+    expect: [201]
+  - name: comment the task with a refused message (deliberate error)
+    request:
+      method: POST
+      path: "/projects/{{project_id}}/tasks/{{task_id}}/comments"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {message: "<{{marker.phone}}>"}
+    expect: [400]
+  - name: read the task collaboration
+    request: {method: GET, path: "/projects/{{project_id}}/tasks/{{task_id}}/collaboration", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+  - name: update the task with the marker
+    request:
+      method: PATCH
+      path: "/projects/{{project_id}}/tasks/{{task_id}}"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {title: "Call {{marker.last_name}} at {{marker.phone}}"}
+  - name: set an unknown task status (deliberate error)
+    request:
+      method: PATCH
+      path: "/projects/{{project_id}}/tasks/{{task_id}}/status"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {status: "{{marker.last_name}}"}
+    expect: [400]
+  - name: update the project with the marker
+    request:
+      method: PATCH
+      path: "/projects/{{project_id}}"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {description: "New contact {{marker.email}}, {{marker.phone}}"}
+  - name: update a project that does not exist (deliberate error)
+    request:
+      method: PATCH
+      path: /projects/999999
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+      json: {description: "Contact {{marker.email}}"}
+    expect: [400, 404]
+  - name: duplicate the project
+    request: {method: POST, path: "/projects/{{project_id}}/duplicate", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [201]
+  - name: delete the task
+    request: {method: DELETE, path: "/projects/{{project_id}}/tasks/{{task_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [204]
+  - name: delete the project
+    request: {method: DELETE, path: "/projects/{{project_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [204]
+  - name: read the projects with an invalid token (deliberate error)
+    request: {method: GET, path: "/projects-page?view=table", headers: {Authorization: "Bearer {{marker.password}}"}}
+    expect: [401]

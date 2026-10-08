@@ -21,3 +21,7 @@ init-test.sql
 docker-compose*.yml
 *_test.sh
 cicd-repo
+
+# GDPR log marker test (MAIR-290)
+gdpr-report
+gdpr-marker.yaml

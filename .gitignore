@@ -23,3 +23,6 @@ summary.json
 # mairie360/CICD checkout (shared ZAP / k6 test files), cloned by security_test.sh and
 # performance_test.sh, and by the CI jobs.
 cicd-repo/
+
+# GDPR log marker report (gdpr_marker_test.sh, MAIR-290): raw container logs, never committed.
+/gdpr-report/
