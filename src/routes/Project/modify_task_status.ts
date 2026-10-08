@@ -10,7 +10,7 @@ import {
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { appendTaskHistory, callerOf } from '../../services/projectData';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
@@ -72,18 +72,10 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
     const { projectId, taskId } = requireTaskParams(params);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user, task } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
+    const { user } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
     await patchTaskOnApi(caller, projectId, taskId, {
         status: mapTaskStatusToBackend(body.status),
     });
-    await appendTaskHistory(
-        caller,
-        projectId,
-        taskId,
-        'status_changed',
-        `Statut de « ${task.title} » modifié en ${body.status}.`,
-        { status: { from: task.status, to: body.status } },
-    );
 
     const updatedBundle = await fetchProjectBundle(caller, projectId);
     const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);

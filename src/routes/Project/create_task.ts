@@ -10,7 +10,7 @@ import {
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { appendTaskHistory, callerOf } from '../../services/projectData';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
@@ -88,7 +88,6 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         }),
     );
 
-    await appendTaskHistory(caller, projectId, createdTask.task_id, 'task_created', `Tâche « ${body.title} » créée.`);
     const bundle = await fetchProjectBundle(caller, projectId);
     const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
     if (!task) throw new HttpError(404, 'Task not found after creation');

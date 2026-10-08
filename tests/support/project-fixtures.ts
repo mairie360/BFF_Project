@@ -78,7 +78,7 @@ export function projetView(id: number, overrides: Partial<ProjetView> = {}): Pro
   return { id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active, ...overrides };
 }
 
-export const projectsResult = (projects: ProjetView[]): GetProjectsResultView => ({ projects });
+export const projectsResult = (projects: ProjetView[], total = projects.length): GetProjectsResultView => ({ projects, total });
 export const createProjectResult = (project_id: number): CreateProjectResultView => ({ project_id });
 
 export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskView {
@@ -95,18 +95,26 @@ export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskVie
   };
 }
 
-export const createTaskResult = (task_id: number, name = 'Tâche'): CreateTaskResultView => ({ task_id, name, description: null });
+export const createTaskResult = (task_id: number, name = 'Tâche'): CreateTaskResultView => ({ task_id, name, description: '' });
 
 /** Membre d'un projet tel que Project API le renvoie (identifiant et nom). */
 export function member(agent: Agent): ProjectMember {
   return { id: agent.id, name: `${agent.first_name} ${agent.last_name}` };
 }
 
-export const projectUsersResult = (users: ProjectMember[]): GetProjectUsersResultView => ({ users });
+export const projectUsersResult = (users: ProjectMember[], total = users.length): GetProjectUsersResultView => ({ users, total });
 
-/** Corps de `GET /api/v1/projects/{projectId}/` (GetProjectResultView) : projet, tâches et membres. */
-export function projectBundle(project: ProjetView, tasks: TaskView[] = [], users: Agent[] = []): GetProjectResultView {
-  return { project, tasks, users: users.map(member) };
+/**
+ * Body of `GET /api/v1/projects/{projectId}/` (GetProjectResultView): the project, one page of tasks and the
+ * first members. The totals default to a single complete page.
+ */
+export function projectBundle(
+  project: ProjetView,
+  tasks: TaskView[] = [],
+  users: Agent[] = [],
+  totals: { tasks_total?: number; users_total?: number } = {},
+): GetProjectResultView {
+  return { project, tasks, tasks_total: tasks.length, users: users.map(member), users_total: users.length, ...totals };
 }
 
 export function taskComment(overrides: Partial<TaskComment> = {}): TaskComment {
@@ -121,7 +129,13 @@ export function taskHistoryEntry(overrides: Partial<TaskHistoryEntry> = {}): Tas
   };
 }
 
-export const collaboration = (comments: TaskComment[], history: TaskHistoryEntry[]): TaskCollaborationView => ({ comments, history });
+export const collaboration = (
+  comments: TaskComment[],
+  history: TaskHistoryEntry[],
+  totals: { comments_total?: number; history_total?: number } = {},
+): TaskCollaborationView => ({
+  comments, comments_total: comments.length, history, history_total: history.length, ...totals,
+});
 
 // --- Core API (@mairie360/core-api-openapi), annuaire ---
 

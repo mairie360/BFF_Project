@@ -1,5 +1,5 @@
-import type { ProjetView, TaskView, User } from '@mairie360/project-api-openapi/model';
-import { HttpError, asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
+import type { ProjetView, TaskCollaborationView, TaskView, User } from '@mairie360/project-api-openapi/model';
+import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
 import { projectApi } from '../clients/projectClient';
@@ -73,23 +73,71 @@ export type ProjectBundle = {
   users: User[];
 };
 
+/** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
+const PAGE_SIZE = 500;
+
+type PageParams = { limit: number; offset: number };
+type PageCount = { read: number; total: number };
+
+/**
+ * Every page of a Project API list, from offset 0 until each of its lists (`count`) reached its `total`. A page
+ * that brings no item ends the loop, so a `total` that shrinks while paging cannot make it spin.
+ */
+async function readAllPages<P>(fetchPage: (params: PageParams) => Promise<P>, count: (page: P) => PageCount[]): Promise<P[]> {
+  const pages: P[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await fetchPage({ limit: PAGE_SIZE, offset });
+    pages.push(page);
+    const counts = count(page);
+    const read = Math.max(0, ...counts.map((c) => c.read));
+    offset += read;
+    if (read === 0 || counts.every((c) => offset >= c.total)) return pages;
+  }
+}
+
 /** Project visible to the caller, or `null` when it does not exist or is not visible to them (404). */
 export async function getProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle | null> {
-  const data = await projectCall(caller, async (options) => {
+  const fetchPage = (params: PageParams) => projectCall(caller, async (options) => {
     try {
-      return (await projectApi.getProject(projectId, options)).data;
+      return (await projectApi.getProject(projectId, params, options)).data;
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 404) return null;
       throw error;
     }
   }, true);
-  return data && { project: data.project, tasks: data.tasks, users: data.users };
+
+  const first = await fetchPage({ limit: PAGE_SIZE, offset: 0 });
+  if (!first) return null;
+
+  // GET /projects/{id} pages the tasks only; it embeds the first 100 members, the others come from GET …/users/.
+  const tasks = [...first.tasks];
+  while (first.tasks.length > 0 && tasks.length < first.tasks_total) {
+    const page = await fetchPage({ limit: PAGE_SIZE, offset: tasks.length });
+    if (!page || page.tasks.length === 0) break;
+    tasks.push(...page.tasks);
+  }
+  const users = first.users.length < first.users_total ? await listProjectUsers(caller, projectId) : first.users;
+
+  return { project: first.project, tasks, users };
 }
 
 /** Projects visible to the caller (Project API applies the visibility rules). */
 export async function listVisibleProjects(caller: Caller): Promise<ProjetView[]> {
-  const { data } = await projectCall(caller, (options) => projectApi.getProjects(options), true);
-  return data.projects;
+  const pages = await readAllPages(
+    async (params) => (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data,
+    (page) => [{ read: page.projects.length, total: page.total }],
+  );
+  return pages.flatMap((page) => page.projects);
+}
+
+/** Every member of a project. */
+export async function listProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
+  const pages = await readAllPages(
+    async (params) => (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, params, options), true)).data,
+    (page) => [{ read: page.users.length, total: page.total }],
+  );
+  return pages.flatMap((page) => page.users);
 }
 
 /** Rights on a project the caller can see (`visible`): managing it needs a manager role. */
@@ -188,40 +236,30 @@ function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed
   return 'Active';
 }
 
-/** Comments and history of a task, as Project API assembles them. */
-export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number) {
-  const { data } = await projectCall(caller, (options) => projectApi.getTaskCollaboration(projectId, taskId, options), true);
-  return data;
+/** Comments and history of a task, as Project API assembles them (every page of both lists). */
+export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number): Promise<TaskCollaborationView> {
+  const pages = await readAllPages(
+    async (params) => (await projectCall(
+      caller,
+      (options) => projectApi.getTaskCollaboration(projectId, taskId, params, options),
+      true,
+    )).data,
+    (page) => [
+      { read: page.comments.length, total: page.comments_total },
+      { read: page.history.length, total: page.history_total },
+    ],
+  );
+  const last = pages[pages.length - 1];
+  return {
+    comments: pages.flatMap((page) => page.comments),
+    comments_total: last.comments_total,
+    history: pages.flatMap((page) => page.history),
+    history_total: last.history_total,
+  };
 }
 
 /** Adds a comment signed by the caller (Project API reads the author from the forwarded session). */
 export async function addTaskComment(caller: Caller, projectId: number, taskId: number, message: string) {
   const { data } = await projectCall(caller, (options) => projectApi.addTaskComment(projectId, taskId, { message }, options));
   return data;
-}
-
-/**
- * Records an action in the history of the task, signed by the caller.
- *
- * Project API >= MAIR-393 writes the history itself (database trigger) and removed this endpoint: its 404 is
- * expected there and ignored. Drop this call once the BFF moves to the project-api-openapi release of MAIR-393.
- */
-export async function appendTaskHistory(
-  caller: Caller,
-  projectId: number,
-  taskId: number,
-  action: string,
-  label: string,
-  changes?: Record<string, unknown>,
-): Promise<void> {
-  try {
-    await projectCall({ ...caller, declared: [...caller.declared, 404] }, (options) => projectApi.appendTaskHistory(projectId, taskId, {
-      action,
-      label,
-      ...(changes ? { changes } : {}),
-    }, options));
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) return;
-    throw error;
-  }
 }

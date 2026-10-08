@@ -10,7 +10,7 @@ Express 5.2.1 server written in TypeScript. Zod schemas and their OpenAPI regist
 
 ## Data and persistence
 
-The BFF owns no database. Visibility, membership, projects, tasks and collaboration (comments and history) are read from and written to Project API 0.5.0 through its OpenAPI contract, and the assignable-user directory comes from Core API (`GET /api/v1/user/`). Project API computes visibility itself: a project the caller may not see answers 404.
+The BFF owns no database. Visibility, membership, projects, tasks and collaboration (comments and history) are read from and written to Project API 1.0.0 through its OpenAPI contract, and the assignable-user directory comes from Core API (`GET /api/v1/user/`). Project API computes visibility itself: a project the caller may not see answers 404. Its lists are paginated (100 items by default): the BFF asks for pages of 500 and reads every page until the `total` Project API returns (projects, project tasks and members, task comments and history). Project API records the task history itself, so the BFF never writes it.
 
 Public identifiers and statuses are normalized by helpers, while some project fields are derived from tasks.
 
