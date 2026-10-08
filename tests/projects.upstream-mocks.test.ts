@@ -124,6 +124,11 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
   projectApi.on('post', PROJECT.users, { status: 200 });
   projectApi.on('delete', PROJECT.user, { status: 204 });
   projectApi.on('post', PROJECT.tasks, { body: createTaskResult(createdTaskId) });
+  // GET …/tasks/{taskId}/: the task alone, 404 when the project or the task is unknown (MAIR-474).
+  projectApi.on('get', PROJECT.task, ({ pathParams }) => {
+    const task = bundles[Number(pathParams.projectId)]?.tasks.find((entry) => entry.id === Number(pathParams.taskId));
+    return task ? { body: task } : textError(404, 'Unknown task.');
+  });
   projectApi.on('patch', PROJECT.task, { status: 204 });
   projectApi.on('delete', PROJECT.task, { status: 204 });
 }
@@ -744,7 +749,9 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       signIn(admin);
       mockProjectApi();
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      // The project guards read the project, the task guards the task alone (MAIR-474).
       projectApi.on('get', PROJECT.project, textError(500, 'An error occurred while accessing the database.'));
+      projectApi.on('get', PROJECT.task, textError(500, 'An error occurred while accessing the database.'));
 
       const call = as(request(app)[method](url), admin);
       const response = await (body === undefined ? call : call.send(body));
@@ -935,7 +942,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
     });
 
-    test('the access guards read the project bundle once per request', async () => {
+    test('the access guards read the project bundle once per request, and a task guard only the task', async () => {
       signIn(admin);
       mockProjectApi({ createdProjectId: 12, bundles: {
         1: projectBundle(projetView(1), [taskView(2)], [admin]),
@@ -951,10 +958,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const duplicate = reads() - details - update;
       await as(request(app).delete('/projects/project-1/tasks/task-2'), admin);
       const deleteTask = reads() - details - update - duplicate;
+      await as(request(app).patch('/projects/project-1/tasks/task-2/status'), admin).send({ status: 'done' });
+      const statusUpdate = reads() - details - update - duplicate - deleteTask;
 
-      // details: guard only; update: guard + re-read; duplicate: guard + re-read of the copy; delete: guard only.
-      expect({ details, update, duplicate, deleteTask }).toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 1 });
-      expect(userBff.calls(USER_BFF.me, 'get')).toHaveLength(4);
+      // details: guard only; update: guard + re-read; duplicate: guard + re-read of the copy; the task routes read
+      // the task alone (MAIR-474), never the project with every task.
+      expect({ details, update, duplicate, deleteTask, statusUpdate })
+        .toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 0, statusUpdate: 0 });
+      // delete: guard; status: guard + re-read of the task.
+      expect(projectApi.calls(PROJECT.task, 'GET')).toHaveLength(3);
+      expect(userBff.calls(USER_BFF.me, 'get')).toHaveLength(5);
     });
 
     test.each([

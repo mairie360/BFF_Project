@@ -101,8 +101,12 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
   `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
   trigger, MAIR-393): the BFF never writes it.
 - `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
+- `getProjectTask(caller, projectId, taskId)` → `GET /api/v1/projects/{id}/tasks/{taskId}/` (MAIR-474): the task
+  guards (`project_access.ts`: view, management, status update, comment) read the task alone, never the bundle
+  with every task of the project, and the task writes answer from `getTaskWithMembers` (the task + the members
+  that name its assignee, in parallel). The project guards still read the bundle.
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
-  rights from the role and a bundle already read by the guards.
+  rights from the role and the bundle or task already read by the guards.
 
 Project API **1.0.0** is the minimum: paginated lists with totals, and no history endpoint.
 

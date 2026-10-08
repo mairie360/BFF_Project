@@ -144,6 +144,31 @@ export async function listProjectsPage(caller: Caller, params: GetProjectsParams
   return (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data;
 }
 
+/**
+ * One task of a project visible to the caller, or `null` when the project is not visible or the task is not one of
+ * its tasks (404). One call, whatever the number of tasks of the project (MAIR-474).
+ */
+export async function getProjectTask(caller: Caller, projectId: number, taskId: number): Promise<TaskView | null> {
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getTask(projectId, taskId, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
+}
+
+/** A task of a project and every member of the project (to name its assignee), read in parallel. */
+export async function getTaskWithMembers(
+  caller: Caller,
+  projectId: number,
+  taskId: number,
+): Promise<{ task: TaskView; users: User[] } | null> {
+  const [task, users] = await Promise.all([getProjectTask(caller, projectId, taskId), listProjectUsers(caller, projectId)]);
+  return task ? { task, users } : null;
+}
+
 /** Every member of a project. */
 export async function listProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
   const pages = await readAllPages(
