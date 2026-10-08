@@ -66,11 +66,12 @@ in the environment; `.npmrc` references it. Never commit the value.
 `apiOnlyHeaders()` (strict `default-src 'none'` everywhere but `/docs`), then the session-bound routers
 (`/projects-page`, `/projects*`) get, in order:
 
-1. `noStore` (`Cache-Control: no-store`) and `requireBearer` from `@mairie360/bffs-lib` — 401 before any
-   upstream call without an `Authorization: Bearer <token>` header (the only credential accepted).
+1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
+   401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
+   verified with `JWT_SECRET` (HS256, `exp`, positive `sub`); `src/index.ts` refuses to start without it.
 2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me` through
-   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, falls back to the
-   lib's `unverifiedSubject` (token `sub`, only once BFF User accepted the token) for the user id, and stores a
+   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, takes the user id from the
+   verified token (`sessionUserId`, never from an answer), and stores a
    `ProjectUserContext` on `res.locals.projectUser`. Read it with `getProjectUserContext(res)`.
 
 There is no request-scoped storage: every upstream call receives the request explicitly. Routes build a
@@ -91,7 +92,12 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
 - Project API lists are paginated (`limit`/`offset`, 100 by default, 500 max, with a `total`): `readAllPages`
   asks for pages of 500 and reads until every total is reached, so callers always get complete lists. The bundle
   pages its tasks and, past the 100 embedded members, reads them from `GET …/users/` (`listProjectUsers`).
-- `listVisibleProjects(caller)`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
+- `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
+  filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
+  counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Error`,
+  `in-progress` ↔ `Active`, `review` ↔ `Suspended`, `done` ↔ `Completed`) and priorities (`high` covers `Urgent`,
+  stored `High`); the Kanban columns count every match but list the ids of the page only.
+- `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
   `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
   trigger, MAIR-393): the BFF never writes it.
 - `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
@@ -196,6 +202,10 @@ against `contracts/openapi.json` (status documented + schema).
 - `tests/projects.upstream-mocks.test.ts` — the whole app against Project API, Core API and BFF User
   mocks: session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
+- `tests/token-refusals.test.ts` — walks `contracts/openapi.json`: every operation that inherits `bearerAuth` answers
+  401 to a missing or forged token (other scheme, garbage, other secret, expired, `alg: none`, swapped payload,
+  RS256, non-numeric `sub`) without any upstream call, and gets past the check with a genuine one. The tests sign
+  their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with the secret `tests/support/env.ts` sets.
 - `USER_BFF_URL`, `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.

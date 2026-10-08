@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "9.1.0",
-    "@mairie360/bffs-lib": "1.1.0",
-    "@mairie360/core-api-openapi": "2.0.0",
-    "@mairie360/project-api-openapi": "1.0.0",
+    "@mairie360/bffs-lib": "1.2.0",
+    "@mairie360/core-api-openapi": "0.0.0-dev-73b4577",
+    "@mairie360/project-api-openapi": "file:../.local-packages/mairie360-project-api-openapi-0.0.0-local-mair-474.tgz",
     "axios": "1.20.0",
     "dotenv": "18.0.0",
     "express": "5.2.1",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@mairie360/bff-user-openapi": "0.5.0",
+    "@mairie360/bff-user-openapi": "0.0.0-dev.a416b4ea37f54566260e7b926b920f31799cb91e",
     "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
     "@types/supertest": "7.2.1",

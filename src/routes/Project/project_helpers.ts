@@ -7,6 +7,8 @@ import type {
   CreateTaskResultView,
   CreateTaskView,
   DynamicTaskField,
+  GetProjectsResultView,
+  ProjectListItemView,
   ProjetView,
   TaskPriority as ApiTaskPriority,
   TaskStatus as ApiTaskStatus,
@@ -414,26 +416,6 @@ export function deriveProjectProgress(tasks: TaskView[]): number {
   return Math.round((completed / tasks.length) * 100);
 }
 
-export function deriveProjectStatus(tasks: TaskView[]): BffProjectStatus {
-  if (tasks.length === 0) {
-    return "todo";
-  }
-
-  const completed = tasks.filter(
-    (task) => mapTaskStatus(task.status) === "done",
-  ).length;
-
-  if (completed === tasks.length) {
-    return "done";
-  }
-
-  if (completed > 0) {
-    return "in-progress";
-  }
-
-  return "todo";
-}
-
 export function deriveProjectDueDate(tasks: TaskView[]): string {
   if (tasks.length === 0) {
     return nowIso();
@@ -491,6 +473,80 @@ export function mapProjectToDto(
     },
     permissions,
   };
+}
+
+/**
+ * A project of Project API's list (MAIR-474): its task aggregates (count, completed, highest priority, earliest
+ * due date) and first members come computed, with the same rules as `mapProjectToDto` derives from the tasks.
+ */
+export function mapProjectListItemToDto(
+  project: ProjectListItemView,
+  permissions: ProjectPermissions,
+): BffProjectListItem {
+  const status = mapProjectStatus(project.status);
+  const priority = mapTaskPriority(project.priority);
+  const members = project.members ?? [];
+  const responsible =
+    members.length > 0
+      ? mapPerson(members[0])
+      : mapPerson(null, projectPublicId(project.id), project.name);
+
+  return {
+    id: projectPublicId(project.id),
+    title: project.name,
+    description: project.description,
+    status,
+    statusLabel: mapProjectStatusLabel(status),
+    priority,
+    priorityLabel: mapProjectPriorityLabel(priority),
+    responsible,
+    // The first members only: the project detail lists them all.
+    assignees: members.length > 0 ? members.map((member) => mapPerson(member)) : [responsible],
+    labels: [],
+    progress: project.tasks_total > 0 ? Math.round((project.tasks_completed / project.tasks_total) * 100) : 0,
+    dueDate: project.due_date ?? nowIso(),
+    // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
+    createdAt: nowIso(),
+    tasks: { total: project.tasks_total, completed: project.tasks_completed },
+    permissions,
+  };
+}
+
+/** Summary of the projects page from Project API's counts over every matching project. */
+export function summaryFromCounts(result: GetProjectsResultView): {
+  totalProjects: number;
+  projectsByStatus: Record<BffProjectStatus, number>;
+  projectsByPriority: Record<BffProjectPriority, number>;
+} {
+  const { by_status: status, by_priority: priority } = result.summary;
+  return {
+    totalProjects: result.total,
+    // Same mapping as `mapProjectStatus`: a status Project API does not interpret (`Error`) is `todo`.
+    projectsByStatus: {
+      todo: status.other,
+      "in-progress": status.active,
+      review: status.suspended,
+      done: status.completed,
+    },
+    projectsByPriority: { high: priority.high, medium: priority.medium, low: priority.low },
+  };
+}
+
+/**
+ * Kanban columns of the page: every column counts all the matching projects of its status (`count`), and lists
+ * the ids of the projects of the current page in it (`projectIds`), the only ones the front holds.
+ */
+export function kanbanColumnsOfPage(
+  projects: BffProjectListItem[],
+  counts: Record<BffProjectStatus, number>,
+): Array<{ status: BffProjectStatus; label: string; projectIds: string[]; count: number }> {
+  const statuses: BffProjectStatus[] = ["todo", "in-progress", "review", "done"];
+  return statuses.map((status) => ({
+    status,
+    label: projectStatusLabelMap[status],
+    projectIds: projects.filter((project) => project.status === status).map((project) => project.id),
+    count: counts[status],
+  }));
 }
 
 export function mapTaskToDto(
@@ -614,76 +670,6 @@ export function collectMembers(usersByProject: User[][]): Array<{
   }
 
   return members;
-}
-
-export function defaultProjectSummary(projects: BffProjectListItem[]): {
-  totalProjects: number;
-  projectsByStatus: Record<string, number>;
-  projectsByPriority: Record<string, number>;
-} {
-  const projectsByStatus: Record<string, number> = {
-    todo: 0,
-    "in-progress": 0,
-    review: 0,
-    done: 0,
-  };
-
-  const projectsByPriority: Record<string, number> = {
-    high: 0,
-    medium: 0,
-    low: 0,
-  };
-
-  for (const project of projects) {
-    projectsByStatus[project.status] =
-      (projectsByStatus[project.status] ?? 0) + 1;
-    projectsByPriority[project.priority] =
-      (projectsByPriority[project.priority] ?? 0) + 1;
-  }
-
-  return {
-    totalProjects: projects.length,
-    projectsByStatus,
-    projectsByPriority,
-  };
-}
-
-export function buildKanbanColumns(projects: BffProjectListItem[]): Array<{
-  status: BffProjectStatus;
-  label: string;
-  projectIds: string[];
-  count: number;
-}> {
-  const statuses: BffProjectStatus[] = [
-    "todo",
-    "in-progress",
-    "review",
-    "done",
-  ];
-
-  return statuses.map((status) => {
-    const projectsForStatus = projects.filter(
-      (project) => project.status === status,
-    );
-
-    return {
-      status,
-      label: projectStatusLabelMap[status],
-      projectIds: projectsForStatus.map((project) => project.id),
-      count: projectsForStatus.length,
-    };
-  });
-}
-
-export function paginateProjects(
-  projects: BffProjectListItem[],
-  page: number,
-  limit: number,
-): BffProjectListItem[] {
-  const currentPage = Math.max(page, 1);
-  const currentLimit = Math.max(limit, 1);
-  const start = (currentPage - 1) * currentLimit;
-  return projects.slice(start, start + currentLimit);
 }
 
 export function buildPagination(

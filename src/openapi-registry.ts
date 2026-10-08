@@ -57,7 +57,9 @@ export const ProjectListItem = z.object({
     priority: ProjectPriority,
     priorityLabel: z.string().openapi({ description: 'Le libellé de la priorité du projet', example: 'Haute' }),
     responsible: Person,
-    assignees: z.array(Person).openapi({ description: 'La liste des personnes assignées au projet' }),
+    assignees: z.array(Person).openapi({
+      description: 'Members of the project; in the projects page, its first 5 members only (the project detail lists them all)',
+    }),
     labels: z.array(z.string()).openapi({ description: 'La liste des étiquettes associées au projet', example: ['frontend', 'urgent'] }),
     progress: z.number().min(0).max(100).openapi({ description: 'Le pourcentage d\'avancement du projet', example: 75 }),
     dueDate: z.string().openapi({ description: 'La date d\'échéance du projet au format ISO 8601', example: '2024-12-31T23:59:59Z' }),
@@ -156,7 +158,7 @@ export const DeletedTaskParams = ProjectTaskParams.extend({
 const DateFilter = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Expected a date');
 
 export const ProjectsPageQuery = z.object({
-  q: z.string().optional().openapi({ example: 'scan' }),
+  q: z.string().max(255).optional().openapi({ description: 'Case-insensitive text searched in the name and the description', example: 'scan' }),
 
   status: z
     .enum(['all', 'todo', 'in-progress', 'review', 'done'])
@@ -412,8 +414,10 @@ export const ProjectsPageResponse = z.object({
       z.object({
         status: ProjectStatus,
         label: z.string(),
-        projectIds: z.array(z.string()),
-        count: z.number(),
+        projectIds: z.array(z.string()).openapi({
+          description: 'Ids of the projects of the current page in this column (the only ones the response holds)',
+        }),
+        count: z.number().openapi({ description: 'Number of matching projects in this column, every page included' }),
       }),
     ),
   }),

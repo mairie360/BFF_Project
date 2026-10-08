@@ -1,4 +1,6 @@
-import type { ProjetView, TaskCollaborationView, TaskView, User } from '@mairie360/project-api-openapi/model';
+import type {
+  GetProjectsParams, GetProjectsResultView, ProjetView, TaskCollaborationView, TaskView, User,
+} from '@mairie360/project-api-openapi/model';
 import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
@@ -111,24 +113,35 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
   if (!first) return null;
 
   // GET /projects/{id} pages the tasks only; it embeds the first 100 members, the others come from GET …/users/.
+  // Once the first page gives the totals, the other task pages and the members are read in parallel (MAIR-474: the
+  // 2 000 tasks of a large project took four sequential calls).
+  // The pages step by the size Project API actually served, whatever limit it applied.
+  const served = first.tasks.length;
+  const offsets: number[] = [];
+  if (served > 0) {
+    for (let offset = served; offset < first.tasks_total; offset += served) offsets.push(offset);
+  }
+  const [pages, users] = await Promise.all([
+    Promise.all(offsets.map((offset) => fetchPage({ limit: PAGE_SIZE, offset }))),
+    first.users.length < first.users_total ? listProjectUsers(caller, projectId) : Promise.resolve(first.users),
+  ]);
+  // A project deleted between two pages ends the list where it stopped.
   const tasks = [...first.tasks];
-  while (first.tasks.length > 0 && tasks.length < first.tasks_total) {
-    const page = await fetchPage({ limit: PAGE_SIZE, offset: tasks.length });
+  for (const page of pages) {
     if (!page || page.tasks.length === 0) break;
     tasks.push(...page.tasks);
   }
-  const users = first.users.length < first.users_total ? await listProjectUsers(caller, projectId) : first.users;
 
   return { project: first.project, tasks, users };
 }
 
-/** Projects visible to the caller (Project API applies the visibility rules). */
-export async function listVisibleProjects(caller: Caller): Promise<ProjetView[]> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data,
-    (page) => [{ read: page.projects.length, total: page.total }],
-  );
-  return pages.flatMap((page) => page.projects);
+/**
+ * One page of the projects visible to the caller that match `params`, with the aggregates of their tasks, their
+ * first members and the counts per status and priority of every match (MAIR-474): Project API applies the
+ * visibility rules, the filters and the paging, so a page costs one call whatever the number of projects.
+ */
+export async function listProjectsPage(caller: Caller, params: GetProjectsParams): Promise<GetProjectsResultView> {
+  return (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data;
 }
 
 /** Every member of a project. */

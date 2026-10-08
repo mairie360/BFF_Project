@@ -4,11 +4,11 @@ import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
 import { OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract } from './support/orval-contract';
-import type { GetProjectResultView, ProjetView } from '@mairie360/project-api-openapi/model';
+import type { GetProjectResultView, ProjectListItemView } from '@mairie360/project-api-openapi/model';
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
   agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
-  projectUsersResult, projectsResult, projetView, sessionResponse, taskComment, taskHistoryEntry, taskView, userBffUrls, type Agent,
+  projectListItem, projectUsersResult, projectsResult, projetView, sessionResponse, taskComment, taskHistoryEntry, taskView, userBffUrls, type Agent,
 } from './support/project-fixtures';
 
 // Toute l'application est testée avec les vrais clients orval/axios contre de vrais serveurs HTTP simulant
@@ -103,7 +103,7 @@ const pageOf = (url: URL) => ({ limit: Number(url.searchParams.get('limit') ?? 1
 const textError = (status: number, raw: string): MockReply => ({ status, raw, contentType: 'text/plain', outOfContract: true });
 
 type Scenario = {
-  projects?: ProjetView[];
+  projects?: ProjectListItemView[];
   bundles?: Record<number, GetProjectResultView>;
   createdProjectId?: number;
   createdTaskId?: number;
@@ -254,35 +254,89 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
   });
 
   describe('reads', () => {
-    test('GET /projects-page builds the page from the projects Project API exposes to the caller', async () => {
+    test('GET /projects-page builds the page from one Project API call, with its aggregates and counts', async () => {
       signIn(admin);
-      mockProjectApi({
-        projects: [projetView(1, { name: 'Rénovation de la médiathèque' }), projetView(2, { name: 'Archivage', status: 'Completed' })],
-        bundles: {
-          1: projectBundle(projetView(1, { name: 'Rénovation de la médiathèque' }), [
-            taskView(1, { status: 'Completed', priority: 'High', due_date: '2026-11-01T00:00:00.000Z' }),
-            taskView(2, { priority: 'Low', due_date: '2026-10-15T00:00:00.000Z', assigned_to: alice.id }),
-          ], [alice, marie]),
-          2: projectBundle(projetView(2, { name: 'Archivage', status: 'Completed' }), [taskView(3, { status: 'Completed' })]),
-        },
+      const listed = projectListItem(1, {
+        name: 'Rénovation de la médiathèque', tasks_total: 2, tasks_completed: 1, priority: 'High',
+        due_date: '2026-10-15T00:00:00Z', members: [{ id: alice.id, name: 'Alice Martin' }, { id: marie.id, name: 'Marie Durand' }],
+        members_total: 2,
       });
+      mockProjectApi();
+      projectApi.on('get', PROJECT.projects, { body: projectsResult([listed], 41, {
+        by_status: { active: 30, suspended: 6, completed: 4, other: 1 },
+        by_priority: { low: 5, medium: 10, high: 26 },
+      }) });
 
-      const response = await as(request(app).get('/projects-page?status=in-progress&limit=10&page=1&view=table'), admin);
+      const response = await as(request(app).get('/projects-page?q=%20m%C3%A9diath%C3%A8que%20&status=in-progress&priority=high&dueBefore=2026-12-31&limit=10&page=3&view=table'), admin);
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects-page', response);
       expect(response.body.projects).toEqual([expect.objectContaining({
         id: 'project-1', title: 'Rénovation de la médiathèque', status: 'in-progress', priority: 'high',
-        progress: 50, dueDate: '2026-10-15T00:00:00.000Z',
+        progress: 50, dueDate: '2026-10-15T00:00:00Z',
         responsible: { id: 'user-2', name: 'Alice Martin', avatarUrl: null },
         tasks: { total: 2, completed: 1 },
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
-      expect(response.body.summary.totalProjects).toBe(1);
+      // The counts cover every matching project, the Kanban columns list the ids of the page.
+      expect(response.body.summary).toEqual({
+        totalProjects: 41,
+        projectsByStatus: { todo: 1, 'in-progress': 30, review: 6, done: 4 },
+        projectsByPriority: { high: 26, medium: 10, low: 5 },
+      });
+      expect(response.body.kanban.columns.map(({ status, count, projectIds }: { status: string; count: number; projectIds: string[] }) => [status, count, projectIds]))
+        .toEqual([['todo', 1, []], ['in-progress', 30, ['project-1']], ['review', 6, []], ['done', 4, []]]);
+      expect(response.body.pagination).toEqual({ page: 3, limit: 10, total: 41, hasNextPage: true });
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
-      // The status filter runs on the list: the bundle of the Completed project is never read.
-      expect(upstreamSequence().sort()).toEqual([called('GET', projectApiUrls.getGetProjectsUrl()), called('GET', projectApiUrls.getGetProjectUrl(1))]);
+      // One Project API call carrying the filters and the page: no bundle is read.
+      const [call] = projectApi.calls(PROJECT.projects, 'GET');
+      expect(Object.fromEntries(call.url.searchParams)).toEqual({
+        limit: '10', offset: '20', search: 'médiathèque', status: 'Active', priority: 'High',
+        due_before: '2026-12-31T00:00:00.000Z',
+      });
+      expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+    });
+
+    test.each([
+      ['todo', { status: 'Error' }],
+      ['review', { status: 'Suspended' }],
+      ['done', { status: 'Completed' }],
+    ])('GET /projects-page sends the status %s as Project API\'s', async (status, expected) => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects-page?status=${status}&priority=all`), admin);
+
+      expect(response.status).toBe(200);
+      expect(Object.fromEntries(projectApi.calls(PROJECT.projects, 'GET')[0].url.searchParams)).toEqual({ limit: '10', offset: '0', ...expected });
+    });
+
+    test('GET /projects-page maps a project without task or member like the project detail does', async () => {
+      signIn(admin);
+      mockProjectApi({ projects: [projectListItem(4, { name: 'Vide', status: 'Error' })] });
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects-page', response);
+      const [project] = response.body.projects;
+      expect(project).toMatchObject({ status: 'todo', priority: 'medium', progress: 0, tasks: { total: 0, completed: 0 } });
+      // The project itself stands for the missing responsible.
+      expect(project.responsible).toEqual({ id: 'project-4', name: 'Vide', avatarUrl: null });
+      expect(project.assignees).toEqual([project.responsible]);
+      expect(Number.isNaN(Date.parse(project.dueDate))).toBe(false);
+    });
+
+    test('GET /projects-page refuses a search longer than Project API accepts without calling it', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects-page?q=${'a'.repeat(256)}`), admin);
+
+      expect(response.status).toBe(400);
+      expectBffContract('get', '/projects-page', response);
+      expect(projectApi.requests).toHaveLength(0);
     });
 
     test('GET /projects/:id returns the project an employee may see, with only their tasks', async () => {
@@ -334,33 +388,15 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.body.history[0].action).toBe('status_changed');
     });
 
-    test('GET /projects-page reads every page of the Project API project list', async () => {
-      signIn(admin);
-      const projects = [projetView(1), projetView(2), projetView(3)];
-      mockProjectApi({ bundles: Object.fromEntries(projects.map((project) => [project.id, projectBundle(project, [taskView(project.id)])])) });
-      // Pages of two projects, whatever limit the BFF asks for.
-      projectApi.on('get', PROJECT.projects, ({ url }) => {
-        const { offset } = pageOf(url);
-        return { body: projectsResult(projects.slice(offset, offset + 2), projects.length) };
-      });
-
-      const response = await as(request(app).get('/projects-page'), admin);
-
-      expect(response.status).toBe(200);
-      expectBffContract('get', '/projects-page', response);
-      expect(response.body.projects.map((project: { id: string }) => project.id).sort()).toEqual(['project-1', 'project-2', 'project-3']);
-      expect(projectApi.calls(PROJECT.projects, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
-    });
-
     test('GET /projects/:id reads every page of tasks and every member past the embedded ones', async () => {
       signIn(admin);
-      const tasks = [taskView(1), taskView(2), taskView(3)];
+      const tasks = [taskView(1), taskView(2), taskView(3), taskView(4), taskView(5)];
       const users = [admin, alice, marie];
       mockProjectApi();
       projectApi.on('get', PROJECT.project, ({ url }) => {
         const { offset } = pageOf(url);
         // Two tasks per page, and only the first member embedded.
-        return { body: projectBundle(projetView(1), tasks.slice(offset, offset + 2), users.slice(0, 1), { tasks_total: 3, users_total: 3 }) };
+        return { body: projectBundle(projetView(1), tasks.slice(offset, offset + 2), users.slice(0, 1), { tasks_total: 5, users_total: 3 }) };
       });
       projectApi.on('get', PROJECT.users, ({ url }) => {
         const { offset } = pageOf(url);
@@ -371,8 +407,9 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects/project-1', response);
-      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1', 'task-2', 'task-3']);
-      expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
+      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1', 'task-2', 'task-3', 'task-4', 'task-5']);
+      // The first page gives the totals, the others are read in parallel, stepping by the size served.
+      expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).offset).sort()).toEqual([0, 2, 4]);
       expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
     });
 
@@ -956,7 +993,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       ['CORE_API', () => coreApi.requests],
     ] as const)('answers 503 without any call to %s when its URL is missing (no localhost default)', async (service, received) => {
       signIn(marie);
-      mockProjectApi({ projects: [projetView(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+      mockProjectApi({ projects: [projectListItem(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
       delete process.env[`${service}_URL`];
       delete process.env[`${service}_PORT`];

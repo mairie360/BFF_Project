@@ -46,6 +46,8 @@ const DUE_DATE = '2030-12-31T00:00:00Z';
 
 // Rows of init-perf.sql.
 const AGENTS = { first: 100001, count: 2000 };
+// Projects 1000..5999 of init-perf.sql, all visible to the Admin.
+const SEEDED_PROJECTS = 5000;
 const MANAGERS = { first: 103001, count: 100 };
 // Responsables whose team (agents 100001..100300) belongs to the hot project 12.
 const HOT_MANAGERS = 15;
@@ -217,15 +219,22 @@ const handlers = {
       { 'task status 200': (r) => r.status === 200 },
     ),
   // A third of the calls each as the Admin (any page of the 5 000 projects), a Responsable and an agent.
+  // As the Admin (any of the 250 pages of 20 of the 5 000 seeded projects, or the high-priority projects in
+  // progress matching a search), a Responsable or an agent. Project API filters, pages and counts (MAIR-474):
+  // the summary, the Kanban counts and the pagination must agree.
   'GET /projects-page': ({ request, data }) => {
     const caller = randomInt(3);
-    const res = request({
-      query: { view: 'kanban', page: caller === 0 ? 1 + randomInt(250) : 1, limit: 20 },
-      headers: caller === 0 ? data.admin : caller === 1 ? randomManager() : randomAgent(),
-    });
+    const filtered = caller === 0 && randomInt(2) === 0;
+    const query = filtered
+      ? { view: 'kanban', page: 1, limit: 20, status: 'in-progress', priority: 'high', q: `perf project ${randomInt(50)}` }
+      : { view: 'kanban', page: caller === 0 ? 1 + randomInt(250) : 1, limit: 20 };
+    const res = request({ query, headers: caller === 0 ? data.admin : caller === 1 ? randomManager() : randomAgent() });
     check(res, {
       'projects-page 200': (r) => r.status === 200,
-      'projects-page reads the seed': (r) => r.status === 200 && r.json('projects').length > 0,
+      'projects-page reads the seed': (r) =>
+        r.status === 200 && r.json('projects').length > 0
+        && (caller !== 0 || filtered || r.json('pagination.total') >= SEEDED_PROJECTS),
+      'projects-page counts agree': (r) => r.status === 200 && consistentPage(r.json()),
     });
   },
   // Admin token: user 2 is a member of project-1 but Project API only shows a task's
@@ -345,6 +354,17 @@ export function reads(data) {
   sleep(1);
 }
 
+/** The summary, the Kanban counts and the pagination of a projects page count the same projects. */
+function consistentPage(body) {
+  const sum = (counts) => Object.values(counts || {}).reduce((total, n) => total + n, 0);
+  const total = body.pagination.total;
+  return body.summary.totalProjects === total
+    && sum(body.summary.projectsByStatus) === total
+    && sum(body.summary.projectsByPriority) === total
+    && body.kanban.columns.reduce((count, column) => count + column.count, 0) === total
+    && body.kanban.columns.reduce((count, column) => count + column.projectIds.length, 0) === body.projects.length;
+}
+
 export function pageRush() {
   const res = http.get(coverage.url('GET /projects-page', {}, { view: 'kanban', page: 1, limit: 20 }), {
     headers: randomAgent(),
@@ -353,6 +373,7 @@ export function pageRush() {
   check(res, {
     'page rush 200': (r) => r.status === 200,
     'page rush reads the seed': (r) => r.status === 200 && r.json('projects').length > 0,
+    'page rush counts agree': (r) => r.status === 200 && consistentPage(r.json()),
   });
 }
 

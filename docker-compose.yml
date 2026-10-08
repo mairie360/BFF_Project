@@ -59,7 +59,7 @@ services:
 
   # core:
   #   container_name: core-project-bff-developpement
-  #   image: ghcr.io/mairie360/core-api:2.0.0
+  #   image: ghcr.io/mairie360/core-api:dev-73b4577
   #   ports:
   #     - "3000:3000"
   #   networks:
@@ -148,6 +148,9 @@ services:
       PROJECT_API_URL: "project-api"
       PROJECT_API_PORT: 3001
       USER_BFF_URL: "http://bff-user-developpement:4000"
+      # Same development secret as the APIs and BFF User of the local stacks: the BFF verifies the session
+      # tokens with it (bffs-lib requireSession, MAIR-474) and refuses to start without it.
+      JWT_SECRET: b"secret"
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
     healthcheck:
