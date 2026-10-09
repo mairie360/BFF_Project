@@ -153,9 +153,12 @@ export function projectBundle(
   project: ProjetView,
   tasks: TaskView[] = [],
   users: Agent[] = [],
-  totals: { tasks_total?: number; users_total?: number } = {},
+  totals: { tasks_total?: number; users_total?: number; tasks_archived?: number } = {},
 ): GetProjectResultView {
-  return { project, tasks, tasks_total: tasks.length, users: users.map(member), users_total: users.length, ...totals };
+  return {
+    project, tasks, tasks_total: tasks.length, tasks_archived: 0, users: users.map(member), users_total: users.length,
+    ...totals,
+  };
 }
 
 export function taskComment(overrides: Partial<TaskComment> = {}): TaskComment {

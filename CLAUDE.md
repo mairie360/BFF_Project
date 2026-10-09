@@ -108,7 +108,7 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
   rights from the role and the bundle or task already read by the guards.
 
-Project API **1.0.0** is the minimum: paginated lists with totals, and no history endpoint.
+Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
 
