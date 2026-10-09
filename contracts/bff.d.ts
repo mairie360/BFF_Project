@@ -3119,10 +3119,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consulte les commentaires et l’historique d’une tâche */
+        /**
+         * Consulte les commentaires et l’historique d’une tâche
+         * @description Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     /** @description Identifiant du projet */
@@ -3141,6 +3147,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** @description The most recent comments of the page, in reading order (oldest first) */
                             comments: {
                                 id: string;
                                 message: string;
@@ -3150,6 +3157,7 @@ export interface paths {
                                 };
                                 createdAt: string;
                             }[];
+                            /** @description The most recent history entries of the page, newest first */
                             history: {
                                 id: string;
                                 action: string;
@@ -3163,6 +3171,16 @@ export interface paths {
                                     [key: string]: unknown;
                                 };
                             }[];
+                            pagination: {
+                                page: number;
+                                limit: number;
+                                /** @description Number of comments of the task */
+                                commentsTotal: number;
+                                /** @description Number of history entries of the task */
+                                historyTotal: number;
+                                /** @description Older comments or history entries remain */
+                                hasNextPage: boolean;
+                            };
                         };
                     };
                 };
@@ -3968,6 +3986,7 @@ export interface components {
             };
         };
         TaskCollaborationResponse: {
+            /** @description The most recent comments of the page, in reading order (oldest first) */
             comments: {
                 id: string;
                 message: string;
@@ -3977,6 +3996,7 @@ export interface components {
                 };
                 createdAt: string;
             }[];
+            /** @description The most recent history entries of the page, newest first */
             history: {
                 id: string;
                 action: string;
@@ -3990,6 +4010,16 @@ export interface components {
                     [key: string]: unknown;
                 };
             }[];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of comments of the task */
+                commentsTotal: number;
+                /** @description Number of history entries of the task */
+                historyTotal: number;
+                /** @description Older comments or history entries remain */
+                hasNextPage: boolean;
+            };
         };
         ProjectDetailsResponse: {
             /** @description Un projet pour les vues de type carte, table ou kanban */

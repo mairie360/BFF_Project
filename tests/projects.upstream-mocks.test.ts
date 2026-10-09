@@ -492,25 +492,73 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
     });
 
-    test('GET /projects/:id/tasks/:taskId/collaboration reads every page of comments and history', async () => {
-      signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
-      const comments = [taskComment({ id: 'comment-1' }), taskComment({ id: 'comment-2' }), taskComment({ id: 'comment-3' })];
-      const history = [taskHistoryEntry({ id: 'history-1' })];
+    // MAIR-502: the follow-up is paged, the most recent comments (kept in reading order) and history entries first.
+    function mockCollaboration(commentCount: number, historyCount: number) {
+      const comments = Array.from({ length: commentCount }, (_, i) => taskComment({ id: `comment-${i + 1}` }));
+      const history = Array.from({ length: historyCount }, (_, i) => taskHistoryEntry({ id: `history-${historyCount - i}` }));
       projectApi.on('get', PROJECT.collaboration, ({ url }) => {
-        const { offset } = pageOf(url);
-        return { body: collaboration(comments.slice(offset, offset + 2), history.slice(offset, offset + 2), {
+        const { limit, offset } = pageOf(url);
+        // comments_order=latest pages the comments from the most recent one, like the history.
+        const ordered = url.searchParams.get('comments_order') === 'latest' ? [...comments].reverse() : comments;
+        return { body: collaboration(ordered.slice(offset, offset + limit), history.slice(offset, offset + limit), {
           comments_total: comments.length, history_total: history.length,
         }) };
       });
+    }
+    const idsOf = (entries: Array<{ id: string }>) => entries.map((entry) => entry.id);
 
-      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration'), admin);
+    test('GET /projects/:id/tasks/:taskId/collaboration returns the most recent comments and history entries', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(5, 4);
+
+      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration?limit=2'), admin);
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects/project-1/tasks/task-2/collaboration', response);
-      expect(response.body.comments.map((comment: { id: string }) => comment.id)).toEqual(['comment-1', 'comment-2', 'comment-3']);
-      expect(response.body.history.map((entry: { id: string }) => entry.id)).toEqual(['history-1']);
-      expect(projectApi.calls(PROJECT.collaboration, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
+      expect(idsOf(response.body.comments)).toEqual(['comment-4', 'comment-5']);
+      expect(idsOf(response.body.history)).toEqual(['history-4', 'history-3']);
+      expect(response.body.pagination).toEqual({ page: 1, limit: 2, commentsTotal: 5, historyTotal: 4, hasNextPage: true });
+      // One read from the latest comment, never the whole feeds.
+      const calls = projectApi.calls(PROJECT.collaboration, 'GET');
+      expect(calls.map((call) => Object.fromEntries(call.url.searchParams))).toEqual([
+        { limit: '2', offset: '0', comments_order: 'latest' },
+      ]);
+    });
+
+    test('GET /projects/:id/tasks/:taskId/collaboration goes back in time page by page', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(5, 4);
+
+      const page3 = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration?limit=2&page=3'), admin);
+
+      expect(page3.status).toBe(200);
+      expect(idsOf(page3.body.comments)).toEqual(['comment-1']);
+      expect(idsOf(page3.body.history)).toEqual([]);
+      expect(page3.body.pagination.hasNextPage).toBe(false);
+    });
+
+    test('GET /projects/:id/tasks/:taskId/collaboration keeps every comment in reading order when they fit in a page', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(3, 1);
+
+      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration'), admin);
+
+      expect(idsOf(response.body.comments)).toEqual(['comment-1', 'comment-2', 'comment-3']);
+      expect(response.body.pagination).toEqual({ page: 1, limit: 50, commentsTotal: 3, historyTotal: 1, hasNextPage: false });
+      expect(projectApi.calls(PROJECT.collaboration, 'GET')).toHaveLength(1);
+    });
+
+    test.each(['page=0', 'limit=0', 'limit=101'])('GET /projects/:id/tasks/:taskId/collaboration refuses %s with 400', async (query) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const response = await as(request(app).get(`/projects/project-1/tasks/task-2/collaboration?${query}`), admin);
+
+      expect(response.status).toBe(400);
+      expect(projectApi.calls(PROJECT.collaboration, 'GET')).toHaveLength(0);
     });
 
     test('maps a Project API failure to 502 without leaking its body', async () => {

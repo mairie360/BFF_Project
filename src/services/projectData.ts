@@ -297,25 +297,29 @@ function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed
 }
 
 /** Comments and history of a task, as Project API assembles them (every page of both lists). */
-export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number): Promise<TaskCollaborationView> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(
-      caller,
-      (options) => projectApi.getTaskCollaboration(projectId, taskId, params, options),
-      true,
+/**
+ * Page `page` (from 1) of the follow-up of a task (MAIR-502): its `limit` most recent comments, put back in reading
+ * order (oldest first), and its `limit` most recent history entries (newest first), with both totals. One Project API
+ * call: `comments_order=latest` pages the comments from the most recent one, like the history.
+ */
+export async function getTaskCollaboration(
+  caller: Caller,
+  projectId: number,
+  taskId: number,
+  page = 1,
+  limit = 50,
+): Promise<TaskCollaborationView> {
+  const data = await projectCall(
+    caller,
+    async (options) => (await projectApi.getTaskCollaboration(
+      projectId,
+      taskId,
+      { limit, offset: (page - 1) * limit, comments_order: 'latest' },
+      options,
     )).data,
-    (page) => [
-      { read: page.comments.length, total: page.comments_total },
-      { read: page.history.length, total: page.history_total },
-    ],
+    true,
   );
-  const last = pages[pages.length - 1];
-  return {
-    comments: pages.flatMap((page) => page.comments),
-    comments_total: last.comments_total,
-    history: pages.flatMap((page) => page.history),
-    history_total: last.history_total,
-  };
+  return { ...data, comments: [...data.comments].reverse() };
 }
 
 /** Adds a comment signed by the caller (Project API reads the author from the forwarded session). */

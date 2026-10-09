@@ -1125,7 +1125,8 @@
                 "author",
                 "createdAt"
               ]
-            }
+            },
+            "description": "The most recent comments of the page, in reading order (oldest first)"
           },
           "history": {
             "type": "array",
@@ -1171,12 +1172,44 @@
                 "author",
                 "createdAt"
               ]
-            }
+            },
+            "description": "The most recent history entries of the page, newest first"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "commentsTotal": {
+                "type": "number",
+                "description": "Number of comments of the task"
+              },
+              "historyTotal": {
+                "type": "number",
+                "description": "Number of history entries of the task"
+              },
+              "hasNextPage": {
+                "type": "boolean",
+                "description": "Older comments or history entries remain"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "commentsTotal",
+              "historyTotal",
+              "hasNextPage"
+            ]
           }
         },
         "required": [
           "comments",
-          "history"
+          "history",
+          "pagination"
         ]
       },
       "ProjectDetailsResponse": {
@@ -7375,6 +7408,7 @@
           "Projects"
         ],
         "summary": "Consulte les commentaires et l’historique d’une tâche",
+        "description": "Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.",
         "parameters": [
           {
             "schema": {
@@ -7397,6 +7431,28 @@
             "description": "Identifiant de la tâche",
             "name": "taskId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "example": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
           }
         ],
         "responses": {
@@ -7443,7 +7499,8 @@
                           "author",
                           "createdAt"
                         ]
-                      }
+                      },
+                      "description": "The most recent comments of the page, in reading order (oldest first)"
                     },
                     "history": {
                       "type": "array",
@@ -7489,12 +7546,44 @@
                           "author",
                           "createdAt"
                         ]
-                      }
+                      },
+                      "description": "The most recent history entries of the page, newest first"
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "number"
+                        },
+                        "limit": {
+                          "type": "number"
+                        },
+                        "commentsTotal": {
+                          "type": "number",
+                          "description": "Number of comments of the task"
+                        },
+                        "historyTotal": {
+                          "type": "number",
+                          "description": "Number of history entries of the task"
+                        },
+                        "hasNextPage": {
+                          "type": "boolean",
+                          "description": "Older comments or history entries remain"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "limit",
+                        "commentsTotal",
+                        "historyTotal",
+                        "hasNextPage"
+                      ]
                     }
                   },
                   "required": [
                     "comments",
-                    "history"
+                    "history",
+                    "pagination"
                   ]
                 }
               }
