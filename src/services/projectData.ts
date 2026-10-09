@@ -71,8 +71,11 @@ export type TaskPermissions = {
 
 export type ProjectBundle = {
   project: ProjetView;
+  /** Its active tasks: a completed task is archived (MAIR-502) and only counted in `archivedTasks`. */
   tasks: TaskView[];
   users: User[];
+  /** Number of its archived (completed) tasks, listed by `listArchivedTasks`. */
+  archivedTasks: number;
 };
 
 /** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
@@ -132,7 +135,7 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
     tasks.push(...page.tasks);
   }
 
-  return { project: first.project, tasks, users };
+  return { project: first.project, tasks, users, archivedTasks: first.tasks_archived };
 }
 
 /**
@@ -167,6 +170,25 @@ export async function getTaskWithMembers(
 ): Promise<{ task: TaskView; users: User[] } | null> {
   const [task, users] = await Promise.all([getProjectTask(caller, projectId, taskId), listProjectUsers(caller, projectId)]);
   return task ? { task, users } : null;
+}
+
+/**
+ * One page of the archived tasks of a project (MAIR-502), the most recently archived first, or `null` when the
+ * project is unknown or not visible to the caller (404).
+ */
+export async function listArchivedTasks(
+  caller: Caller,
+  projectId: number,
+  page: { limit: number; offset: number },
+): Promise<{ tasks: TaskView[]; total: number } | null> {
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getArchivedTasks(projectId, page, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
 }
 
 /** Every member of a project. */

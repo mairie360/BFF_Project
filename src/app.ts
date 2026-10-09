@@ -25,6 +25,7 @@ import modifyTaskStatusRouter from './routes/Project/modify_task_status';
 import deleteTaskRouter from './routes/Project/delete_task';
 import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
+import archivedTasksRouter from './routes/Project/archived_tasks';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 
@@ -64,6 +65,7 @@ app.use('/projects', modifyTaskStatusRouter);
 app.use('/projects', deleteTaskRouter);
 app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
+app.use('/projects', archivedTasksRouter);
 
 // Unknown routes and every error that reaches Express (malformed JSON, oversized body, unexpected
 // errors) end in the shared envelope `{ error: { code, message, details } }` instead of Express's HTML

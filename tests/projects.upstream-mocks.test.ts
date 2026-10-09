@@ -31,6 +31,7 @@ const PROJECT = {
   users: '/api/v1/projects/{projectId}/users/',
   user: '/api/v1/projects/{projectId}/users/{userId}/',
   tasks: '/api/v1/projects/{projectId}/tasks/',
+  archivedTasks: '/api/v1/projects/{projectId}/archived-tasks/',
   task: '/api/v1/projects/{projectId}/tasks/{taskId}/',
   collaboration: '/api/v1/projects/{projectId}/tasks/{taskId}/collaboration',
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
@@ -255,6 +256,79 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(refused.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Authentication required', details: [] });
       expect(unreachable.status).toBe(502);
       expect(unreachable.body.error.message).toBe('The USER_BFF service is unavailable.');
+    });
+  });
+
+  describe('archived tasks (MAIR-502)', () => {
+    test('GET /projects/:id lists the active tasks and counts the archived ones as done', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [
+        taskView(1, { status: 'InProgress' }),
+      ], [admin], { tasks_archived: 3 }) } });
+
+      const response = await as(request(app).get('/projects/project-1'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects/project-1', response);
+      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1']);
+      // 3 archived (done) of 4 tasks.
+      expect(response.body.project).toMatchObject({ progress: 75, tasks: { total: 4, completed: 3 } });
+    });
+
+    test('GET /projects/:id/archived-tasks pages the archived tasks Project API returns', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
+      projectApi.on('get', PROJECT.archivedTasks, () => ({ body: {
+        tasks: [taskView(7, { status: 'Completed', archived_at: '2026-10-02T14:30:00Z', assigned_to: alice.id })],
+        total: 45,
+      } }));
+
+      const response = await as(request(app).get('/projects/project-1/archived-tasks?page=2&limit=20'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects/project-1/archived-tasks', response);
+      expect(response.body.tasks).toEqual([expect.objectContaining({ id: 'task-7', status: 'done' })]);
+      expect(response.body.pagination).toEqual({ page: 2, limit: 20, total: 45, hasNextPage: true });
+      const [call] = projectApi.calls(PROJECT.archivedTasks, 'GET');
+      expect(Object.fromEntries(call.url.searchParams)).toEqual({ limit: '20', offset: '20' });
+    });
+
+    test('GET /projects/:id/archived-tasks only shows an agent the tasks assigned to them', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice, marie]) } });
+      projectApi.on('get', PROJECT.archivedTasks, { body: {
+        tasks: [
+          taskView(7, { status: 'Completed', archived_at: '2026-10-02T14:30:00Z', assigned_to: alice.id }),
+          taskView(8, { status: 'Completed', archived_at: '2026-10-01T14:30:00Z', assigned_to: marie.id }),
+        ],
+        total: 2,
+      } });
+
+      const response = await as(request(app).get('/projects/project-1/archived-tasks'), alice);
+
+      expect(response.status).toBe(200);
+      expect(response.body.tasks.map((task: { id: string }) => task.id)).toEqual(['task-7']);
+    });
+
+    test('GET /projects/:id/archived-tasks answers 404 for a project out of sight', async () => {
+      signIn(alice);
+      mockProjectApi();
+      projectApi.on('get', PROJECT.archivedTasks, textError(404, 'Not found.'));
+
+      const response = await as(request(app).get('/projects/project-9/archived-tasks'), alice);
+
+      expect(response.status).toBe(404);
+      expectBffContract('get', '/projects/project-9/archived-tasks', response);
+    });
+
+    test.each(['page=0', 'limit=101', 'limit=abc'])('GET /projects/:id/archived-tasks refuses %s with 400', async (query) => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects/project-1/archived-tasks?${query}`), admin);
+
+      expect(response.status).toBe(400);
+      expect(projectApi.calls(PROJECT.archivedTasks, 'GET')).toHaveLength(0);
     });
   });
 

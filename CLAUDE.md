@@ -101,6 +101,11 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
   `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
   trigger, MAIR-393): the BFF never writes it.
 - `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
+- MAIR-502: a completed task is archived by the database. The bundle (`GET /api/v1/projects/{id}/`) only holds the
+  active tasks and `archivedTasks` (Project API's `tasks_archived`), which `mapProjectToDto` counts as done tasks
+  (progress, `tasks.total` / `tasks.completed`); `GET /projects/{projectId}/archived-tasks` pages the archived
+  ones (`listArchivedTasks`, filtered by `canView` like the detail). Duplicating a project copies its active
+  tasks only.
 - `getProjectTask(caller, projectId, taskId)` → `GET /api/v1/projects/{id}/tasks/{taskId}/` (MAIR-474): the task
   guards (`project_access.ts`: view, management, status update, comment) read the task alone, never the bundle
   with every task of the project, and the task writes answer from `getTaskWithMembers` (the task + the members

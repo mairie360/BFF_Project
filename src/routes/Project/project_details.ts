@@ -54,7 +54,7 @@ router.get('/:projectId', async (req: Request, res: Response) => {
     .filter((task) => task.permissions.canView);
 
   res.status(200).json({
-    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    project: buildProjectDtoForUser(user, bundle),
     taskItems,
   });
 });

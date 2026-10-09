@@ -99,7 +99,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     // Only the state Project API persisted is returned (priority, labels and dueDate are not stored).
     const bundle = await fetchProjectBundle(caller, projectId);
     res.status(200).json({
-        project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+        project: buildProjectDtoForUser(user, bundle),
         taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
     });
 });

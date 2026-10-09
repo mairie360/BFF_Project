@@ -2250,6 +2250,244 @@
           "project_api",
           "user_bff"
         ]
+      },
+      "ArchivedTasksQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "example": 20
+          }
+        }
+      },
+      "ArchivedTasksResponse": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "L'identifiant unique de la tâche",
+                  "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Le titre de la tâche",
+                  "example": "Nouvelle tâche"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in-progress",
+                    "review",
+                    "done"
+                  ],
+                  "description": "Le statut du projet",
+                  "example": "todo"
+                },
+                "statusLabel": {
+                  "type": "string",
+                  "description": "Le libellé du statut de la tâche",
+                  "example": "À faire"
+                },
+                "responsible": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "L'identifiant unique de la personne",
+                      "example": "123e4567-e89b-12d3-a456-426614174000"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Le nom de la personne",
+                      "example": "John Doe"
+                    },
+                    "avatarUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uri",
+                      "description": "L'URL de l'avatar de la personne",
+                      "example": "https://example.com/avatar.jpg"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "avatarUrl"
+                  ],
+                  "description": "Une personne assignable à un projet"
+                },
+                "assignees": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "L'identifiant unique de la personne",
+                        "example": "123e4567-e89b-12d3-a456-426614174000"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Le nom de la personne",
+                        "example": "John Doe"
+                      },
+                      "avatarUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "uri",
+                        "description": "L'URL de l'avatar de la personne",
+                        "example": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "avatarUrl"
+                    ],
+                    "description": "Une personne assignable à un projet"
+                  },
+                  "description": "La liste des personnes assignées à la tâche"
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "high",
+                    "medium",
+                    "low"
+                  ],
+                  "description": "La priorité du projet",
+                  "example": "high"
+                },
+                "priorityLabel": {
+                  "type": "string",
+                  "description": "Le libellé de la priorité de la tâche",
+                  "example": "Moyenne"
+                },
+                "labels": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "La liste des étiquettes associées à la  tâche",
+                  "example": [
+                    "backend",
+                    "important"
+                  ]
+                },
+                "dueDate": {
+                  "type": "string",
+                  "description": "La date d'échéance de la tâche au format ISO 8601",
+                  "example": "2024-12-31T23:59:59Z"
+                },
+                "completed": {
+                  "type": "boolean",
+                  "description": "Indique si la tâche est complétée",
+                  "example": false
+                },
+                "createdAt": {
+                  "type": "string",
+                  "description": "La date de création de la tâche au format ISO 8601",
+                  "example": "2024-01-01T12:00:00Z"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                  "example": "2024-01-15T15:30:00Z"
+                },
+                "permissions": {
+                  "type": "object",
+                  "properties": {
+                    "canView": {
+                      "type": "boolean"
+                    },
+                    "canEdit": {
+                      "type": "boolean"
+                    },
+                    "canDelete": {
+                      "type": "boolean"
+                    },
+                    "canUpdateStatus": {
+                      "type": "boolean"
+                    },
+                    "canComment": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "canView",
+                    "canEdit",
+                    "canDelete",
+                    "canUpdateStatus",
+                    "canComment"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "status",
+                "statusLabel",
+                "responsible",
+                "assignees",
+                "priority",
+                "priorityLabel",
+                "labels",
+                "dueDate",
+                "completed",
+                "createdAt",
+                "permissions"
+              ],
+              "description": "Une tâche associée à un projet"
+            },
+            "description": "Archived tasks of the page the caller may see, the most recently archived first"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number",
+                "description": "Number of archived tasks of the project"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "hasNextPage"
+            ]
+          }
+        },
+        "required": [
+          "tasks",
+          "pagination"
+        ]
       }
     },
     "parameters": {}
@@ -7452,6 +7690,122 @@
           },
           "403": {
             "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/archived-tasks": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists the archived tasks of a project",
+        "description": "A task is archived as soon as it is done (MAIR-502): `GET /projects/{projectId}` only returns the active tasks and counts the archived ones in its progress; this route pages the archived ones, the most recently archived first. Like the project detail, a member without manager role only sees the tasks assigned to them.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du projet",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Identifiant du projet",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "example": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of the archived tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchivedTasksResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
             "content": {
               "application/json": {
                 "schema": {
