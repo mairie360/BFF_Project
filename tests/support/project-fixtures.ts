@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 // Réponses amont typées par les modèles des paquets @mairie360/project-api-openapi, core-api-openapi et
 // bff-user-openapi installés : un champ ajouté, retiré ou renommé par un contrat fait échouer la compilation des
 // tests. Elles sont en plus validées à l'exécution contre les contrats reconstruits (upstream-contracts.test.ts,
@@ -15,6 +16,7 @@ import {
   type GetProjectResultView,
   type GetProjectUsersResultView,
   type GetProjectsResultView,
+  type ProjectListItemView,
   ProjectStatus,
   type ProjetView,
   type TaskCollaborationView,
@@ -63,13 +65,19 @@ export function sessionResponse(agent: Agent, user: Partial<SessionResponseUser>
   };
 }
 
-/**
- * Jeton Bearer au format JWT dont seul le `sub` peut être lu par le BFF Project, en secours de `user.id`
- * (la signature est vérifiée par BFF User, simulé ici).
- */
-export function bearer(sub: string | number): string {
+/** Secret of the tests (tests/support/env.ts): the BFF verifies the session tokens with it (bffs-lib requireSession). */
+export const JWT_SECRET = 'project-contract-test-secret';
+
+/** HS256 session token of `sub` signed with `secret` (fixed expiry, so a token is the same in every call). */
+export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_102_444_800): string {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
-  return `Bearer ${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: String(sub), exp: 4_102_444_800 })}.signature`;
+  const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: String(sub), exp })}`;
+  return `${unsigned}.${createHmac('sha256', secret).update(unsigned).digest('base64url')}`;
+}
+
+/** `Authorization` header of the session of `sub`: verified by the BFF, then forwarded to BFF User (mocked). */
+export function bearer(sub: string | number): string {
+  return `Bearer ${sessionToken(sub)}`;
 }
 
 // --- Project API (@mairie360/project-api-openapi) ---
@@ -78,7 +86,40 @@ export function projetView(id: number, overrides: Partial<ProjetView> = {}): Pro
   return { id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active, ...overrides };
 }
 
-export const projectsResult = (projects: ProjetView[], total = projects.length): GetProjectsResultView => ({ projects, total });
+/** Project of `GET /api/v1/projects/` with the aggregates of its tasks (MAIR-474): none by default. */
+export function projectListItem(id: number, overrides: Partial<ProjectListItemView> = {}): ProjectListItemView {
+  return {
+    ...projetView(id),
+    tasks_total: 0, tasks_completed: 0, priority: TaskPriority.Medium, due_date: null, members: [], members_total: 0,
+    ...overrides,
+  };
+}
+
+/** A page of `GET /api/v1/projects/`, its summary counted over `projects` unless given. */
+export function projectsResult(
+  projects: ProjectListItemView[],
+  total = projects.length,
+  summary?: GetProjectsResultView['summary'],
+): GetProjectsResultView {
+  const count = (keep: (project: ProjectListItemView) => boolean) => projects.filter(keep).length;
+  return {
+    projects,
+    total,
+    summary: summary ?? {
+      by_status: {
+        active: count((p) => p.status === ProjectStatus.Active),
+        suspended: count((p) => p.status === ProjectStatus.Suspended),
+        completed: count((p) => p.status === ProjectStatus.Completed),
+        other: count((p) => p.status === ProjectStatus.Error),
+      },
+      by_priority: {
+        low: count((p) => p.priority === TaskPriority.Low),
+        medium: count((p) => p.priority === TaskPriority.Medium),
+        high: count((p) => p.priority === TaskPriority.High),
+      },
+    },
+  };
+}
 export const createProjectResult = (project_id: number): CreateProjectResultView => ({ project_id });
 
 export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskView {
@@ -112,9 +153,12 @@ export function projectBundle(
   project: ProjetView,
   tasks: TaskView[] = [],
   users: Agent[] = [],
-  totals: { tasks_total?: number; users_total?: number } = {},
+  totals: { tasks_total?: number; users_total?: number; tasks_archived?: number } = {},
 ): GetProjectResultView {
-  return { project, tasks, tasks_total: tasks.length, users: users.map(member), users_total: users.length, ...totals };
+  return {
+    project, tasks, tasks_total: tasks.length, tasks_archived: 0, users: users.map(member), users_total: users.length,
+    ...totals,
+  };
 }
 
 export function taskComment(overrides: Partial<TaskComment> = {}): TaskComment {

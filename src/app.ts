@@ -6,7 +6,7 @@ import {
   noStore,
   notFoundHandler,
   parseTrustProxy,
-  requireBearer,
+  requireSession,
   securityHeaders,
 } from '@mairie360/bffs-lib';
 import express from 'express';
@@ -48,9 +48,10 @@ app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
 
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
-// Session-bound routes: never cached, 401 before any upstream call without a Bearer token, then the
-// caller's session is resolved with BFF User.
-app.use(['/projects-page', '/projects'], noStore, requireBearer, projectUserContextMiddleware);
+// Session-bound routes: never cached, 401 before any upstream call without a Bearer token verified with
+// JWT_SECRET (HS256, expiry; bffs-lib requireSession, MAIR-474), then the caller's session is resolved with
+// BFF User, which also checks that it was not revoked.
+app.use(['/projects-page', '/projects'], noStore, requireSession, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);

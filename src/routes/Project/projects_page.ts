@@ -7,36 +7,27 @@ import {
   ProjectsPageQuery,
   ErrorResponse,
 } from "../../openapi-registry";
+import type { GetProjectsParams } from '@mairie360/project-api-openapi/model';
 import {
-  buildKanbanColumns,
-  buildProjectDtoForUser,
   buildPagination,
   collectMembers,
-  defaultProjectSummary,
-  mapProjectStatus,
-  paginateProjects,
+  kanbanColumnsOfPage,
+  mapProjectListItemToDto,
+  summaryFromCounts,
 } from "./project_helpers";
 import { parseRequest } from "@mairie360/bffs-lib";
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
-import { callerOf, getProjectBundle, listAssignableUsers, listVisibleProjects, type ProjectBundle } from '../../services/projectData';
+import { callerOf, getProjectPermissions, listAssignableUsers, listProjectsPage } from '../../services/projectData';
 
 const router = Router();
 
-// Bundles read in parallel at most, so that a large list does not burst Project API.
-const BUNDLE_READ_CONCURRENCY = 5;
+/** Largest page Project API serves. */
+const MAX_PAGE_SIZE = 500;
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const index = next++;
-      results[index] = await fn(items[index]);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
+// Filters of the page as Project API's (MAIR-474). `todo` is the BFF status of a project whose stored status
+// Project API does not interpret (`Error`, see `mapProjectStatus`); `high` covers `Urgent` too (stored `High`).
+const STATUS_FILTER = { todo: 'Error', 'in-progress': 'Active', review: 'Suspended', done: 'Completed' } as const;
+const PRIORITY_FILTER = { high: 'High', medium: 'Medium', low: 'Low' } as const;
 
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
@@ -79,46 +70,31 @@ router.get("/", async (req: Request, res: Response) => {
   const query = parseRequest(ProjectsPageQuery, req.query, "query");
   const caller = callerOf(req, ERROR_STATUSES);
   const user = getProjectUserContext(res);
-  const search = query.q?.toLowerCase().trim();
-  const status = query.status;
+  const page = Math.max(Math.trunc(query.page ?? 1), 1);
+  const limit = Math.min(Math.max(Math.trunc(query.limit ?? 10), 1), MAX_PAGE_SIZE);
 
-  // The search and status filters only need the list Project API returns, so they run before any bundle
-  // is read. Priority, due date, progress, the summary and the Kanban counts are derived from the tasks
-  // of every matching project, which is why the bundles cannot be read for the current page only.
-  const candidates = (await listVisibleProjects(caller)).filter((project) => {
-    const matchesSearch = !search
-      || project.name.toLowerCase().includes(search)
-      || project.description.toLowerCase().includes(search);
-    const matchesStatus = !status || status === 'all' || mapProjectStatus(project.status) === status;
-    return matchesSearch && matchesStatus;
-  });
-  const bundles = (await mapWithConcurrency(candidates, BUNDLE_READ_CONCURRENCY, (project) => getProjectBundle(caller, project.id)))
-    // A project deleted or hidden between the list and its read is skipped.
-    .filter((bundle): bundle is ProjectBundle => bundle !== null);
-  const mappedProjects = bundles.map((bundle) =>
-    buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
-  );
-
-  // The members offered come from the Core directory, restricted to what the caller may assign.
-  const members = collectMembers([await listAssignableUsers(caller, user)]);
-
-  const dueBefore = query.dueBefore ? new Date(query.dueBefore).getTime() : null;
-  const dueAfter = query.dueAfter ? new Date(query.dueAfter).getTime() : null;
-  const filteredProjects = mappedProjects.filter((project) => {
-    const matchesPriority =
-      !query.priority || query.priority === "all"
-        ? true
-        : project.priority === query.priority;
-    const projectDueDate = new Date(project.dueDate).getTime();
-    const matchesDueBefore = dueBefore === null || projectDueDate <= dueBefore;
-    const matchesDueAfter = dueAfter === null || projectDueDate >= dueAfter;
-
-    return matchesPriority && matchesDueBefore && matchesDueAfter;
-  });
-
-  const page = query.page ?? 1;
-  const limit = query.limit ?? 10;
-  const pagedProjects = paginateProjects(filteredProjects, page, limit);
+  // One Project API call (MAIR-474): it filters, pages and aggregates the tasks of the visible projects, and
+  // counts every match per status and priority. The BFF used to read every task of every visible project.
+  const search = query.q?.trim();
+  const params: GetProjectsParams = {
+    limit,
+    offset: (page - 1) * limit,
+    ...(search ? { search } : {}),
+    ...(query.status && query.status !== 'all' ? { status: STATUS_FILTER[query.status] } : {}),
+    ...(query.priority && query.priority !== 'all' ? { priority: PRIORITY_FILTER[query.priority] } : {}),
+    ...(query.dueBefore ? { due_before: new Date(query.dueBefore).toISOString() } : {}),
+    ...(query.dueAfter ? { due_after: new Date(query.dueAfter).toISOString() } : {}),
+  };
+  const [result, assignable] = await Promise.all([
+    listProjectsPage(caller, params),
+    // The members offered come from the Core directory, restricted to what the caller may assign.
+    listAssignableUsers(caller, user),
+  ]);
+  // Every listed project is visible to the caller.
+  const permissions = getProjectPermissions(user, true);
+  const projects = result.projects.map((project) => mapProjectListItemToDto(project, permissions));
+  const summary = summaryFromCounts(result);
+  const members = collectMembers([assignable]);
 
   res.status(200).json({
     access: {
@@ -162,12 +138,12 @@ router.get("/", async (req: Request, res: Response) => {
       members,
       labels: [],
     },
-    summary: defaultProjectSummary(filteredProjects),
+    summary,
     kanban: {
-      columns: buildKanbanColumns(filteredProjects),
+      columns: kanbanColumnsOfPage(projects, summary.projectsByStatus),
     },
-    projects: pagedProjects,
-    pagination: buildPagination(filteredProjects.length, page, limit),
+    projects,
+    pagination: buildPagination(result.total, page, limit),
   });
 });
 

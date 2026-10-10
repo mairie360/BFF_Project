@@ -184,7 +184,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -581,7 +581,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -1157,7 +1157,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -1626,7 +1626,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -2300,7 +2300,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -2802,6 +2802,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Case-insensitive text searched in the name and the description */
                     q?: string;
                     status?: "all" | "todo" | "in-progress" | "review" | "done";
                     priority?: "all" | "high" | "medium" | "low";
@@ -2898,7 +2899,9 @@ export interface paths {
                                      */
                                     status: "todo" | "in-progress" | "review" | "done";
                                     label: string;
+                                    /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                                     projectIds: string[];
+                                    /** @description Number of matching projects in this column, every page included */
                                     count: number;
                                 }[];
                             };
@@ -2959,7 +2962,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -3454,7 +3457,7 @@ export interface components {
                  */
                 avatarUrl: string | null;
             };
-            /** @description La liste des personnes assignées au projet */
+            /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
             assignees: {
                 /**
                  * @description L'identifiant unique de la personne
@@ -3668,7 +3671,10 @@ export interface components {
             taskId: string;
         };
         ProjectsPageQuery: {
-            /** @example scan */
+            /**
+             * @description Case-insensitive text searched in the name and the description
+             * @example scan
+             */
             q?: string;
             /** @enum {string} */
             status?: "all" | "todo" | "in-progress" | "review" | "done";
@@ -3945,7 +3951,7 @@ export interface components {
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées au projet */
+                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
                      * @description L'identifiant unique de la personne
@@ -4213,7 +4219,9 @@ export interface components {
                      */
                     status: "todo" | "in-progress" | "review" | "done";
                     label: string;
+                    /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                     projectIds: string[];
+                    /** @description Number of matching projects in this column, every page included */
                     count: number;
                 }[];
             };
@@ -4274,7 +4282,7 @@ export interface components {
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées au projet */
+                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
                      * @description L'identifiant unique de la personne

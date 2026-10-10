@@ -11,6 +11,7 @@ export default {
   },
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.ts'],
+  setupFiles: ['<rootDir>/tests/support/env.ts'],
   transformIgnorePatterns: ['/node_modules/(?!@mairie360/)'],
   collectCoverage: true,
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],

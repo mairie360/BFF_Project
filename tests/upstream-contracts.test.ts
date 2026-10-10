@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { JsonSchema, OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract, resolveOrvalPackage } from './support/orval-contract';
 import {
-  agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectUsersResult, projectsResult,
+  agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectListItem, projectUsersResult, projectsResult,
   projetView, sessionResponse, taskView, userBffUrls,
 } from './support/project-fixtures';
 
@@ -97,7 +97,7 @@ describe('upstream contracts from the installed @mairie360 OpenAPI packages', ()
 
 describe('fixtures conform to the upstream contracts', () => {
   test.each([
-    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projetView(1), projetView(2, { status: 'Suspended' })])],
+    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
     ['Project API createProject 200', projectApi, 'post', projectApiUrls.getCreateProjectUrl(), createProjectResult(12)],
     ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })], total: 2 }],
     ['Project API createTask 200', projectApi, 'post', projectApiUrls.getCreateTaskUrl(1), createTaskResult(7, 'Tâche 7')],

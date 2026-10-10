@@ -190,7 +190,7 @@
               ],
               "description": "Une personne assignable à un projet"
             },
-            "description": "La liste des personnes assignées au projet"
+            "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
           },
           "labels": {
             "type": "array",
@@ -527,6 +527,8 @@
         "properties": {
           "q": {
             "type": "string",
+            "maxLength": 255,
+            "description": "Case-insensitive text searched in the name and the description",
             "example": "scan"
           },
           "status": {
@@ -1291,7 +1293,7 @@
                   ],
                   "description": "Une personne assignable à un projet"
                 },
-                "description": "La liste des personnes assignées au projet"
+                "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
               },
               "labels": {
                 "type": "array",
@@ -1869,10 +1871,12 @@
                       "type": "array",
                       "items": {
                         "type": "string"
-                      }
+                      },
+                      "description": "Ids of the projects of the current page in this column (the only ones the response holds)"
                     },
                     "count": {
-                      "type": "number"
+                      "type": "number",
+                      "description": "Number of matching projects in this column, every page included"
                     }
                   },
                   "required": [
@@ -2001,7 +2005,7 @@
                     ],
                     "description": "Une personne assignable à un projet"
                   },
-                  "description": "La liste des personnes assignées au projet"
+                  "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                 },
                 "labels": {
                   "type": "array",
@@ -2454,7 +2458,7 @@
                             ],
                             "description": "Une personne assignable à un projet"
                           },
-                          "description": "La liste des personnes assignées au projet"
+                          "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
                         "labels": {
                           "type": "array",
@@ -3105,7 +3109,7 @@
                             ],
                             "description": "Une personne assignable à un projet"
                           },
-                          "description": "La liste des personnes assignées au projet"
+                          "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
                         "labels": {
                           "type": "array",
@@ -4199,7 +4203,7 @@
                             ],
                             "description": "Une personne assignable à un projet"
                           },
-                          "description": "La liste des personnes assignées au projet"
+                          "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
                         "labels": {
                           "type": "array",
@@ -4720,7 +4724,7 @@
                             ],
                             "description": "Une personne assignable à un projet"
                           },
-                          "description": "La liste des personnes assignées au projet"
+                          "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
                         "labels": {
                           "type": "array",
@@ -5697,7 +5701,7 @@
                             ],
                             "description": "Une personne assignable à un projet"
                           },
-                          "description": "La liste des personnes assignées au projet"
+                          "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
                         "labels": {
                           "type": "array",
@@ -6414,9 +6418,12 @@
           {
             "schema": {
               "type": "string",
+              "maxLength": 255,
+              "description": "Case-insensitive text searched in the name and the description",
               "example": "scan"
             },
             "required": false,
+            "description": "Case-insensitive text searched in the name and the description",
             "name": "q",
             "in": "query"
           },
@@ -6782,10 +6789,12 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string"
-                                }
+                                },
+                                "description": "Ids of the projects of the current page in this column (the only ones the response holds)"
                               },
                               "count": {
-                                "type": "number"
+                                "type": "number",
+                                "description": "Number of matching projects in this column, every page included"
                               }
                             },
                             "required": [
@@ -6914,7 +6923,7 @@
                               ],
                               "description": "Une personne assignable à un projet"
                             },
-                            "description": "La liste des personnes assignées au projet"
+                            "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                           },
                           "labels": {
                             "type": "array",

@@ -1,4 +1,4 @@
-import { asCaller, authorization, callUpstream, HttpError, unverifiedSubject } from '@mairie360/bffs-lib';
+import { asCaller, callUpstream, HttpError, sessionUserId } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { userBffApi } from '../clients/userBffClient';
 
@@ -101,7 +101,7 @@ function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
   });
 }
 
-export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Promise<ProjectUserContext> {
+export async function loadProjectUserContext(req: Request): Promise<ProjectUserContext> {
   // 401 before any upstream call when the request carries no Bearer token, 503 when USER_BFF_URL is missing;
   // a BFF User 401 (rejected session) is relayed, any other failure becomes a 502.
   const { data } = await callUpstream('USER_BFF', () => userBffApi.getMe(asCaller('USER_BFF', req, 5_000)), { declared: [401] });
@@ -113,16 +113,9 @@ export async function loadProjectUserContext(req: Pick<Request, 'headers'>): Pro
   }
   const roles = resolveRoles(body);
   const role = roles[0] ?? 'Guest';
-  const explicitId = Number(body.user?.id);
-  // BFF User has just accepted this token, so its `sub` is only read (unverified) to identify the caller
-  // when /me does not return `user.id` (optional in its contract).
-  const id = Number.isInteger(explicitId) && explicitId > 0
-    ? explicitId
-    : unverifiedSubject(authorization(req));
-
-  if (!id) {
-    throw new HttpError(401, 'Unable to identify the signed-in user.');
-  }
+  // The caller is the `sub` of the token `requireSession` verified (MAIR-474), never an id read from an answer:
+  // `user.id` is optional in BFF User's contract, and the access rules are decided on this id.
+  const id = sessionUserId(req);
 
   const firstName = typeof body.user?.first_name === 'string' ? body.user.first_name.trim() : '';
   const lastName = typeof body.user?.last_name === 'string' ? body.user.last_name.trim() : '';

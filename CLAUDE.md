@@ -66,11 +66,12 @@ in the environment; `.npmrc` references it. Never commit the value.
 `apiOnlyHeaders()` (strict `default-src 'none'` everywhere but `/docs`), then the session-bound routers
 (`/projects-page`, `/projects*`) get, in order:
 
-1. `noStore` (`Cache-Control: no-store`) and `requireBearer` from `@mairie360/bffs-lib` — 401 before any
-   upstream call without an `Authorization: Bearer <token>` header (the only credential accepted).
+1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
+   401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
+   verified with `JWT_SECRET` (HS256, `exp`, positive `sub`); `src/index.ts` refuses to start without it.
 2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me` through
-   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, falls back to the
-   lib's `unverifiedSubject` (token `sub`, only once BFF User accepted the token) for the user id, and stores a
+   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, takes the user id from the
+   verified token (`sessionUserId`, never from an answer), and stores a
    `ProjectUserContext` on `res.locals.projectUser`. Read it with `getProjectUserContext(res)`.
 
 There is no request-scoped storage: every upstream call receives the request explicitly. Routes build a
@@ -91,14 +92,23 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
 - Project API lists are paginated (`limit`/`offset`, 100 by default, 500 max, with a `total`): `readAllPages`
   asks for pages of 500 and reads until every total is reached, so callers always get complete lists. The bundle
   pages its tasks and, past the 100 embedded members, reads them from `GET …/users/` (`listProjectUsers`).
-- `listVisibleProjects(caller)`, `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
+- `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
+  filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
+  counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Error`,
+  `in-progress` ↔ `Active`, `review` ↔ `Suspended`, `done` ↔ `Completed`) and priorities (`high` covers `Urgent`,
+  stored `High`); the Kanban columns count every match but list the ids of the page only.
+- `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
   `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
   trigger, MAIR-393): the BFF never writes it.
 - `listAssignableUsers(caller, user)` → Core API `GET /api/v1/user/` restricted to the caller's groups.
+- `getProjectTask(caller, projectId, taskId)` → `GET /api/v1/projects/{id}/tasks/{taskId}/` (MAIR-474): the task
+  guards (`project_access.ts`: view, management, status update, comment) read the task alone, never the bundle
+  with every task of the project, and the task writes answer from `getTaskWithMembers` (the task + the members
+  that name its assignee, in parallel). The project guards still read the bundle.
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
-  rights from the role and a bundle already read by the guards.
+  rights from the role and the bundle or task already read by the guards.
 
-Project API **1.0.0** is the minimum: paginated lists with totals, and no history endpoint.
+Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
 
@@ -163,9 +173,19 @@ the pinned `cicd_version` (`CICD_VERSION=<branch>` overrides it). ZAP runs its `
 non-401/403 answer. The spec requires `bearerAuth` at the top level (`openapi.ts`); `/health` and
 `/check_apis` set `security: []` in `registerPath`. `load-test.js` builds on `coverage.js` with **one
 handler per operation** of `contracts/openapi.json`: a new route without a handler makes k6 abort at
-init. Two scenarios: `crud` (2 VUs) runs every handler through `coverage.run()` and carries the gate;
-`reads` (ramp to 20 VUs) replays the GET handlers only, so GET handlers read seeded fixtures
-(`project-1`, `task-1`), never `state`. Writes use the admin token (sub=1). In `crud`, handlers run
+init. Three scenarios: `crud` runs every handler through `coverage.run()` and carries the gate;
+`reads` replays the GET handlers only, so GET handlers read seeded rows, never `state`; `page_rush` sends
+`GET /projects-page` at a fixed arrival rate. Writes use the admin token (sub=1). MAIR-474: the perf
+stack's seeder also runs `init-perf.sql` (Project_API's volume seed: 5 000 projects, 50 000 tasks, agents
+`100001`-`102000`, Responsables `103001`-`103100` in 100 teams, hot project `project-12` with 2 000 tasks,
+`task-87` with 1 000 comments and history entries); the reads run as the Admin, a seeded Responsable or
+agent (tokens signed in k6), and every read checks that it got the seeded rows. Thresholds are strict:
+`checks == 100%`, `http_req_failed == 0`, `dropped_iterations == 0`. `K6_PROFILE` (passed by the compose
+file) sizes the load: `ci` (default, 30 readers, rush at 30/s) for the 4 vCPU CI runner, `stress` (100
+readers, 100/s) by hand. Both scripts source `stack_secrets.sh` (a random `JWT_SECRET` per run, `ADMIN_JWT`
+for the ZAP replacer), drop the volumes before and after a run, and `performance_test.sh` pins the stack
+to `min(PERF_CPUS, nproc)` CPUs (4 by default). `.zap/rules.tsv` no longer ignores `100000` (server
+errors). In `crud`, handlers run
 path by path in contract order and, per path, get → put → post → delete → patch, so
 `PATCH .../close` runs before `POST /projects`: `prepare()` creates the working project (its tasks
 come back in the top-level `taskItems`), POST handlers create the disposable resources the DELETE
@@ -186,6 +206,10 @@ against `contracts/openapi.json` (status documented + schema).
 - `tests/projects.upstream-mocks.test.ts` — the whole app against Project API, Core API and BFF User
   mocks: session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
+- `tests/token-refusals.test.ts` — walks `contracts/openapi.json`: every operation that inherits `bearerAuth` answers
+  401 to a missing or forged token (other scheme, garbage, other secret, expired, `alg: none`, swapped payload,
+  RS256, non-numeric `sub`) without any upstream call, and gets past the check with a genuine one. The tests sign
+  their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with the secret `tests/support/env.ts` sets.
 - `USER_BFF_URL`, `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
