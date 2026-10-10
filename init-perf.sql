@@ -79,8 +79,12 @@ INSERT INTO project_members (project_id, user_id)
 SELECT 12, n FROM generate_series(100001, 100300) AS n
 ON CONFLICT DO NOTHING;
 
+-- MAIR-502: like a long-lived project, most of them are done, hence archived by the database
+-- (tasks.archived_at): 200 active tasks (t % 10 = 0), 1 800 archived. Same as Project_API.
 INSERT INTO tasks (project_id, title, status, priority, assigned_to, updated_by)
-SELECT 12, 'Perf hot task ' || t, 'todo', 'medium', 100001 + t % 300, 1
+SELECT 12, 'Perf hot task ' || t,
+       (CASE WHEN t % 10 = 0 THEN 'todo' ELSE 'completed' END)::task_status,
+       'medium', 100001 + t % 300, 1
 FROM generate_series(1, 2000) AS t
 WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE project_id = 12 AND title = 'Perf hot task 1');
 

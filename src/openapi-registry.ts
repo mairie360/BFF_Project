@@ -309,8 +309,23 @@ export const TaskHistoryEntry = z.object({
 });
 
 export const TaskCollaborationResponse = z.object({
-  comments: z.array(TaskComment),
-  history: z.array(TaskHistoryEntry),
+  comments: z.array(TaskComment).openapi({
+    description: 'The most recent comments of the page, in reading order (oldest first)',
+  }),
+  history: z.array(TaskHistoryEntry).openapi({ description: 'The most recent history entries of the page, newest first' }),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    commentsTotal: z.number().openapi({ description: 'Number of comments of the task' }),
+    historyTotal: z.number().openapi({ description: 'Number of history entries of the task' }),
+    hasNextPage: z.boolean().openapi({ description: 'Older comments or history entries remain' }),
+  }),
+});
+
+/** Page of the follow-up of a task: `page` from 1, `limit` from 1 to 100 (50 by default). */
+export const TaskCollaborationQuery = z.object({
+  page: z.coerce.number().int().min(1).max(100_000).optional().openapi({ example: 1 }),
+  limit: z.coerce.number().int().min(1).max(100).optional().openapi({ example: 50 }),
 });
 
 registry.register('CloseProjectBody', CloseProjectBody);

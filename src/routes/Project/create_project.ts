@@ -101,7 +101,7 @@ router.post('/', async (req: Request, res: Response) => {
   // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and
   // are derived from the tasks.
   res.status(201).json({
-    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    project: buildProjectDtoForUser(user, bundle),
     taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
   });
 });

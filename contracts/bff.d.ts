@@ -3119,10 +3119,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consulte les commentaires et l’historique d’une tâche */
+        /**
+         * Consulte les commentaires et l’historique d’une tâche
+         * @description Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     /** @description Identifiant du projet */
@@ -3141,6 +3147,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** @description The most recent comments of the page, in reading order (oldest first) */
                             comments: {
                                 id: string;
                                 message: string;
@@ -3150,6 +3157,7 @@ export interface paths {
                                 };
                                 createdAt: string;
                             }[];
+                            /** @description The most recent history entries of the page, newest first */
                             history: {
                                 id: string;
                                 action: string;
@@ -3163,6 +3171,16 @@ export interface paths {
                                     [key: string]: unknown;
                                 };
                             }[];
+                            pagination: {
+                                page: number;
+                                limit: number;
+                                /** @description Number of comments of the task */
+                                commentsTotal: number;
+                                /** @description Number of history entries of the task */
+                                historyTotal: number;
+                                /** @description Older comments or history entries remain */
+                                hasNextPage: boolean;
+                            };
                         };
                     };
                 };
@@ -3352,6 +3370,105 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/archived-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the archived tasks of a project
+         * @description A task is archived as soon as it is done (MAIR-502): `GET /projects/{projectId}` only returns the active tasks and counts the archived ones in its progress; this route pages the archived ones, the most recently archived first. Like the project detail, a member without manager role only sees the tasks assigned to them.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of the archived tasks */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArchivedTasksResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User, Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3869,6 +3986,7 @@ export interface components {
             };
         };
         TaskCollaborationResponse: {
+            /** @description The most recent comments of the page, in reading order (oldest first) */
             comments: {
                 id: string;
                 message: string;
@@ -3878,6 +3996,7 @@ export interface components {
                 };
                 createdAt: string;
             }[];
+            /** @description The most recent history entries of the page, newest first */
             history: {
                 id: string;
                 action: string;
@@ -3891,6 +4010,16 @@ export interface components {
                     [key: string]: unknown;
                 };
             }[];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of comments of the task */
+                commentsTotal: number;
+                /** @description Number of history entries of the task */
+                historyTotal: number;
+                /** @description Older comments or history entries remain */
+                hasNextPage: boolean;
+            };
         };
         ProjectDetailsResponse: {
             /** @description Un projet pour les vues de type carte, table ou kanban */
@@ -4395,6 +4524,129 @@ export interface components {
             project_api: "Connected" | "Unreachable";
             /** @enum {string} */
             user_bff: "Connected" | "Unreachable";
+        };
+        ArchivedTasksQuery: {
+            /** @example 1 */
+            page?: number;
+            /** @example 20 */
+            limit?: number;
+        };
+        ArchivedTasksResponse: {
+            /** @description Archived tasks of the page the caller may see, the most recently archived first */
+            tasks: {
+                /**
+                 * @description L'identifiant unique de la tâche
+                 * @example 123e4567-e89b-12d3-a456-426614174000
+                 */
+                id: string;
+                /**
+                 * @description Le titre de la tâche
+                 * @example Nouvelle tâche
+                 */
+                title: string;
+                /**
+                 * @description Le statut du projet
+                 * @example todo
+                 * @enum {string}
+                 */
+                status: "todo" | "in-progress" | "review" | "done";
+                /**
+                 * @description Le libellé du statut de la tâche
+                 * @example À faire
+                 */
+                statusLabel: string;
+                /** @description Une personne assignable à un projet */
+                responsible: {
+                    /**
+                     * @description L'identifiant unique de la personne
+                     * @example 123e4567-e89b-12d3-a456-426614174000
+                     */
+                    id: string;
+                    /**
+                     * @description Le nom de la personne
+                     * @example John Doe
+                     */
+                    name: string;
+                    /**
+                     * Format: uri
+                     * @description L'URL de l'avatar de la personne
+                     * @example https://example.com/avatar.jpg
+                     */
+                    avatarUrl: string | null;
+                };
+                /** @description La liste des personnes assignées à la tâche */
+                assignees: {
+                    /**
+                     * @description L'identifiant unique de la personne
+                     * @example 123e4567-e89b-12d3-a456-426614174000
+                     */
+                    id: string;
+                    /**
+                     * @description Le nom de la personne
+                     * @example John Doe
+                     */
+                    name: string;
+                    /**
+                     * Format: uri
+                     * @description L'URL de l'avatar de la personne
+                     * @example https://example.com/avatar.jpg
+                     */
+                    avatarUrl: string | null;
+                }[];
+                /**
+                 * @description La priorité du projet
+                 * @example high
+                 * @enum {string}
+                 */
+                priority: "high" | "medium" | "low";
+                /**
+                 * @description Le libellé de la priorité de la tâche
+                 * @example Moyenne
+                 */
+                priorityLabel: string;
+                /**
+                 * @description La liste des étiquettes associées à la  tâche
+                 * @example [
+                 *       "backend",
+                 *       "important"
+                 *     ]
+                 */
+                labels: string[];
+                /**
+                 * @description La date d'échéance de la tâche au format ISO 8601
+                 * @example 2024-12-31T23:59:59Z
+                 */
+                dueDate: string;
+                /**
+                 * @description Indique si la tâche est complétée
+                 * @example false
+                 */
+                completed: boolean;
+                /**
+                 * @description La date de création de la tâche au format ISO 8601
+                 * @example 2024-01-01T12:00:00Z
+                 */
+                createdAt: string;
+                /**
+                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                 * @example 2024-01-15T15:30:00Z
+                 */
+                updatedAt?: string;
+                permissions: {
+                    canView: boolean;
+                    canEdit: boolean;
+                    canDelete: boolean;
+                    canUpdateStatus: boolean;
+                    canComment: boolean;
+                };
+            }[];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of archived tasks of the project */
+                total: number;
+                hasNextPage: boolean;
+            };
         };
     };
     responses: never;

@@ -71,8 +71,11 @@ export type TaskPermissions = {
 
 export type ProjectBundle = {
   project: ProjetView;
+  /** Its active tasks: a completed task is archived (MAIR-502) and only counted in `archivedTasks`. */
   tasks: TaskView[];
   users: User[];
+  /** Number of its archived (completed) tasks, listed by `listArchivedTasks`. */
+  archivedTasks: number;
 };
 
 /** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
@@ -132,7 +135,7 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
     tasks.push(...page.tasks);
   }
 
-  return { project: first.project, tasks, users };
+  return { project: first.project, tasks, users, archivedTasks: first.tasks_archived };
 }
 
 /**
@@ -167,6 +170,25 @@ export async function getTaskWithMembers(
 ): Promise<{ task: TaskView; users: User[] } | null> {
   const [task, users] = await Promise.all([getProjectTask(caller, projectId, taskId), listProjectUsers(caller, projectId)]);
   return task ? { task, users } : null;
+}
+
+/**
+ * One page of the archived tasks of a project (MAIR-502), the most recently archived first, or `null` when the
+ * project is unknown or not visible to the caller (404).
+ */
+export async function listArchivedTasks(
+  caller: Caller,
+  projectId: number,
+  page: { limit: number; offset: number },
+): Promise<{ tasks: TaskView[]; total: number } | null> {
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getArchivedTasks(projectId, page, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
 }
 
 /** Every member of a project. */
@@ -275,25 +297,29 @@ function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed
 }
 
 /** Comments and history of a task, as Project API assembles them (every page of both lists). */
-export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number): Promise<TaskCollaborationView> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(
-      caller,
-      (options) => projectApi.getTaskCollaboration(projectId, taskId, params, options),
-      true,
+/**
+ * Page `page` (from 1) of the follow-up of a task (MAIR-502): its `limit` most recent comments, put back in reading
+ * order (oldest first), and its `limit` most recent history entries (newest first), with both totals. One Project API
+ * call: `comments_order=latest` pages the comments from the most recent one, like the history.
+ */
+export async function getTaskCollaboration(
+  caller: Caller,
+  projectId: number,
+  taskId: number,
+  page = 1,
+  limit = 50,
+): Promise<TaskCollaborationView> {
+  const data = await projectCall(
+    caller,
+    async (options) => (await projectApi.getTaskCollaboration(
+      projectId,
+      taskId,
+      { limit, offset: (page - 1) * limit, comments_order: 'latest' },
+      options,
     )).data,
-    (page) => [
-      { read: page.comments.length, total: page.comments_total },
-      { read: page.history.length, total: page.history_total },
-    ],
+    true,
   );
-  const last = pages[pages.length - 1];
-  return {
-    comments: pages.flatMap((page) => page.comments),
-    comments_total: last.comments_total,
-    history: pages.flatMap((page) => page.history),
-    history_total: last.history_total,
-  };
+  return { ...data, comments: [...data.comments].reverse() };
 }
 
 /** Adds a comment signed by the caller (Project API reads the author from the forwarded session). */

@@ -30,6 +30,7 @@ import {
   listProjectUsers,
   projectCall,
   type Caller,
+  type ProjectBundle,
   type ProjectPermissions,
   type TaskPermissions,
 } from "../../services/projectData";
@@ -165,11 +166,7 @@ export async function fetchProjectUsers(caller: Caller, projectId: number): Prom
   return listProjectUsers(caller, projectId);
 }
 
-export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<{
-  project: ProjetView;
-  tasks: TaskView[];
-  users: User[];
-}> {
+export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle> {
   const bundle = await getProjectBundle(caller, projectId);
   if (!bundle) throw new HttpError(404, 'Project not found.');
 
@@ -405,15 +402,17 @@ export function deriveProjectPriority(tasks: TaskView[]): BffProjectPriority {
   return highest ?? "medium";
 }
 
-export function deriveProjectProgress(tasks: TaskView[]): number {
-  if (tasks.length === 0) {
+/** Share of done tasks, the `archivedTasks` (completed, MAIR-502) included. */
+export function deriveProjectProgress(tasks: TaskView[], archivedTasks = 0): number {
+  const total = tasks.length + archivedTasks;
+  if (total === 0) {
     return 0;
   }
 
   const completed = tasks.filter(
     (task) => mapTaskStatus(task.status) === "done",
-  ).length;
-  return Math.round((completed / tasks.length) * 100);
+  ).length + archivedTasks;
+  return Math.round((completed / total) * 100);
 }
 
 export function deriveProjectDueDate(tasks: TaskView[]): string {
@@ -432,6 +431,8 @@ export function mapProjectToDto(
   project: ProjetView,
   tasks: TaskView[],
   users: User[],
+  // Archived tasks (MAIR-502) are completed tasks the bundle no longer lists: they count as done.
+  archivedTasks = 0,
   permissions: ProjectPermissions = {
     canView: true,
     canEdit: true,
@@ -462,14 +463,13 @@ export function mapProjectToDto(
     responsible,
     assignees,
     labels: [],
-    progress: deriveProjectProgress(tasks),
+    progress: deriveProjectProgress(tasks, archivedTasks),
     dueDate: deriveProjectDueDate(tasks),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
     tasks: {
-      total: tasks.length,
-      completed: tasks.filter((task) => mapTaskStatus(task.status) === "done")
-        .length,
+      total: tasks.length + archivedTasks,
+      completed: tasks.filter((task) => mapTaskStatus(task.status) === "done").length + archivedTasks,
     },
     permissions,
   };
@@ -692,14 +692,9 @@ export function buildPagination(
   };
 }
 
-export function buildProjectDtoForUser(
-  user: ProjectUserContext,
-  project: ProjetView,
-  tasks: TaskView[],
-  users: User[],
-): BffProjectListItem {
+export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectListItem {
   // The project comes from a bundle already read: it is visible to the caller.
-  return mapProjectToDto(project, tasks, users, getProjectPermissions(user, true));
+  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, getProjectPermissions(user, true));
 }
 
 export function buildTaskDtoForUser(

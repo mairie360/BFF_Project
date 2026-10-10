@@ -93,7 +93,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
     });
 
     res.status(201).json({
-        project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+        project: buildProjectDtoForUser(user, bundle),
         taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
     });
 });

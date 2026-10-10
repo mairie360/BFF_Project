@@ -27,7 +27,7 @@ import { createCoverage } from '/coverage.js';
 // Every operation gets a p(95) threshold, whose budget depends on its family (`budgetOf`).
 //
 // MAIR-474: the stack also runs init-perf.sql (Project_API's volume seed: 5 000 projects, 50 000
-// tasks, 2 100 accounts in 100 teams, the hot project 12 with 2 000 tasks and the task 87 with 1 000
+// tasks, 2 100 accounts in 100 teams, the hot project 12 with 2 000 tasks (200 active, 1 800 archived) and the task 87 with 1 000
 // comments and history entries). The reads run as the Admin, a seeded Responsable or a seeded agent,
 // every read checks that it got the seeded rows, and the thresholds are strict (every check passes,
 // no failed request, no dropped iteration). K6_PROFILE sizes the load: `ci` (default) is what the
@@ -168,10 +168,23 @@ const handlers = {
     state.disposableTaskId = (json(res) || {}).id;
   },
   // The hot project, read by a Responsable who sees it through their team.
+  // The hot project lists its active tasks only; its 1 800 archived ones count as done (MAIR-502).
   'GET /projects/{projectId}': ({ request }) =>
     check(request({ path: { projectId: HOT_PROJECT_ID }, headers: randomHotManager() }), {
       'project 200': (r) => r.status === 200,
-      'project reads the hot project tasks': (r) => r.status === 200 && r.json('taskItems').length > 0,
+      'project reads the hot project tasks': (r) =>
+        r.status === 200 && r.json('taskItems').length > 0 && r.json('project.tasks.total') >= 2000
+        && r.json('project.tasks.completed') >= 1800,
+    }),
+  'GET /projects/{projectId}/archived-tasks': ({ request }) =>
+    check(request({
+      path: { projectId: HOT_PROJECT_ID },
+      query: { page: 1 + Math.floor(Math.random() * 90), limit: 20 },
+      headers: randomHotManager(),
+    }), {
+      'archived tasks 200': (r) => r.status === 200,
+      'archived tasks read the hot project': (r) =>
+        r.status === 200 && r.json('pagination.total') >= 1800 && r.json('tasks').length === 20,
     }),
   'DELETE /projects/{projectId}': ({ request, data }) =>
     check(request({ path: { projectId: need(state.disposableProjectId, 'disposable project') }, headers: data.admin }), {
