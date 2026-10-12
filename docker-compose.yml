@@ -59,7 +59,7 @@ services:
 
   # core:
   #   container_name: core-project-bff-developpement
-  #   image: ghcr.io/mairie360/core-api:dev-abaa6c2
+  #   image: ghcr.io/mairie360/core-api:dev-2529974
   #   ports:
   #     - "3000:3000"
   #   networks:
@@ -89,7 +89,7 @@ services:
 
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:dev-5f825ca
+    image: ghcr.io/mairie360/project-api:dev-f3f0a8a
     ports:
       - "3001:3001"
     networks:
