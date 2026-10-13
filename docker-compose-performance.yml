@@ -35,7 +35,7 @@ x-db-env: &db-env
 
 services:
   postgres:
-    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-99f6127}
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-90c22bb}
     container_name: bff-project-perf-db
     environment:
       POSTGRES_USER: postgres
@@ -55,7 +55,7 @@ services:
 
   liquibase:
     # Database >= MAIR-413 only seeds the template admin (users.id = 1) with -Dallow_template_admin=true.
-    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-99f6127}
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-90c22bb}
     container_name: bff-project-perf-liquibase
     depends_on:
       postgres:
@@ -105,7 +105,7 @@ services:
       retries: 5
 
   core-api:
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-2529974}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-95531e2}
     container_name: bff-project-perf-core-api
     depends_on:
       liquibase:
@@ -118,11 +118,11 @@ services:
     environment:
       # Lift the API rate limit (MAIR-425): the scan and the load test hammer it as one user.
       RATE_LIMIT_ENABLED: "false"
-      EMAIL_FROM: "noreply.mairie360@test.local"
-      SMTP_HOST: "localhost"
-      SMTP_PORT: "1025"
-      SMTP_USERNAME: ""
-      SMTP_PASSWORD: ""
+      # Core refuses to start without its Resend configuration (MAIR-522). No route of this BFF sends an
+      # e-mail, so the key is fake and the URL never called.
+      RESEND_API_KEY: "re_fake_local"
+      RESEND_BASE_URL: "http://fake-resend.invalid"
+      EMAIL_DOMAIN: "mairie360.local"
       <<: *db-env
       HOST: "0.0.0.0"
       PORT: 3000
@@ -150,7 +150,7 @@ services:
       - backend
 
   project-api:
-    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:dev-f3f0a8a}
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:dev-2b0d884}
     container_name: bff-project-perf-project-api
     depends_on:
       liquibase:
