@@ -2,7 +2,6 @@ import { checkApis, checkApisResponseSchema, withoutSession } from '@mairie360/b
 import { Router } from 'express';
 import { coreApi } from '../clients/coreClient';
 import { projectApi } from '../clients/projectClient';
-import { userBffApi } from '../clients/userBffClient';
 import { registry } from '../openapi-registry';
 
 const router = Router();
@@ -15,12 +14,11 @@ const PROBE_TIMEOUT_MS = 5_000;
 const UPSTREAMS = {
   core_api: () => coreApi.health(withoutSession('CORE_API', PROBE_TIMEOUT_MS)),
   project_api: () => projectApi.health(withoutSession('PROJECT_API', PROBE_TIMEOUT_MS)),
-  user_bff: () => userBffApi.getHealth(withoutSession('USER_BFF', PROBE_TIMEOUT_MS)),
 };
 
 export const CheckApisResponseSchema = registry.register(
   'CheckApisResponse',
-  checkApisResponseSchema(['core_api', 'project_api', 'user_bff']),
+  checkApisResponseSchema(['core_api', 'project_api']),
 );
 
 registry.registerPath({
@@ -28,7 +26,7 @@ registry.registerPath({
   path: '/check_apis',
   security: [],
   tags: ['Connectivity'],
-  summary: 'Checks that Core API, Project API and BFF User are reachable',
+  summary: 'Checks that Core API and Project API are reachable',
   responses: {
     200: { description: 'Every upstream is reachable', content: { 'application/json': { schema: CheckApisResponseSchema } } },
     502: { description: 'At least one upstream is unreachable or not configured', content: { 'application/json': { schema: CheckApisResponseSchema } } },

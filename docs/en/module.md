@@ -18,7 +18,7 @@ Business domain: Projects and tasks.
 
 ## Typical workflow
 
-1. Resolve the session with BFF User and load `/projects-page`.
+1. Read the caller's roles (token, or Core API) and load `/projects-page`.
 2. Open a project to inspect tasks and allowed actions.
 3. Perform a mutation, consume the returned data and reload the relevant context.
 
@@ -30,7 +30,7 @@ This repository contains the BFF server and its contract. Associated web service
 
 ## Data and current state
 
-The module reads and writes everything through APIs: Project API for projects, tasks, membership and collaboration (comments and history), Core API for the directory of assignable people, BFF User for the caller session. The BFF has no database of its own.
+The module reads and writes everything through APIs: Project API for projects, tasks, membership and collaboration (comments and history), Core API for the directory of assignable people and the caller's profile; never another BFF (MAIR-525). The BFF has no database of its own.
 
 ## Scope and limitations
 

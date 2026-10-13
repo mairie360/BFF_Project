@@ -2268,20 +2268,12 @@
               "Connected",
               "Unreachable"
             ]
-          },
-          "user_bff": {
-            "type": "string",
-            "enum": [
-              "Connected",
-              "Unreachable"
-            ]
           }
         },
         "required": [
           "status",
           "core_api",
-          "project_api",
-          "user_bff"
+          "project_api"
         ]
       },
       "ArchivedTasksQuery": {
@@ -2546,7 +2538,7 @@
         "tags": [
           "Connectivity"
         ],
-        "summary": "Checks that Core API, Project API and BFF User are reachable",
+        "summary": "Checks that Core API and Project API are reachable",
         "responses": {
           "200": {
             "description": "Every upstream is reachable",
@@ -3092,7 +3084,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -3102,7 +3094,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3733,7 +3725,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -3743,7 +3735,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4089,7 +4081,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -4099,7 +4091,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4185,7 +4177,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -4195,7 +4187,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4837,7 +4829,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -4847,7 +4839,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5348,7 +5340,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5358,7 +5350,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5455,7 +5447,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5465,7 +5457,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5811,7 +5803,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -5821,7 +5813,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6335,7 +6327,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -6345,7 +6337,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6656,7 +6648,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -6666,7 +6658,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7380,7 +7372,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -7390,7 +7382,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7640,7 +7632,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -7650,7 +7642,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7808,7 +7800,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -7818,7 +7810,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7924,7 +7916,7 @@
             }
           },
           "502": {
-            "description": "BFF User, Project API or Core API is unreachable or failed",
+            "description": "Project API or Core API is unreachable or failed",
             "content": {
               "application/json": {
                 "schema": {
@@ -7934,7 +7926,7 @@
             }
           },
           "503": {
-            "description": "BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)",
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
             "content": {
               "application/json": {
                 "schema": {

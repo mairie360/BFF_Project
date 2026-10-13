@@ -1,7 +1,9 @@
 import type {
   GetProjectsParams, GetProjectsResultView, ProjetView, TaskCollaborationView, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
-import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
+import {
+  asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
+} from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
 import { projectApi } from '../clients/projectClient';
@@ -10,6 +12,7 @@ import {
   canManageProjects,
   isGlobalProjectRole,
   type ProjectUserContext,
+  type ProjectUserProfile,
 } from '../auth/project-user';
 
 // Every project datum comes from Project API (contract @mairie360/project-api-openapi) and the directory of
@@ -82,24 +85,6 @@ export type ProjectBundle = {
 const PAGE_SIZE = 500;
 
 type PageParams = { limit: number; offset: number };
-type PageCount = { read: number; total: number };
-
-/**
- * Every page of a Project API list, from offset 0 until each of its lists (`count`) reached its `total`. A page
- * that brings no item ends the loop, so a `total` that shrinks while paging cannot make it spin.
- */
-async function readAllPages<P>(fetchPage: (params: PageParams) => Promise<P>, count: (page: P) => PageCount[]): Promise<P[]> {
-  const pages: P[] = [];
-  let offset = 0;
-  for (;;) {
-    const page = await fetchPage({ limit: PAGE_SIZE, offset });
-    pages.push(page);
-    const counts = count(page);
-    const read = Math.max(0, ...counts.map((c) => c.read));
-    offset += read;
-    if (read === 0 || counts.every((c) => offset >= c.total)) return pages;
-  }
-}
 
 /** Project visible to the caller, or `null` when it does not exist or is not visible to them (404). */
 export async function getProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle | null> {
@@ -125,7 +110,7 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
     for (let offset = served; offset < first.tasks_total; offset += served) offsets.push(offset);
   }
   const [pages, users] = await Promise.all([
-    Promise.all(offsets.map((offset) => fetchPage({ limit: PAGE_SIZE, offset }))),
+    mapWithConcurrency(offsets, DEFAULT_CONCURRENCY, (offset) => fetchPage({ limit: PAGE_SIZE, offset })),
     first.users.length < first.users_total ? listProjectUsers(caller, projectId) : Promise.resolve(first.users),
   ]);
   // A project deleted between two pages ends the list where it stopped.
@@ -191,12 +176,18 @@ export async function listArchivedTasks(
   }, true);
 }
 
-/** Every member of a project. */
+/**
+ * Every member of a project: the first page gives the total, the other pages are then read in parallel (MAIR-525),
+ * stepping by the size Project API actually served.
+ */
 export async function listProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, params, options), true)).data,
-    (page) => [{ read: page.users.length, total: page.total }],
-  );
+  const pages = await readOffsetPages({
+    fetchPage: async (offset) => (
+      await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, { limit: PAGE_SIZE, offset }, options), true)
+    ).data,
+    served: (page) => page.users.length,
+    total: (page) => page.total,
+  });
   return pages.flatMap((page) => page.users);
 }
 
@@ -247,16 +238,18 @@ export async function listAssignableUsers(caller: Caller, user: ProjectUserConte
     return toApiUsers(await listDirectoryUsers(caller));
   }
 
+  // Only these roles need the caller's Core profile (groups, name): read once, and only here (MAIR-525).
+  const profile = await user.profile();
   if (user.role === 'Responsable') {
-    const groupIds = user.groups.map((group) => group.id).filter((id): id is number => id !== undefined);
-    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers(caller, groupIds)) : selfOnly(user);
+    const groupIds = profile.groups.map((group) => group.id).filter((id): id is number => id !== undefined);
+    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers(caller, groupIds)) : selfOnly(user, profile);
   }
 
-  return selfOnly(user);
+  return selfOnly(user, profile);
 }
 
-function selfOnly(user: ProjectUserContext): User[] {
-  return [{ id: user.id, name: user.name }];
+function selfOnly(user: ProjectUserContext, profile: ProjectUserProfile): User[] {
+  return [{ id: user.id, name: profile.name }];
 }
 
 function toApiUsers(users: Array<{ id: number; first_name: string; last_name: string }>): User[] {
