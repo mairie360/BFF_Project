@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import { openApiDocument as swaggerSpec } from './openapi';
+import { logger } from './logger';
 import {
   apiOnlyHeaders,
   errorHandler,
   noStore,
   notFoundHandler,
   parseTrustProxy,
+  requestLogger,
   requireSession,
   securityHeaders,
 } from '@mairie360/bffs-lib';
@@ -32,6 +34,8 @@ import { projectUserContextMiddleware } from './auth/project-user';
 const app = express();
 // Client IP (req.ip) behind the ingress: see parseTrustProxy.
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+// First: every request gets an id and one JSON log line when it ends (method, route, status, duration; MAIR-531).
+app.use(requestLogger({ logger }));
 // Security headers shared by every BFF on every response, /docs included; stricter API-only headers
 // (default-src 'none', no embedding) everywhere else, set before body parsing so that they also cover
 // body-parse errors.
@@ -71,6 +75,6 @@ app.use('/projects', archivedTasksRouter);
 // errors) end in the shared envelope `{ error: { code, message, details } }` instead of Express's HTML
 // page: the status is kept and an unexpected error becomes a generic 500 without leaking its message.
 app.use(notFoundHandler);
-app.use(errorHandler());
+app.use(errorHandler({ logger }));
 
 export default app;

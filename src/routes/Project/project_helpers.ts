@@ -1,4 +1,4 @@
-import { HttpError, validationError } from "@mairie360/bffs-lib";
+import { HttpError, describeError, requestId, validationError } from "@mairie360/bffs-lib";
 import { z } from "zod";
 import { projectApi } from "../../clients/projectClient";
 import type {
@@ -23,6 +23,7 @@ import {
   ProjectTask as ProjectTaskSchema,
 } from "../../openapi-registry";
 import type { ProjectUserContext } from "../../auth/project-user";
+import { logger } from "../../logger";
 import {
   getProjectBundle,
   getProjectPermissions,
@@ -244,7 +245,11 @@ export async function withCreatedProjectRollback<T>(caller: Caller, projectId: n
     try {
       await deleteProjectOnApi(caller, projectId);
     } catch (rollbackError) {
-      console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, rollbackError);
+      logger.error("project rollback failed after a partial creation", {
+        request_id: requestId(caller.req),
+        project_id: projectId,
+        error: describeError(rollbackError),
+      });
     }
     throw error;
   }
