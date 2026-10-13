@@ -63,7 +63,7 @@ export const JWT_SECRET = 'project-contract-test-secret';
 
 /**
  * HS256 session token of `sub` signed with `secret` (fixed expiry, so a token is the same in every call). `claims`
- * adds claims, such as the `roles` Core signs (MAIR-529); without it the token predates that claim.
+ * adds claims, such as the `role` Core signs (MAIR-529); without it the token predates that claim.
  */
 export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_102_444_800, claims: object = {}): string {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');

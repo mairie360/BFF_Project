@@ -71,8 +71,8 @@ in the environment; `.npmrc` references it. Never commit the value.
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
    verified with `JWT_SECRET` (HS256, `exp`, positive `sub`); `src/index.ts` refuses to start without it.
-2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — reads the roles from the verified token (lib
-   `sessionRoles`, the `roles` claim of MAIR-529) without any call, or, for an older token, from Core
+2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — reads the role from the verified token (lib
+   `sessionRole`, the `role` claim of MAIR-529) without any call, or, for a token without it, from Core
    `GET /api/v1/user/me/` (`callUpstream('CORE_API', …, { declared: [401], retry: true })`); normalizes them via
    `roleAliases`, takes the user id from the verified token (`sessionUserId`, never from an answer), and stores a
    `ProjectUserContext` on `res.locals.projectUser` (read it with `getProjectUserContext(res)`). Its `profile()`
@@ -215,7 +215,7 @@ does not type errors, so mocked error replies need `outOfContract: true`. Every 
 against `contracts/openapi.json` (status documented + schema).
 
 - `tests/projects.upstream-mocks.test.ts` — the whole app against Project API and Core API mocks (tokens with
-  and without the `roles` claim; `delayMs` + `maxInFlight` check that pages are read in parallel): session resolution, reads, writes, permissions, error mapping, `/check_apis`.
+  and without the `role` claim; `delayMs` + `maxInFlight` check that pages are read in parallel): session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
 - `tests/token-refusals.test.ts` — walks `contracts/openapi.json`: every operation that inherits `bearerAuth` answers
   401 to a missing or forged token (other scheme, garbage, other secret, expired, `alg: none`, swapped payload,
