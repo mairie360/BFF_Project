@@ -1,5 +1,5 @@
 import type { GetMeResponseView } from '@mairie360/core-api-openapi/model';
-import { asCaller, callUpstream, HttpError, sessionRoles, sessionUserId } from '@mairie360/bffs-lib';
+import { asCaller, callUpstream, HttpError, sessionRole, sessionUserId } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { coreApi } from '../clients/coreClient';
 
@@ -108,16 +108,16 @@ function toProfile(me: CoreMe, id: number): ProjectUserProfile {
 }
 
 /**
- * The caller's context. Their roles come from the verified token (`roles` claim, MAIR-529) without any call; for a
- * token issued before that claim, from Core's profile, which is then kept for `profile()`. The id is the `sub` of the
+ * The caller's context. Their role comes from the verified token (`role` claim, MAIR-529) without any call; for a
+ * token without that claim (or with an empty one), from Core's profile, which is then kept for `profile()`. The id is the `sub` of the
  * token `requireSession` verified (MAIR-474), never an id read from an answer.
  */
 export async function loadProjectUserContext(req: Request): Promise<ProjectUserContext> {
   const id = sessionUserId(req);
   let me: Promise<CoreMe> | undefined;
   const readMe = () => (me ??= readCoreMe(req));
-  const claimRoles = sessionRoles(req);
-  const roles = resolveRoles(claimRoles ?? coreRoleNames(await readMe()));
+  const claimRole = sessionRole(req);
+  const roles = resolveRoles(claimRole !== undefined ? [claimRole] : coreRoleNames(await readMe()));
 
   return {
     id,

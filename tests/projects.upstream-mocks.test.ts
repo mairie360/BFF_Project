@@ -84,11 +84,11 @@ function expectBffContract(method: string, pathname: string, response: request.R
 
 /** Core `GET /api/v1/user/me/` answers the profile of `agent` (roles, groups, name). */
 const signIn = (agent: Agent, reply: MockReply = { body: coreMe(agent) }) => coreApi.on('get', CORE.me, reply);
-/** A token issued before the `roles` claim (MAIR-529): the BFF reads the roles from Core. */
+/** A token issued before the `role` claim (MAIR-529): the BFF reads the roles from Core. */
 const as = (call: request.Test, agent: Agent) => call.set('Authorization', bearer(agent.id));
-/** A token carrying the `roles` claim: the BFF reads the roles in it, without calling Core (MAIR-525). */
-const withRoles = (call: request.Test, agent: Agent, roles: string[] = [agent.role]) =>
-  call.set('Authorization', bearer(agent.id, { roles }));
+/** A token carrying `claims`, by default the agent's `role`: the BFF reads it, without calling Core (MAIR-525). */
+const withClaims = (call: request.Test, agent: Agent, claims: object = { role: agent.role }) =>
+  call.set('Authorization', bearer(agent.id, claims));
 /** Appels reçus par Project API, sous la forme `MÉTHODE chemin` (chemin tel que le construit le client généré). */
 const upstreamSequence = () => projectApi.requests.map((call) => `${call.method} ${call.url.pathname}`);
 const called = (method: string, url: string) => `${method} ${url}`;
@@ -226,11 +226,11 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(marie.id));
     });
 
-    test('MAIR-525: reads the roles in the token and never calls Core for them', async () => {
+    test('MAIR-525: reads the role in the token and never calls Core for it', async () => {
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
 
-      const page = await withRoles(request(app).get('/projects-page'), admin, ['admin']);
-      const details = await withRoles(request(app).get('/projects/project-1'), admin, ['admin']);
+      const page = await withClaims(request(app).get('/projects-page'), admin, { role: 'admin' });
+      const details = await withClaims(request(app).get('/projects/project-1'), admin, { role: 'admin' });
 
       expect(page.status).toBe(200);
       expect(page.body.access).toMatchObject({ role: 'Admin', scope: 'all' });
@@ -238,21 +238,35 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(coreApi.calls(CORE.me)).toHaveLength(0);
     });
 
-    test('MAIR-525: a token whose roles claim is empty is a Guest, whatever Core says', async () => {
+    test('MAIR-525: a token whose role is unknown is a Guest, whatever Core says', async () => {
       signIn(admin);
       mockProjectApi();
 
-      const response = await withRoles(request(app).get('/projects-page'), alice, []);
+      const response = await withClaims(request(app).get('/projects-page'), alice, { role: 'Visiteur' });
 
       expect(response.status).toBe(200);
       expect(response.body.access).toMatchObject({ role: 'Guest', canCreateProject: false });
+    });
+
+    test.each([
+      ['an empty `role` claim', { role: '' }],
+      ['only a `roles` claim (ignored)', { roles: ['admin'] }],
+    ])('MAIR-529: a token with %s reads the role from Core', async (_label, claims) => {
+      signIn(marie);
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), alice, claims);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Responsable' });
+      expect(coreApi.calls(CORE.me, 'get').length).toBeGreaterThanOrEqual(1);
     });
 
     test('MAIR-525: a Responsable from the token reads Core once, for the groups of the assignable users', async () => {
       signIn(marie);
       mockProjectApi();
 
-      const response = await withRoles(request(app).get('/projects-page'), marie);
+      const response = await withClaims(request(app).get('/projects-page'), marie);
 
       expect(response.status).toBe(200);
       expect(response.body.access).toMatchObject({ role: 'Responsable', scope: 'team' });
