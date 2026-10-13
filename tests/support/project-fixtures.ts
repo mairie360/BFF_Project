@@ -1,13 +1,10 @@
 import { createHmac } from 'node:crypto';
-// Réponses amont typées par les modèles des paquets @mairie360/project-api-openapi, core-api-openapi et
-// bff-user-openapi installés : un champ ajouté, retiré ou renommé par un contrat fait échouer la compilation des
-// tests. Elles sont en plus validées à l'exécution contre les contrats reconstruits (upstream-contracts.test.ts,
-// mocks HTTP). Jetons de session des tests.
+// Upstream bodies typed by the models of the installed @mairie360/project-api-openapi and core-api-openapi packages:
+// a field added, removed or renamed by a contract breaks the compilation of the tests. They are also validated at run
+// time against the rebuilt contracts (upstream-contracts.test.ts, HTTP mocks). Session tokens of the tests.
 
-import { getBffUser } from '@mairie360/bff-user-openapi/endpoints/bffUser';
-import type { SessionResponse, SessionResponseGroupsItem, SessionResponseUser } from '@mairie360/bff-user-openapi/model';
 import { getCoreAPIMairie360 } from '@mairie360/core-api-openapi/endpoints/coreAPIMairie360';
-import type { DirectoryUser, DirectoryUsersResultView } from '@mairie360/core-api-openapi/model';
+import type { DirectoryUser, DirectoryUsersResultView, GetMeResponseView, Group } from '@mairie360/core-api-openapi/model';
 import { getProjectAPIMairie360 } from '@mairie360/project-api-openapi/endpoints/projectAPIMairie360';
 import {
   type CreateProjectResultView,
@@ -31,7 +28,6 @@ import {
 /** Chemins des opérations amont, tels que les construisent les clients générés (helpers `get*Url`). */
 export const projectApiUrls = getProjectAPIMairie360();
 export const coreApiUrls = getCoreAPIMairie360();
-export const userBffUrls = getBffUser();
 
 export type Role = 'Admin' | 'Maire' | 'Responsable' | 'User' | 'Guest';
 
@@ -43,41 +39,41 @@ export const agents = {
 };
 export type Agent = (typeof agents)[keyof typeof agents];
 
-export function group(id: number, name = `Groupe ${id}`): SessionResponseGroupsItem {
+export function group(id: number, name = `Groupe ${id}`): Group {
   return { id, name, owner_id: 1, description: null };
 }
 
-/** Corps de `GET /me` de BFF User (SessionResponse). Les champs non lus par le BFF Project sont volontairement présents. */
-export function sessionResponse(agent: Agent, user: Partial<SessionResponseUser> = {}): SessionResponse {
+/** Body of Core `GET /api/v1/user/me/`. Fields the BFF Project does not read are present on purpose. */
+export function coreMe(agent: Agent, fields: Partial<GetMeResponseView> = {}): GetMeResponseView {
   return {
-    user: {
-      id: agent.id,
-      first_name: agent.first_name,
-      last_name: agent.last_name,
-      email: `${agent.first_name.toLowerCase()}@mairie.test`,
-      phone: null,
-      status: 'active',
-      role: agent.role,
-      ...user,
-    },
+    first_name: agent.first_name,
+    last_name: agent.last_name,
+    email: `${agent.first_name.toLowerCase()}@mairie.test`,
+    phone: null,
+    status: 'active',
+    role: agent.role,
+    roles: [agent.role],
     groups: [group(1, 'Service urbanisme')],
-    roles: [{ id: 3, name: agent.role }],
+    ...fields,
   };
 }
 
 /** Secret of the tests (tests/support/env.ts): the BFF verifies the session tokens with it (bffs-lib requireSession). */
 export const JWT_SECRET = 'project-contract-test-secret';
 
-/** HS256 session token of `sub` signed with `secret` (fixed expiry, so a token is the same in every call). */
-export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_102_444_800): string {
+/**
+ * HS256 session token of `sub` signed with `secret` (fixed expiry, so a token is the same in every call). `claims`
+ * adds claims, such as the `roles` Core signs (MAIR-529); without it the token predates that claim.
+ */
+export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_102_444_800, claims: object = {}): string {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
-  const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: String(sub), exp })}`;
+  const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: String(sub), exp, ...claims })}`;
   return `${unsigned}.${createHmac('sha256', secret).update(unsigned).digest('base64url')}`;
 }
 
-/** `Authorization` header of the session of `sub`: verified by the BFF, then forwarded to BFF User (mocked). */
-export function bearer(sub: string | number): string {
-  return `Bearer ${sessionToken(sub)}`;
+/** `Authorization` header of the session of `sub`: verified by the BFF, then forwarded to the APIs (mocked). */
+export function bearer(sub: string | number, claims: object = {}): string {
+  return `Bearer ${sessionToken(sub, JWT_SECRET, 4_102_444_800, claims)}`;
 }
 
 // --- Project API (@mairie360/project-api-openapi) ---

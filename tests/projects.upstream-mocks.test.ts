@@ -8,21 +8,20 @@ import type { GetProjectResultView, ProjectListItemView } from '@mairie360/proje
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
   agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
-  projectListItem, projectUsersResult, projectsResult, projetView, sessionResponse, taskComment, taskHistoryEntry, taskView, userBffUrls, type Agent,
+  projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
 
-// Toute l'application est testée avec les vrais clients orval/axios contre de vrais serveurs HTTP simulant
-// BFF User (GET /me), Project API et Core API (annuaire, /check_apis). Leurs contrats sont reconstruits depuis
+// The whole app is tested with the real orval/axios clients against real HTTP servers simulating Project API and
+// Core API (caller's profile and roles, directory, /check_apis); no other BFF is called (MAIR-525). Leurs contrats sont reconstruits depuis
 // les paquets @mairie360/*-openapi installés (tests/support/orval-contract.ts) : chaque mock refuse les routes,
 // paramètres et corps absents du contrat amont et valide ses réponses de succès. Les erreurs ne sont pas typées
 // par orval : toute réponse d'erreur simulée est marquée `outOfContract`. Chaque réponse du BFF est validée
 // contre contracts/openapi.json. Le BFF n'a plus d'accès à PostgreSQL. Les corps simulés sont typés par les modèles
 // générés et les chemins attendus viennent des helpers d'URL des clients générés.
 
-const userBff = new ContractMockServer('USER_BFF', loadOrvalContract('@mairie360/bff-user-openapi'));
 const projectApi = new ContractMockServer('PROJECT_API', loadOrvalContract('@mairie360/project-api-openapi'));
 const coreApi = new ContractMockServer('CORE_API', loadOrvalContract('@mairie360/core-api-openapi'));
-const mocks = [userBff, projectApi, coreApi];
+const mocks = [projectApi, coreApi];
 // Gabarits des contrats amont (clés des mocks) ; les chemins concrets attendus viennent des helpers d'URL.
 const PROJECT = {
   projects: '/api/v1/projects/',
@@ -37,8 +36,7 @@ const PROJECT = {
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
   health: '/health',
 } as const;
-const CORE = { directory: '/api/v1/user/', health: '/health' } as const;
-const USER_BFF = { me: '/me', health: '/health' } as const;
+const CORE = { directory: '/api/v1/user/', me: '/api/v1/user/me/', health: '/health' } as const;
 const bffContract = OpenApiContract.load(path.join(__dirname, '..', 'contracts', 'openapi.json'));
 
 const { admin, alice, marie } = agents;
@@ -55,7 +53,6 @@ beforeEach(() => {
   for (const mock of mocks) mock.reset();
   jest.spyOn(console, 'log').mockImplementation(() => undefined);
   // Every upstream URL (<SERVICE>_URL + <SERVICE>_PORT) is read again on every call.
-  process.env.USER_BFF_URL = userBff.url;
   const coreApiUrl = new URL(coreApi.url);
   process.env.CORE_API_URL = coreApiUrl.hostname;
   process.env.CORE_API_PORT = coreApiUrl.port;
@@ -85,14 +82,13 @@ function expectBffContract(method: string, pathname: string, response: request.R
   if (schema) expect(bffContract.validate(schema, response.body)).toEqual([]);
 }
 
-/** A `/me` body without `user.id` (optional in the BFF User contract). */
-function withoutUserId(session: ReturnType<typeof sessionResponse>) {
-  const user = { ...session.user };
-  delete user.id;
-  return { ...session, user };
-}
-const signIn = (agent: Agent, reply: MockReply = { body: sessionResponse(agent) }) => userBff.on('get', USER_BFF.me, reply);
+/** Core `GET /api/v1/user/me/` answers the profile of `agent` (roles, groups, name). */
+const signIn = (agent: Agent, reply: MockReply = { body: coreMe(agent) }) => coreApi.on('get', CORE.me, reply);
+/** A token issued before the `roles` claim (MAIR-529): the BFF reads the roles from Core. */
 const as = (call: request.Test, agent: Agent) => call.set('Authorization', bearer(agent.id));
+/** A token carrying the `roles` claim: the BFF reads the roles in it, without calling Core (MAIR-525). */
+const withRoles = (call: request.Test, agent: Agent, roles: string[] = [agent.role]) =>
+  call.set('Authorization', bearer(agent.id, { roles }));
 /** Appels reçus par Project API, sous la forme `MÉTHODE chemin` (chemin tel que le construit le client généré). */
 const upstreamSequence = () => projectApi.requests.map((call) => `${call.method} ${call.url.pathname}`);
 const called = (method: string, url: string) => `${method} ${url}`;
@@ -134,7 +130,7 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
   projectApi.on('delete', PROJECT.task, { status: 204 });
 }
 
-describe('Project BFF with contract-driven BFF User, Project API and Core API mocks', () => {
+describe('Project BFF with contract-driven Project API and Core API mocks', () => {
   test('every response carries the shared security headers and no X-Powered-By', async () => {
     const [api, docs, malformed] = await Promise.all([
       request(app).get('/health'),
@@ -186,32 +182,32 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('no-store');
-      expect(userBff.calls(USER_BFF.me, 'get')[0].headers.authorization).toBe(bearer(admin.id));
+      expect(coreApi.calls(CORE.me, 'get')[0].headers.authorization).toBe(bearer(admin.id));
       expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(admin.id));
       expect(coreApi.calls(CORE.directory, 'get')[0].headers.authorization).toBe(bearer(admin.id));
     });
 
-    test('falls back on the token sub when BFF User returns no user id', async () => {
-      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+    test('takes the caller id from the verified token', async () => {
+      signIn(alice);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: alice.id })], [alice]) } });
 
       const response = await as(request(app).get('/projects/project-1'), alice);
 
       expect(response.status).toBe(200);
-      // The task assigned to the caller (id read from the sub of the token BFF User accepted) is visible.
+      // The task assigned to the caller (id read from the sub of the verified token) is visible.
       expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2']);
     });
 
-    test('answers 401 when neither BFF User nor the token identify the caller', async () => {
-      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+    test('answers 401 to an opaque token without any upstream call', async () => {
+      signIn(alice);
       const opaque = await request(app).get('/projects-page').set('Authorization', 'Bearer opaque-token');
 
       expect(opaque.status).toBe(401);
-      expect(projectApi.requests).toHaveLength(0);
+      expect(mocks.flatMap((mock) => mock.requests)).toHaveLength(0);
     });
 
-    test('forwards the caller session to /me and normalizes role aliases', async () => {
-      signIn(marie, { body: { ...sessionResponse(marie, { role: 'manager' }), roles: ['Utilisateur', { id: 9, name: 'ROLE_RESPONSABLE' }] } });
+    test('reads the roles of an older token from Core and normalizes role aliases', async () => {
+      signIn(marie, { body: coreMe(marie, { role: 'manager', roles: ['Utilisateur', 'ROLE_RESPONSABLE'] }) });
       mockProjectApi();
 
       const response = await as(request(app).get('/projects-page'), marie);
@@ -222,18 +218,54 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         role: 'Responsable', scope: 'team', canCreateProject: true, canManageProjects: true, canManageTasks: true,
         canUpdateAssignedTaskStatus: true, canCommentTasks: true,
       });
-      const [me] = userBff.calls(USER_BFF.me, 'get');
-      expect(me.url.pathname).toBe(userBffUrls.getGetMeUrl());
+      // One Core read serves the roles and the groups of the assignable users.
+      const [me] = coreApi.calls(CORE.me, 'get');
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+      expect(me.url.pathname).toBe(coreApiUrls.getGetMeUrl());
       expect(me.headers.authorization).toBe(bearer(marie.id));
       expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(marie.id));
     });
 
+    test('MAIR-525: reads the roles in the token and never calls Core for them', async () => {
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const page = await withRoles(request(app).get('/projects-page'), admin, ['admin']);
+      const details = await withRoles(request(app).get('/projects/project-1'), admin, ['admin']);
+
+      expect(page.status).toBe(200);
+      expect(page.body.access).toMatchObject({ role: 'Admin', scope: 'all' });
+      expect(details.status).toBe(200);
+      expect(coreApi.calls(CORE.me)).toHaveLength(0);
+    });
+
+    test('MAIR-525: a token whose roles claim is empty is a Guest, whatever Core says', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await withRoles(request(app).get('/projects-page'), alice, []);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Guest', canCreateProject: false });
+    });
+
+    test('MAIR-525: a Responsable from the token reads Core once, for the groups of the assignable users', async () => {
+      signIn(marie);
+      mockProjectApi();
+
+      const response = await withRoles(request(app).get('/projects-page'), marie);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Responsable', scope: 'team' });
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+      expect(coreApi.calls(CORE.directory, 'get')[0].url.searchParams.get('group_ids')).toBe('1');
+    });
+
     test.each([
-      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'Upstream service error'],
-      ['a BFF User 403', { status: 403, body: { message: 'forbidden' }, outOfContract: true }, 'Upstream service error'],
-      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'The USER_BFF answer is invalid.'],
-      ['a dropped connection', { dropConnection: true }, 'The USER_BFF service is unavailable.'],
-    ] as Array<[string, MockReply, string]>)('maps %s to 502 without leaking details', async (_label, reply, message) => {
+      ['a Core 500', { status: 500, raw: 'boom', contentType: 'text/plain', outOfContract: true }, 'Upstream service error'],
+      ['a Core 403', { status: 403, raw: 'forbidden', contentType: 'text/plain', outOfContract: true }, 'Upstream service error'],
+      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html', outOfContract: true }, 'The CORE_API answer is invalid.'],
+      ['a dropped connection', { dropConnection: true }, 'The CORE_API service is unavailable.'],
+    ] as Array<[string, MockReply, string]>)('maps %s on the roles of an older token to 502 without leaking details', async (_label, reply, message) => {
       signIn(alice, reply);
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -244,18 +276,18 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.requests).toHaveLength(0);
     });
 
-    test('propagates a BFF User 401 and an unreachable BFF User', async () => {
-      signIn(alice, { status: 401, body: { error: { code: 'UNAUTHORIZED', message: 'Token expiré', details: [] } }, outOfContract: true });
+    test('propagates a Core 401 and an unreachable Core', async () => {
+      signIn(alice, { status: 401, raw: 'Token expiré', contentType: 'text/plain', outOfContract: true });
       const refused = await as(request(app).get('/projects-page'), alice);
 
-      process.env.USER_BFF_URL = await unreachableUrl();
+      process.env.CORE_API_PORT = new URL(await unreachableUrl()).port;
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
       const unreachable = await as(request(app).get('/projects-page'), alice);
 
       expect(refused.status).toBe(401);
       expect(refused.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Authentication required', details: [] });
       expect(unreachable.status).toBe(502);
-      expect(unreachable.body.error.message).toBe('The USER_BFF service is unavailable.');
+      expect(unreachable.body.error.message).toBe('The CORE_API service is unavailable.');
     });
   });
 
@@ -490,6 +522,25 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       // The first page gives the totals, the others are read in parallel, stepping by the size served.
       expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).offset).sort()).toEqual([0, 2, 4]);
       expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
+    });
+
+    test('MAIR-525: reads the member pages after the first one in parallel, in a constant number of waves', async () => {
+      signIn(admin);
+      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}` }));
+      mockProjectApi();
+      projectApi.on('get', PROJECT.project, { body: projectBundle(projetView(1), [], [admin], { users_total: 9 }) });
+      projectApi.on('get', PROJECT.users, ({ url }) => {
+        const { offset } = pageOf(url);
+        // Two members per page, slowly: pages read one after the other would never overlap.
+        return { body: projectUsersResult(users.slice(offset, offset + 2), 9), delayMs: 30 };
+      });
+
+      const response = await as(request(app).get('/projects/project-1'), admin);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset).sort((a, b) => a - b)).toEqual([0, 2, 4, 6, 8]);
+      // Page 0 alone, then the four others together.
+      expect(projectApi.maxInFlight).toBe(4);
     });
 
     // MAIR-502: the follow-up is paged, the most recent comments (kept in reading order) and history entries first.
@@ -1089,7 +1140,8 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         .toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 0, statusUpdate: 0 });
       // delete: guard; status: guard + re-read of the task.
       expect(projectApi.calls(PROJECT.task, 'GET')).toHaveLength(3);
-      expect(userBff.calls(USER_BFF.me, 'get')).toHaveLength(5);
+      // An older token: its roles come from Core, once per request.
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(5);
     });
 
     test.each([
@@ -1123,7 +1175,6 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
   describe('upstream configuration', () => {
     test.each([
-      ['USER_BFF', () => userBff.requests],
       ['PROJECT_API', () => projectApi.requests],
       ['CORE_API', () => coreApi.requests],
     ] as const)('answers 503 without any call to %s when its URL is missing (no localhost default)', async (service, received) => {
@@ -1170,7 +1221,6 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
       coreApi.on('get', CORE.health, { raw: 'OK', contentType: 'text/plain' });
-      userBff.on('get', USER_BFF.health, { raw: 'OK', contentType: 'text/plain' });
       jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
 
@@ -1180,18 +1230,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
       expect(upstreamSequence()).toEqual([called('GET', projectApiUrls.getHealthUrl())]);
       expect(coreApi.requests.map((call) => call.url.pathname)).toEqual([coreApiUrls.getHealthUrl()]);
-      expect(userBff.requests.map((call) => call.url.pathname)).toEqual([userBffUrls.getGetHealthUrl()]);
-      expect(mocks.flatMap((mock) => mock.requests).map((call) => call.headers.authorization)).toEqual([undefined, undefined, undefined]);
+      expect(mocks.flatMap((mock) => mock.requests).map((call) => call.headers.authorization)).toEqual([undefined, undefined]);
       expect(response.headers['cache-control']).toBeUndefined();
     });
 
     test.each([
-      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' }],
-      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected', user_bff: 'Connected' }],
-      ['BFF User', () => userBff.on('get', USER_BFF.health, { status: 503, raw: 'down', contentType: 'text/plain', outOfContract: true }), { core_api: 'Connected', project_api: 'Connected', user_bff: 'Unreachable' }],
+      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable' }],
+      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected' }],
     ])('answers 502 when %s is unreachable', async (_service, breakService, expected) => {
       breakService();
 
@@ -1209,7 +1257,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable' });
       expect(projectApi.requests).toEqual([]);
     });
 
@@ -1220,7 +1268,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const response = await request(app).get('/check_apis');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
     });
   });
 });

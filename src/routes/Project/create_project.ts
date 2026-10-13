@@ -81,6 +81,8 @@ router.post('/', async (req: Request, res: Response) => {
       await updateProjectRecord(caller, projectId, { status: body.status });
     }
     for (const task of body.taskItems ?? []) {
+      // Sequential on purpose: Project API numbers the tasks in creation order, which must be the order given.
+      // eslint-disable-next-line no-await-in-loop
       await createTaskOnApi(
         caller,
         projectId,

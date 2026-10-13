@@ -4,7 +4,7 @@ import type { JsonSchema, OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract, resolveOrvalPackage } from './support/orval-contract';
 import {
   agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectListItem, projectUsersResult, projectsResult,
-  projetView, sessionResponse, taskView, userBffUrls,
+  coreMe, group, projetView, taskView,
 } from './support/project-fixtures';
 
 // Les contrats amont sont reconstruits depuis les paquets @mairie360/*-openapi installés : monter la version
@@ -13,18 +13,15 @@ import {
 const PACKAGES = [
   { name: '@mairie360/project-api-openapi', section: 'dependencies' },
   { name: '@mairie360/core-api-openapi', section: 'dependencies' },
-  // Aligné sur l'image ghcr.io/mairie360/bff-user des stacks de test (docker-compose-*.yml).
-  { name: '@mairie360/bff-user-openapi', section: 'devDependencies' },
 ] as const;
 
 const projectApi = loadOrvalContract('@mairie360/project-api-openapi');
 const coreApi = loadOrvalContract('@mairie360/core-api-openapi');
-const userBff = loadOrvalContract('@mairie360/bff-user-openapi');
 
 /** Chemin d'une opération tel que le client généré le construit (helper `get*Url`), sans sa query string. */
 const pathname = (url: string) => new URL(url, 'http://upstream').pathname;
 
-// Opérations amont réellement appelées (src/clients/{projectClient,coreClient,userBffClient}.ts,
+// Opérations amont réellement appelées (src/clients/{projectClient,coreClient}.ts,
 // src/services/projectData.ts, project_helpers.ts, auth/project-user.ts, routes/check_apis.ts), adressées par les
 // helpers d'URL des clients générés. Le BFF n'a plus d'accès direct à PostgreSQL : tout passe par ces opérations.
 const CONSUMED = [
@@ -46,8 +43,7 @@ const CONSUMED = [
   { contract: projectApi, operationId: 'health', method: 'get', url: projectApiUrls.getHealthUrl() },
   { contract: coreApi, operationId: 'listDirectoryUsers', method: 'get', url: coreApiUrls.getListDirectoryUsersUrl({ group_ids: '1' }) },
   { contract: coreApi, operationId: 'health', method: 'get', url: coreApiUrls.getHealthUrl() },
-  { contract: userBff, operationId: 'getMe', method: 'get', url: userBffUrls.getGetMeUrl() },
-  { contract: userBff, operationId: 'getHealth', method: 'get', url: userBffUrls.getGetHealthUrl() },
+  { contract: coreApi, operationId: 'getMe', method: 'get', url: coreApiUrls.getGetMeUrl() },
 ] as const;
 
 function responseSchema(contract: OpenApiContract, method: string, url: string, status: number): JsonSchema {
@@ -104,7 +100,9 @@ describe('fixtures conform to the upstream contracts', () => {
     ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1 }, { id: 2 }])],
     ['Project API getProject 200', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1), [taskView(1)], [agents.alice])],
     ['Core API listDirectoryUsers 200', coreApi, 'get', coreApiUrls.getListDirectoryUsersUrl(), coreDirectory([agents.admin, agents.alice])],
-    ['BFF User getMe 200', userBff, 'get', userBffUrls.getGetMeUrl(), sessionResponse(agents.alice)],
+    ['Core API getMe 200', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice)],
+    ['Core API getMe 200 without role nor group', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice, { role: '', roles: [], groups: [] })],
+    ['Core API getMe 200 with several roles and groups', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.marie, { roles: ['User', 'Responsable'], groups: [group(1), group(4)] })],
   ] as const)('%s', (_name, contract, method, url, body) => {
     expect(contract.validate(responseSchema(contract, method, url, 200), body)).toEqual([]);
   });
@@ -135,9 +133,15 @@ describe('contract validator', () => {
       ]));
   });
 
-  test('resolves BFF User session unions', () => {
-    const body = { ...sessionResponse(agents.alice), roles: ['User', { id: 3 }] };
-    expect(userBff.validate(responseSchema(userBff, 'get', userBffUrls.getGetMeUrl(), 200), body))
-      .toEqual([expect.stringContaining('$.roles[1]: aucune alternative anyOf')]);
+  test('refuses a Core profile whose roles are not names', () => {
+    const body = { ...coreMe(agents.alice), roles: ['User', { id: 3 }] };
+    expect(coreApi.validate(responseSchema(coreApi, 'get', coreApiUrls.getGetMeUrl(), 200), body))
+      .toEqual([expect.stringContaining('$.roles[1]')]);
+  });
+
+  test('MAIR-525: the BFF depends on no other BFF contract', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')) as Record<string, Record<string, string>>;
+    const all = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    expect(Object.keys(all).filter((name) => name.startsWith('@mairie360/bff-'))).toEqual([]);
   });
 });

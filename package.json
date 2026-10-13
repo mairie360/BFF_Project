@@ -28,7 +28,6 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@mairie360/bff-user-openapi": "0.0.0-dev.a416b4ea37f54566260e7b926b920f31799cb91e",
     "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
     "@types/supertest": "7.2.1",

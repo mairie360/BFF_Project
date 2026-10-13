@@ -1,33 +1,29 @@
-import { asCaller, callUpstream, HttpError, sessionUserId } from '@mairie360/bffs-lib';
+import type { GetMeResponseView } from '@mairie360/core-api-openapi/model';
+import { asCaller, callUpstream, HttpError, sessionRoles, sessionUserId } from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
-import { userBffApi } from '../clients/userBffClient';
+import { coreApi } from '../clients/coreClient';
 
 export const PROJECT_ROLES = ['Admin', 'Maire', 'Responsable', 'User', 'Guest'] as const;
 
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 
-export type ProjectUserContext = {
-  id: number;
+/** Identity of the caller in Core: read only by the routes that show or filter by it. */
+export type ProjectUserProfile = {
   name: string;
   email: string;
-  role: ProjectRole;
-  roles: ProjectRole[];
   groups: Array<{ id?: number; name: string }>;
 };
 
-type UserBffResponse = {
-  user?: {
-    id?: unknown;
-    first_name?: unknown;
-    last_name?: unknown;
-    name?: unknown;
-    email?: unknown;
-    role?: unknown;
-    roles?: unknown;
-  };
-  groups?: unknown;
-  roles?: unknown;
+export type ProjectUserContext = {
+  id: number;
+  role: ProjectRole;
+  roles: ProjectRole[];
+  /** Name and groups from Core API `GET /api/v1/user/me/`, read at most once per request and only when called. */
+  profile: () => Promise<ProjectUserProfile>;
 };
+
+/** Core API `GET /api/v1/user/me/` as read here: every field is checked before use. */
+type CoreMe = Partial<Record<keyof GetMeResponseView, unknown>>;
 
 const roleAliases: Record<string, ProjectRole> = {
   admin: 'Admin',
@@ -59,36 +55,21 @@ function normalizeRole(value: unknown): ProjectRole | null {
   return roleAliases[key] ?? null;
 }
 
-function roleValue(value: unknown): unknown {
-  if (typeof value === 'object' && value !== null && 'name' in value) {
-    return (value as { name?: unknown }).name;
-  }
-  return value;
-}
-
-function resolveRoles(body: UserBffResponse): ProjectRole[] {
-  const rawRoles = [
-    body.user?.role,
-    ...(Array.isArray(body.user?.roles) ? body.user.roles : []),
-    ...(Array.isArray(body.roles) ? body.roles : []),
-  ];
-  const resolved = new Set(
-    rawRoles
-      .map(roleValue)
-      .map(normalizeRole)
-      .filter((role): role is ProjectRole => role !== null),
-  );
-
+/** The project roles among `names`, ordered from the widest (Admin) to the narrowest (Guest). */
+function resolveRoles(names: readonly unknown[]): ProjectRole[] {
+  const resolved = new Set(names.map(normalizeRole).filter((role): role is ProjectRole => role !== null));
   return PROJECT_ROLES.filter((role) => resolved.has(role));
 }
 
-function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
+/** Names of the roles Core lists (`roles`, or the deprecated `role` of an older Core). */
+function coreRoleNames(me: CoreMe): unknown[] {
+  return Array.isArray(me.roles) ? me.roles : [me.role];
+}
+
+function normalizeGroups(value: unknown): ProjectUserProfile['groups'] {
   if (!Array.isArray(value)) return [];
 
   return value.flatMap((group) => {
-    if (typeof group === 'string' && group.trim()) {
-      return [{ name: group.trim() }];
-    }
     if (typeof group !== 'object' || group === null) return [];
 
     const raw = group as { id?: unknown; name?: unknown };
@@ -101,34 +82,48 @@ function normalizeGroups(value: unknown): ProjectUserContext['groups'] {
   });
 }
 
-export async function loadProjectUserContext(req: Request): Promise<ProjectUserContext> {
-  // 401 before any upstream call when the request carries no Bearer token, 503 when USER_BFF_URL is missing;
-  // a BFF User 401 (rejected session) is relayed, any other failure becomes a 502.
-  const { data } = await callUpstream('USER_BFF', () => userBffApi.getMe(asCaller('USER_BFF', req, 5_000)), { declared: [401] });
-  const body = data as UserBffResponse;
-
+/**
+ * The caller's Core profile. 401 before any call without a Bearer token, 503 when CORE_API_URL is missing; a Core
+ * 401 (rejected session) is relayed, any other failure becomes a 502. Read from Core directly, never through BFF
+ * User (MAIR-525). Idempotent read: retried once on a transient failure.
+ */
+async function readCoreMe(req: Request): Promise<CoreMe> {
+  const { data } = await callUpstream('CORE_API', () => coreApi.getMe(asCaller('CORE_API', req, 5_000)), { declared: [401], retry: true });
+  const body: unknown = data;
   // axios keeps the raw body when it is not parsable JSON.
-  if (typeof body !== 'object' || body === null) {
-    throw new HttpError(502, 'The USER_BFF answer is invalid.');
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new HttpError(502, 'The CORE_API answer is invalid.');
   }
-  const roles = resolveRoles(body);
-  const role = roles[0] ?? 'Guest';
-  // The caller is the `sub` of the token `requireSession` verified (MAIR-474), never an id read from an answer:
-  // `user.id` is optional in BFF User's contract, and the access rules are decided on this id.
-  const id = sessionUserId(req);
+  return body as CoreMe;
+}
 
-  const firstName = typeof body.user?.first_name === 'string' ? body.user.first_name.trim() : '';
-  const lastName = typeof body.user?.last_name === 'string' ? body.user.last_name.trim() : '';
-  const explicitName = typeof body.user?.name === 'string' ? body.user.name.trim() : '';
-  const email = typeof body.user?.email === 'string' ? body.user.email.trim() : '';
+function toProfile(me: CoreMe, id: number): ProjectUserProfile {
+  const firstName = typeof me.first_name === 'string' ? me.first_name.trim() : '';
+  const lastName = typeof me.last_name === 'string' ? me.last_name.trim() : '';
+  return {
+    name: `${firstName} ${lastName}`.trim() || `Utilisateur ${id}`,
+    email: typeof me.email === 'string' ? me.email.trim() : '',
+    groups: normalizeGroups(me.groups),
+  };
+}
+
+/**
+ * The caller's context. Their roles come from the verified token (`roles` claim, MAIR-529) without any call; for a
+ * token issued before that claim, from Core's profile, which is then kept for `profile()`. The id is the `sub` of the
+ * token `requireSession` verified (MAIR-474), never an id read from an answer.
+ */
+export async function loadProjectUserContext(req: Request): Promise<ProjectUserContext> {
+  const id = sessionUserId(req);
+  let me: Promise<CoreMe> | undefined;
+  const readMe = () => (me ??= readCoreMe(req));
+  const claimRoles = sessionRoles(req);
+  const roles = resolveRoles(claimRoles ?? coreRoleNames(await readMe()));
 
   return {
     id,
-    name: explicitName || `${firstName} ${lastName}`.trim() || `Utilisateur ${id}`,
-    email,
-    role,
+    role: roles[0] ?? 'Guest',
     roles: roles.length > 0 ? roles : ['Guest'],
-    groups: normalizeGroups(body.groups),
+    profile: async () => toProfile(await readMe(), id),
   };
 }
 

@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Checks that Core API, Project API and BFF User are reachable */
+        /** Checks that Core API and Project API are reachable */
         get: {
             parameters: {
                 query?: never;
@@ -425,7 +425,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -434,7 +434,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -813,7 +813,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -822,7 +822,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1046,7 +1046,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1055,7 +1055,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1389,7 +1389,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1398,7 +1398,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1476,7 +1476,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1485,7 +1485,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1867,7 +1867,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1876,7 +1876,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1966,7 +1966,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1975,7 +1975,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2188,7 +2188,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2197,7 +2197,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2541,7 +2541,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2550,7 +2550,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2766,7 +2766,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2775,7 +2775,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3084,7 +3084,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3093,7 +3093,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3229,7 +3229,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3238,7 +3238,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3350,7 +3350,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3359,7 +3359,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3447,7 +3447,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3456,7 +3456,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -4522,8 +4522,6 @@ export interface components {
             core_api: "Connected" | "Unreachable";
             /** @enum {string} */
             project_api: "Connected" | "Unreachable";
-            /** @enum {string} */
-            user_bff: "Connected" | "Unreachable";
         };
         ArchivedTasksQuery: {
             /** @example 1 */

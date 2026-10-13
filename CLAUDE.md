@@ -9,8 +9,9 @@ frontend and upstream services. It composes/normalizes data so the frontend can 
 grid and Kanban views, and enforces per-session permissions. Upstreams:
 
 - **Project API** (Rust) — via the generated client `@mairie360/project-api-openapi`.
-- **BFF User** (`USER_BFF_URL`, `/me`) — session → user identity, roles and groups.
-- **Core API** — the directory of assignable people (`listDirectoryUsers`), and `GET /check_apis`.
+- **Core API** — the caller's profile (`getMe`: roles of an older token, groups, name), the directory of assignable
+  people (`listDirectoryUsers`), and `GET /check_apis`. **Never another BFF** (MAIR-525): the roles come from the
+  verified token.
 - **No database.** The BFF holds no `pg` pool: visibility, membership, tasks and collaboration all come
   from Project API. `src/services/projectData.ts` is the single place that talks to the two APIs.
 
@@ -26,18 +27,19 @@ npm run mock:project-api   # standalone in-memory Project API for local dev
 ```
 
 Single test: `npx jest tests/projects.upstream-mocks.test.ts` or `npx jest -t "never retries a write"`.
-Note `npx jest` skips the `pretest` typecheck — run `npm test` (or `tsc -p tsconfig.test.json`) to catch type errors.
+ESLint `no-await-in-loop` is an error (MAIR-525); the two task-creation loops stay sequential on purpose (task order)
+and say so. Note `npx jest` skips the `pretest` typecheck — run `npm test` (or `tsc -p tsconfig.test.json`) to catch type errors.
 CI runs tests with `--runInBand`.
 
 `PORT` defaults to `4001`. `src/app.ts` exports the Express app (the tests import it); `src/index.ts` starts with
 `import 'dotenv/config'` and, under `require.main === module`, calls the lib's
-`assertConfigured(UPSTREAM_SERVICES)` then `listen`: startup fails when `USER_BFF_URL`, `PROJECT_API_URL` or
+`assertConfigured(UPSTREAM_SERVICES)` then `listen`: startup fails when `PROJECT_API_URL` or
 `CORE_API_URL` is missing or invalid.
 
 ### Upstream configuration
 
 Every upstream address is `<SERVICE>_URL` (+ optional `<SERVICE>_PORT`, used only when the URL has no port)
-for `USER_BFF`, `PROJECT_API`, `CORE_API`, read **on every call** through the lib's `baseUrl` (no
+for `PROJECT_API`, `CORE_API`, read **on every call** through the lib's `baseUrl` (no
 `localhost` default, no URL frozen at import): a missing one answers 503, declared on every `/projects*`
 route. `/check_apis` probes with the same variables. `PROJECT_API_BASE_PATH` no longer exists.
 
@@ -69,10 +71,13 @@ in the environment; `.npmrc` references it. Never commit the value.
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
    verified with `JWT_SECRET` (HS256, `exp`, positive `sub`); `src/index.ts` refuses to start without it.
-2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — calls BFF User `/me` through
-   `callUpstream('USER_BFF', …, { declared: [401] })`, normalizes roles via `roleAliases`, takes the user id from the
-   verified token (`sessionUserId`, never from an answer), and stores a
-   `ProjectUserContext` on `res.locals.projectUser`. Read it with `getProjectUserContext(res)`.
+2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — reads the roles from the verified token (lib
+   `sessionRoles`, the `roles` claim of MAIR-529) without any call, or, for an older token, from Core
+   `GET /api/v1/user/me/` (`callUpstream('CORE_API', …, { declared: [401], retry: true })`); normalizes them via
+   `roleAliases`, takes the user id from the verified token (`sessionUserId`, never from an answer), and stores a
+   `ProjectUserContext` on `res.locals.projectUser` (read it with `getProjectUserContext(res)`). Its `profile()`
+   reads Core's name and groups at most once per request, only when called (`listAssignableUsers` for a
+   Responsable or an agent). Revocation is checked by Project API.
 
 There is no request-scoped storage: every upstream call receives the request explicitly. Routes build a
 `Caller` with `callerOf(req, ERROR_STATUSES)` (`src/services/projectData.ts`) and pass it down; each call gets
@@ -89,8 +94,9 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
   `project_helpers.ts` use it too.
 - `getProjectBundle(caller, projectId)` → `GET /api/v1/projects/{id}/` (project + tasks + members); Project API
   computes visibility, so a project the caller may not see gives a 404, which the service maps to `null`.
-- Project API lists are paginated (`limit`/`offset`, 100 by default, 500 max, with a `total`): `readAllPages`
-  asks for pages of 500 and reads until every total is reached, so callers always get complete lists. The bundle
+- Project API lists are paginated (`limit`/`offset`, 100 by default, 500 max, with a `total`): the lib's
+  `readOffsetPages` asks for pages of 500, reads the first one, then the others in parallel (MAIR-525), so callers
+  always get complete lists in a constant number of waves. The bundle
   pages its tasks and, past the 100 embedded members, reads them from `GET …/users/` (`listProjectUsers`).
 - `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
   filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
@@ -168,7 +174,7 @@ derives from the status (`codeForStatus`). App-level `notFoundHandler` / `errorH
 Every route defines one `ERROR_STATUSES` list and passes it to both `apiErrorResponses(...)`
 (`openapi-registry.ts`) and `callerOf`, so the contract and the runtime cannot drift; the upstream-mock tests
 fail on any undocumented status. `/check_apis` is the lib's `checkApis` with one probe per upstream
-(`core_api`, `project_api`, `user_bff`: their `/health` with `withoutSession(service, 5_000)`, so no session is
+(`core_api`, `project_api`: their `/health` with `withoutSession(service, 5_000)`, so no session is
 forwarded) and the `CheckApisResponse` schema from `checkApisResponseSchema`.
 
 ### ZAP / k6 OpenAPI coverage gate
@@ -202,21 +208,20 @@ gets a `p(95)` threshold from its family (`budgetOf`).
 
 Tests with contract-driven upstream mocks: the suites import the **whole app** (`src/app.ts`) with the real `project-user.ts`/axios and serve upstreams from
 local HTTP servers (`tests/support/contract-mock-server.ts`). Contracts are rebuilt at test time from the
-**installed** `@mairie360/bff-user-openapi` (devDependency, aligned with the `bff-user` image of the test
-stacks), `@mairie360/project-api-openapi` and `@mairie360/core-api-openapi` packages
+**installed** `@mairie360/project-api-openapi` and `@mairie360/core-api-openapi` packages
 (`tests/support/orval-contract.ts`), so bumping a package is enough to test a new contract. Mocks reject
 paths, methods, params and bodies absent from the contract and validate mocked success responses; orval
 does not type errors, so mocked error replies need `outOfContract: true`. Every BFF response is checked
 against `contracts/openapi.json` (status documented + schema).
 
-- `tests/projects.upstream-mocks.test.ts` — the whole app against Project API, Core API and BFF User
-  mocks: session resolution, reads, writes, permissions, error mapping, `/check_apis`.
+- `tests/projects.upstream-mocks.test.ts` — the whole app against Project API and Core API mocks (tokens with
+  and without the `roles` claim; `delayMs` + `maxInFlight` check that pages are read in parallel): session resolution, reads, writes, permissions, error mapping, `/check_apis`.
 - `tests/upstream-contracts.test.ts` — pins package versions and the consumed operations.
 - `tests/token-refusals.test.ts` — walks `contracts/openapi.json`: every operation that inherits `bearerAuth` answers
   401 to a missing or forged token (other scheme, garbage, other secret, expired, `alg: none`, swapped payload,
   RS256, non-numeric `sub`) without any upstream call, and gets past the check with a genuine one. The tests sign
   their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with the secret `tests/support/env.ts` sets.
-- `USER_BFF_URL`, `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
+- `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
 

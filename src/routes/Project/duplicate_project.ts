@@ -75,6 +75,8 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
         if (memberIds.length > 0) await syncProjectUsersOnApi(caller, duplicateId, memberIds);
 
         for (const task of source.tasks) {
+            // Sequential on purpose: Project API numbers the tasks in creation order, which must match the source.
+            // eslint-disable-next-line no-await-in-loop
             await createTaskOnApi(
                 caller,
                 duplicateId,
