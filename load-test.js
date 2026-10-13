@@ -85,15 +85,18 @@ function bearer(token) {
 const randomInt = (max) => Math.floor(Math.random() * max);
 const callerTokens = {};
 
-/** `Authorization` header of seeded user `id` (one token per user and VU). */
-function callerAuth(id) {
-  if (!callerTokens[id]) callerTokens[id] = bearer(mintJwt(String(id), 'user'));
+/**
+ * `Authorization` header of seeded user `id` (one token per user and VU), with the role init-perf.sql gives them:
+ * the BFF reads the caller's role from the token (MAIR-529), as Core signs it.
+ */
+function callerAuth(id, role) {
+  if (!callerTokens[id]) callerTokens[id] = bearer(mintJwt(String(id), role));
   return callerTokens[id];
 }
 
-const randomAgent = () => callerAuth(AGENTS.first + randomInt(AGENTS.count));
-const randomManager = () => callerAuth(MANAGERS.first + randomInt(MANAGERS.count));
-const randomHotManager = () => callerAuth(MANAGERS.first + randomInt(HOT_MANAGERS));
+const randomAgent = () => callerAuth(AGENTS.first + randomInt(AGENTS.count), 'User');
+const randomManager = () => callerAuth(MANAGERS.first + randomInt(MANAGERS.count), 'Responsable');
+const randomHotManager = () => callerAuth(MANAGERS.first + randomInt(HOT_MANAGERS), 'Responsable');
 
 function unique(prefix) {
   return `${prefix} ${__VU}-${__ITER}-${Date.now()}`;

@@ -191,7 +191,10 @@ init. Three scenarios: `crud` runs every handler through `coverage.run()` and ca
 stack's seeder also runs `init-perf.sql` (Project_API's volume seed: 5 000 projects, 50 000 tasks, agents
 `100001`-`102000`, Responsables `103001`-`103100` in 100 teams, hot project `project-12` with 2 000 tasks,
 `task-87` with 1 000 comments and history entries); the reads run as the Admin, a seeded Responsable or
-agent (tokens signed in k6), and every read checks that it got the seeded rows. Thresholds are strict:
+agent (tokens signed in k6 with the role `init-perf.sql` gives them: the BFF trusts the `role` claim since
+MAIR-529, so a Responsable signed as `user` loses the hot project's tasks), and every read checks that it got the seeded
+rows. Core ≥ MAIR-522 refuses to start without `RESEND_API_KEY` / `RESEND_BASE_URL` / `EMAIL_DOMAIN`: the stacks give it a
+fake key and an unreachable URL, since no route of this BFF sends an e-mail. Thresholds are strict:
 `checks == 100%`, `http_req_failed == 0`, `dropped_iterations == 0`. `K6_PROFILE` (passed by the compose
 file) sizes the load: `ci` (default, 30 readers, rush at 30/s) for the 4 vCPU CI runner, `stress` (100
 readers, 100/s) by hand. Both scripts source `stack_secrets.sh` (a random `JWT_SECRET` per run, `ADMIN_JWT`
