@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import request from 'supertest';
 import app from '../src/app';
 import { JWT_SECRET, sessionToken } from './support/project-fixtures';
+import { captureLogs } from './support/logs';
 
 // Token refusals on every secured operation of the published contract (MAIR-474): an operation is covered as
 // soon as it is documented. Each forged token must get its 401 from the BFF itself, before any upstream call;
@@ -76,8 +77,8 @@ afterAll(async () => {
 
 beforeEach(() => {
     coreCalls = 0;
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    captureLogs();
+    captureLogs();
 });
 
 afterEach(() => {

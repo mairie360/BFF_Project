@@ -2,6 +2,7 @@ import { checkApis, checkApisResponseSchema, withoutSession } from '@mairie360/b
 import { Router } from 'express';
 import { coreApi } from '../clients/coreClient';
 import { projectApi } from '../clients/projectClient';
+import { logger } from '../logger';
 import { registry } from '../openapi-registry';
 
 const router = Router();
@@ -33,6 +34,6 @@ registry.registerPath({
   },
 });
 
-router.get('/', checkApis(UPSTREAMS));
+router.get('/', checkApis(UPSTREAMS, { logger }));
 
 export default router;

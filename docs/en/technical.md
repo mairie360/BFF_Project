@@ -134,6 +134,15 @@ The k6 stack carries the same gate through `tests/k6/coverage.js`: `load-test.js
 
 Before running Docker, check service variables, build secrets and networks in the repository files. Green CI validates its jobs; it does not prove business-service availability in a remote environment.
 
+## Logs
+
+Every log is one JSON object per line on stdout (MAIR-531, `@mairie360/bffs-lib` `createLogger`, `src/logger.ts`), the shape of the APIs' `LOG_FORMAT=json`: `timestamp`, `level`, `target` (`bff-project`), `message`, then the fields.
+
+- One `request completed` line per request (`requestLogger`, first middleware of `src/app.ts`): `request_id`, `method`, `path` (the matched route, e.g. `/users/:userId`; never the query string), `status`, `duration_ms`. 5xx are written at `ERROR`; `/health` is not logged.
+- `request_id` comes from the `X-Request-Id` header when the caller sends a well-formed one, otherwise it is generated; it is answered in `X-Request-Id` and repeated on every line of the request (`request failed`, `upstream unreachable`...), so one search finds them all.
+- `request failed` (5xx) and `upstream unreachable` (`/check_apis`) carry `error` = `describeError(error)`: type, status, upstream method and path, masked message. Never a header, a token, a body or a personal value (MAIR-290).
+- `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default `info`) filters the lines.
+
 ## Troubleshooting
 
 If user context fails, check Core API before Project API. If views disagree, check permissions and identifiers. `npm run mock:project-api` supplies a local development server; it does not replace real data. The `pretest` script checks types using `tsconfig.test.json` before Jest.

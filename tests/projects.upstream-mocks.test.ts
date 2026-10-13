@@ -10,6 +10,7 @@ import {
   agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
   projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
+import { captureLogs } from './support/logs';
 
 // The whole app is tested with the real orval/axios clients against real HTTP servers simulating Project API and
 // Core API (caller's profile and roles, directory, /check_apis); no other BFF is called (MAIR-525). Leurs contrats sont reconstruits depuis
@@ -51,7 +52,7 @@ afterAll(async () => { await Promise.all(mocks.map((mock) => mock.stop())); });
 
 beforeEach(() => {
   for (const mock of mocks) mock.reset();
-  jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  captureLogs();
   // Every upstream URL (<SERVICE>_URL + <SERVICE>_PORT) is read again on every call.
   const coreApiUrl = new URL(coreApi.url);
   process.env.CORE_API_URL = coreApiUrl.hostname;
@@ -281,7 +282,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       ['a dropped connection', { dropConnection: true }, 'The CORE_API service is unavailable.'],
     ] as Array<[string, MockReply, string]>)('maps %s on the roles of an older token to 502 without leaking details', async (_label, reply, message) => {
       signIn(alice, reply);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
 
       const response = await as(request(app).get('/projects-page'), alice);
 
@@ -295,7 +296,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       const refused = await as(request(app).get('/projects-page'), alice);
 
       process.env.CORE_API_PORT = new URL(await unreachableUrl()).port;
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       const unreachable = await as(request(app).get('/projects-page'), alice);
 
       expect(refused.status).toBe(401);
@@ -629,7 +630,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     test('maps a Project API failure to 502 without leaking its body', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       projectApi.on('get', PROJECT.projects, textError(500, 'An error occurred while accessing the database.'));
 
       const response = await as(request(app).get('/projects-page'), admin);
@@ -657,7 +658,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     test('never retries a write', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       projectApi.on('post', PROJECT.projects, { status: 503, raw: 'busy', contentType: 'text/plain', outOfContract: true });
 
       const response = await as(request(app).post('/projects'), admin).send({
@@ -697,7 +698,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     test('answers a generic 500 when an unexpected error happens, without leaking it', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       // A success body the mapping cannot read: the TypeError it raises must stay in the logs.
       projectApi.on('get', PROJECT.project, { body: { project: null, tasks: null, users: null }, outOfContract: true });
 
@@ -935,7 +936,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     ] as const)('%s %s maps a Project API 500 to 502 without leaking it', async (method, url, body) => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       // The project guards read the project, the task guards the task alone (MAIR-474).
       projectApi.on('get', PROJECT.project, textError(500, 'An error occurred while accessing the database.'));
       projectApi.on('get', PROJECT.task, textError(500, 'An error occurred while accessing the database.'));
@@ -1097,7 +1098,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('POST /projects deletes the created project when a later step fails', async () => {
       signIn(admin);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       mockProjectApi({ createdProjectId: 12 });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
 
@@ -1118,7 +1119,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('POST /projects/:id/duplicate deletes the duplicate when a later step fails', async () => {
       signIn(admin);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
       projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
@@ -1194,7 +1195,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     ] as const)('answers 503 without any call to %s when its URL is missing (no localhost default)', async (service, received) => {
       signIn(marie);
       mockProjectApi({ projects: [projectListItem(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       delete process.env[`${service}_URL`];
       delete process.env[`${service}_PORT`];
 
@@ -1208,7 +1209,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('a write route declares and answers 503 when Project API is not configured', async () => {
       signIn(marie);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       delete process.env.PROJECT_API_URL;
 
       const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'done' });
@@ -1235,7 +1236,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
       coreApi.on('get', CORE.health, { raw: 'OK', contentType: 'text/plain' });
-      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      captureLogs();
     });
 
     test('reports every upstream connected through its /health operation', async () => {

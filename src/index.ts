@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { assertConfigured } from '@mairie360/bffs-lib';
 import app from './app';
+import { logger } from './logger';
 
 /** Every upstream this BFF calls, configured by `<SERVICE>_URL` (+ optional `<SERVICE>_PORT`). */
 export const UPSTREAM_SERVICES = ['PROJECT_API', 'CORE_API'] as const;
@@ -18,6 +19,6 @@ if (require.main === module) {
 
   const port = Number(process.env.PORT ?? DEFAULT_PORT);
   app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
+    logger.info('server listening', { port });
   });
 }
