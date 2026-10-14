@@ -142,6 +142,7 @@ Chaque journal est un objet JSON par ligne sur la sortie standard (MAIR-531, `cr
 - `request_id` reprend l'en-tête `X-Request-Id` quand l'appelant en envoie un bien formé, sinon il est généré ; il est renvoyé dans `X-Request-Id` et répété sur chaque ligne de la requête (`request failed`, `upstream unreachable`...), une seule recherche les retrouve toutes.
 - `request failed` (5xx) et `upstream unreachable` (`/check_apis`) portent `error` = `describeError(error)` : type, statut, méthode et chemin de l'appel amont, message masqué. Jamais d'en-tête, de jeton, de corps ni de donnée personnelle (MAIR-290).
 - `LOG_LEVEL` (`debug`, `info`, `warn`, `error` ; `info` par défaut) filtre les lignes.
+- `LOG_FORMAT` (`json` ou `text`) : non défini, les lignes sont du texte coloré quand stdout est un terminal (`npm run start`), du JSON sinon (conteneurs, tests). `NO_COLOR` / `FORCE_COLOR` règlent les couleurs (MAIR-555).
 
 ## Diagnostic
 
