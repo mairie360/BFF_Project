@@ -142,6 +142,7 @@ Every log is one JSON object per line on stdout (MAIR-531, `@mairie360/bffs-lib`
 - `request_id` comes from the `X-Request-Id` header when the caller sends a well-formed one, otherwise it is generated; it is answered in `X-Request-Id` and repeated on every line of the request (`request failed`, `upstream unreachable`...), so one search finds them all.
 - `request failed` (5xx) and `upstream unreachable` (`/check_apis`) carry `error` = `describeError(error)`: type, status, upstream method and path, masked message. Never a header, a token, a body or a personal value (MAIR-290).
 - `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default `info`) filters the lines.
+- `LOG_FORMAT` (`json` or `text`): unset, the lines are coloured text when stdout is a terminal (`npm run start`), JSON otherwise (containers, tests). `NO_COLOR` / `FORCE_COLOR` control the colours (MAIR-555).
 
 ## Troubleshooting
 
