@@ -835,6 +835,60 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       );
     });
 
+    // MAIR-560: Project API's 400 body is never relayed (a bare "Invalid request"), so the BFF refuses what Project API
+    // would, naming the field, before any upstream call.
+    describe('per-field validation errors (MAIR-560)', () => {
+      const taskBody = {
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-05',
+      };
+      const upstreamWrites = () => [
+        ...projectApi.calls(PROJECT.projects, 'POST'), ...projectApi.calls(PROJECT.project, 'PATCH'),
+        ...projectApi.calls(PROJECT.tasks, 'POST'), ...projectApi.calls(PROJECT.task, 'PATCH'),
+      ];
+      const cases: Array<[string, 'post' | 'patch', string, Record<string, unknown>, string, string]> = [
+        ['a blank project title', 'post', '/projects', { ...createBody, title: '   ' }, 'body.title', 'Must not be empty'],
+        ['a 256-character project title', 'post', '/projects', { ...createBody, title: 'a'.repeat(256) }, 'body.title', 'Must be at most 255 characters'],
+        ['a 5001-character description', 'post', '/projects', { ...createBody, description: 'a'.repeat(5_001) }, 'body.description', 'Must be at most 5000 characters'],
+        ['a control character in a description', 'patch', '/projects/project-1', { description: 'a\u0000b' }, 'body.description', 'Must not contain control characters other than line breaks and tabs'],
+        ['a line break in a project title', 'patch', '/projects/project-1', { title: 'Fête\ndu village' }, 'body.title', 'Must not contain line breaks or control characters'],
+        ['a blank task title of a new project', 'post', '/projects', { ...createBody, taskItems: [{ ...createBody.taskItems[0], title: '' }] }, 'body.taskItems.0.title', 'Must not be empty'],
+        ['a 256-character task label', 'post', '/projects/project-1/tasks', { ...taskBody, labels: ['ok', 'a'.repeat(256)] }, 'body.labels.1', 'Must be at most 255 characters'],
+        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
+        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
+        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
+        ['an unknown task status', 'patch', '/projects/project-1/tasks/task-2', { status: 'blocked' }, 'body.status', ''],
+        ['a malformed due date', 'patch', '/projects/project-1/tasks/task-2', { dueDate: '05/11/2026' }, 'body.dueDate', 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time'],
+      ];
+
+      test.each(cases)('refuses %s with a 400 naming the field, before any write', async (_label, method, url, body, path, message) => {
+        signIn(marie);
+        mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+        const response = await as(request(app)[method](url), marie).send(body);
+
+        expect(response.status).toBe(400);
+        expect(response.body.error.code).toBe('BAD_REQUEST');
+        const detail = response.body.error.details.find((item: { path?: string }) => item.path === path);
+        expect(detail).toBeDefined();
+        if (message) expect(detail.message).toBe(message);
+        expect(upstreamWrites()).toEqual([]);
+      });
+
+      test('accepts 255 accented characters, line breaks in a description and < > free texts', async () => {
+        signIn(marie);
+        mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30)], [marie]) } });
+
+        const created = await as(request(app).post('/projects/project-1/tasks'), marie)
+          .send({ ...taskBody, title: 'é'.repeat(255), labels: ['Urgent'] });
+        const patched = await as(request(app).patch('/projects/project-1'), marie)
+          .send({ description: 'Première ligne\n\tseconde ligne' });
+
+        expect(created.status).toBe(201);
+        expect(patched.status).toBe(200);
+      });
+    });
+
     test('POST /projects/:id/tasks/:taskId/comments stores the comment through Project API', async () => {
       signIn(alice);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: alice.id })], [alice]) } });
