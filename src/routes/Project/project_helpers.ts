@@ -24,6 +24,7 @@ import {
 } from "../../openapi-registry";
 import type { ProjectUserContext } from "../../auth/project-user";
 import { logger } from "../../logger";
+import { toBackendDueDate } from "./due_date";
 import {
   getProjectBundle,
   getProjectPermissions,
@@ -475,6 +476,8 @@ export function mapProjectToDto(
     tasks: {
       total: tasks.length + archivedTasks,
       completed: tasks.filter((task) => mapTaskStatus(task.status) === "done").length + archivedTasks,
+      active: tasks.length,
+      archived: archivedTasks,
     },
     permissions,
   };
@@ -512,7 +515,13 @@ export function mapProjectListItemToDto(
     dueDate: project.due_date ?? nowIso(),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
-    tasks: { total: project.tasks_total, completed: project.tasks_completed },
+    // A task is archived exactly when it is completed (MAIR-502): the completed ones are the archived ones.
+    tasks: {
+      total: project.tasks_total,
+      completed: project.tasks_completed,
+      active: project.tasks_total - project.tasks_completed,
+      archived: project.tasks_completed,
+    },
     permissions,
   };
 }
@@ -597,6 +606,7 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   const assignedTo = task.responsibleId
     ? parseUserId(task.responsibleId)
     : null;
+  const dueDate = toBackendDueDate(task.dueDate);
 
   return {
     name: task.title,
@@ -604,12 +614,12 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
     priority: bffTaskPriorityToBackendMap[task.priority],
     assigned_to: assignedTo,
     description: null,
-    due_date: task.dueDate,
+    due_date: dueDate,
     fields: [
       {
         label: "Date",
         task_type: "date",
-        fields_options: [{ option: task.dueDate, is_selected: true }],
+        fields_options: [{ option: dueDate ?? "", is_selected: true }],
       },
       ...task.labels.map(
         (label): DynamicTaskField => ({
@@ -629,7 +639,9 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
   if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
   if (typeof task.priority === "string") body.priority = bffTaskPriorityToBackendMap[task.priority];
   if (typeof task.responsibleId === "string") body.assigned_to = parseUserId(task.responsibleId);
-  if (typeof task.dueDate === "string") body.due_date = task.dueDate;
+  // An empty due date changes nothing: Project API reads `null` as "unchanged" and cannot clear it.
+  const dueDate = typeof task.dueDate === "string" ? toBackendDueDate(task.dueDate) : null;
+  if (dueDate) body.due_date = dueDate;
 
   return body;
 }

@@ -226,18 +226,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -490,7 +500,10 @@ export interface paths {
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate: string;
                         taskItems?: {
                             /** @example Scan task */
@@ -509,7 +522,10 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
-                            /** @example 2030-12-31T00:00:00Z */
+                            /**
+                             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                             * @example 2030-12-31
+                             */
                             dueDate: string;
                         }[];
                     };
@@ -623,18 +639,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -880,7 +906,10 @@ export interface paths {
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate: string;
                     };
                 };
@@ -1199,18 +1228,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -1535,7 +1574,10 @@ export interface paths {
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate?: string;
                         taskItems?: {
                             /** @example Scan task */
@@ -1554,7 +1596,10 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
-                            /** @example 2030-12-31T00:00:00Z */
+                            /**
+                             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                             * @example 2030-12-31
+                             */
                             dueDate: string;
                         }[];
                     };
@@ -1668,18 +1713,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -2022,7 +2077,10 @@ export interface paths {
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate?: string;
                     };
                 };
@@ -2342,18 +2400,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -3004,18 +3072,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -3616,18 +3694,28 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
-            /** @description Les statistiques des tâches du projet */
+            /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
             tasks: {
                 /**
-                 * @description Le nombre total de tâches dans le projet
+                 * @description Number of tasks of the project, the archived (done) ones included
                  * @example 10
                  */
                 total: number;
                 /**
-                 * @description Le nombre de tâches complétées dans le projet
+                 * @description Number of done tasks of the project, the archived ones included
                  * @example 7
                  */
                 completed: number;
+                /**
+                 * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                 * @example 3
+                 */
+                active: number;
+                /**
+                 * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                 * @example 7
+                 */
+                archived: number;
             };
             /** @description Les permissions de l'utilisateur sur le projet */
             permissions: {
@@ -3833,7 +3921,10 @@ export interface components {
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate: string;
             taskItems?: {
                 /** @example Scan task */
@@ -3852,7 +3943,10 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
-                /** @example 2030-12-31T00:00:00Z */
+                /**
+                 * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                 * @example 2030-12-31
+                 */
                 dueDate: string;
             }[];
         };
@@ -3877,7 +3971,10 @@ export interface components {
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate?: string;
             taskItems?: {
                 /** @example Scan task */
@@ -3896,7 +3993,10 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
-                /** @example 2030-12-31T00:00:00Z */
+                /**
+                 * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                 * @example 2030-12-31
+                 */
                 dueDate: string;
             }[];
         };
@@ -3919,7 +4019,10 @@ export interface components {
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate: string;
         };
         UpdateTaskBody: {
@@ -3941,7 +4044,10 @@ export interface components {
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate?: string;
         };
         UpdateTaskStatusBody: {
@@ -4122,18 +4228,28 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
-                /** @description Les statistiques des tâches du projet */
+                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**
-                     * @description Le nombre total de tâches dans le projet
+                     * @description Number of tasks of the project, the archived (done) ones included
                      * @example 10
                      */
                     total: number;
                     /**
-                     * @description Le nombre de tâches complétées dans le projet
+                     * @description Number of done tasks of the project, the archived ones included
                      * @example 7
                      */
                     completed: number;
+                    /**
+                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                     * @example 3
+                     */
+                    active: number;
+                    /**
+                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                     * @example 7
+                     */
+                    archived: number;
                 };
                 /** @description Les permissions de l'utilisateur sur le projet */
                 permissions: {
@@ -4453,18 +4569,28 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
-                /** @description Les statistiques des tâches du projet */
+                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**
-                     * @description Le nombre total de tâches dans le projet
+                     * @description Number of tasks of the project, the archived (done) ones included
                      * @example 10
                      */
                     total: number;
                     /**
-                     * @description Le nombre de tâches complétées dans le projet
+                     * @description Number of done tasks of the project, the archived ones included
                      * @example 7
                      */
                     completed: number;
+                    /**
+                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                     * @example 3
+                     */
+                    active: number;
+                    /**
+                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                     * @example 7
+                     */
+                    archived: number;
                 };
                 /** @description Les permissions de l'utilisateur sur le projet */
                 permissions: {

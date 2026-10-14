@@ -225,20 +225,32 @@
             "properties": {
               "total": {
                 "type": "number",
-                "description": "Le nombre total de tâches dans le projet",
+                "description": "Number of tasks of the project, the archived (done) ones included",
                 "example": 10
               },
               "completed": {
                 "type": "number",
-                "description": "Le nombre de tâches complétées dans le projet",
+                "description": "Number of done tasks of the project, the archived ones included",
+                "example": 7
+              },
+              "active": {
+                "type": "number",
+                "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                "example": 3
+              },
+              "archived": {
+                "type": "number",
+                "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                 "example": 7
               }
             },
             "required": [
               "total",
-              "completed"
+              "completed",
+              "active",
+              "archived"
             ],
-            "description": "Les statistiques des tâches du projet"
+            "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
           },
           "permissions": {
             "type": "object",
@@ -641,7 +653,8 @@
           },
           "dueDate": {
             "type": "string",
-            "example": "2030-12-31T00:00:00Z"
+            "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+            "example": "2030-12-31"
           },
           "taskItems": {
             "type": "array",
@@ -692,7 +705,8 @@
                 },
                 "dueDate": {
                   "type": "string",
-                  "example": "2030-12-31T00:00:00Z"
+                  "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                  "example": "2030-12-31"
                 }
               },
               "required": [
@@ -774,7 +788,8 @@
           },
           "dueDate": {
             "type": "string",
-            "example": "2030-12-31T00:00:00Z"
+            "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+            "example": "2030-12-31"
           },
           "taskItems": {
             "type": "array",
@@ -825,7 +840,8 @@
                 },
                 "dueDate": {
                   "type": "string",
-                  "example": "2030-12-31T00:00:00Z"
+                  "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                  "example": "2030-12-31"
                 }
               },
               "required": [
@@ -892,7 +908,8 @@
           },
           "dueDate": {
             "type": "string",
-            "example": "2030-12-31T00:00:00Z"
+            "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+            "example": "2030-12-31"
           }
         },
         "required": [
@@ -957,7 +974,8 @@
           },
           "dueDate": {
             "type": "string",
-            "example": "2030-12-31T00:00:00Z"
+            "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+            "example": "2030-12-31"
           }
         }
       },
@@ -1361,20 +1379,32 @@
                 "properties": {
                   "total": {
                     "type": "number",
-                    "description": "Le nombre total de tâches dans le projet",
+                    "description": "Number of tasks of the project, the archived (done) ones included",
                     "example": 10
                   },
                   "completed": {
                     "type": "number",
-                    "description": "Le nombre de tâches complétées dans le projet",
+                    "description": "Number of done tasks of the project, the archived ones included",
+                    "example": 7
+                  },
+                  "active": {
+                    "type": "number",
+                    "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                    "example": 3
+                  },
+                  "archived": {
+                    "type": "number",
+                    "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                     "example": 7
                   }
                 },
                 "required": [
                   "total",
-                  "completed"
+                  "completed",
+                  "active",
+                  "archived"
                 ],
-                "description": "Les statistiques des tâches du projet"
+                "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
               },
               "permissions": {
                 "type": "object",
@@ -2073,20 +2103,32 @@
                   "properties": {
                     "total": {
                       "type": "number",
-                      "description": "Le nombre total de tâches dans le projet",
+                      "description": "Number of tasks of the project, the archived (done) ones included",
                       "example": 10
                     },
                     "completed": {
                       "type": "number",
-                      "description": "Le nombre de tâches complétées dans le projet",
+                      "description": "Number of done tasks of the project, the archived ones included",
+                      "example": 7
+                    },
+                    "active": {
+                      "type": "number",
+                      "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                      "example": 3
+                    },
+                    "archived": {
+                      "type": "number",
+                      "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                       "example": 7
                     }
                   },
                   "required": [
                     "total",
-                    "completed"
+                    "completed",
+                    "active",
+                    "archived"
                   ],
-                  "description": "Les statistiques des tâches du projet"
+                  "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                 },
                 "permissions": {
                   "type": "object",
@@ -2756,20 +2798,32 @@
                           "properties": {
                             "total": {
                               "type": "number",
-                              "description": "Le nombre total de tâches dans le projet",
+                              "description": "Number of tasks of the project, the archived (done) ones included",
                               "example": 10
                             },
                             "completed": {
                               "type": "number",
-                              "description": "Le nombre de tâches complétées dans le projet",
+                              "description": "Number of done tasks of the project, the archived ones included",
+                              "example": 7
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                              "example": 3
+                            },
+                            "archived": {
+                              "type": "number",
+                              "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                               "example": 7
                             }
                           },
                           "required": [
                             "total",
-                            "completed"
+                            "completed",
+                            "active",
+                            "archived"
                           ],
-                          "description": "Les statistiques des tâches du projet"
+                          "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
                         "permissions": {
                           "type": "object",
@@ -3174,7 +3228,8 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "example": "2030-12-31T00:00:00Z"
+                    "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                    "example": "2030-12-31"
                   },
                   "taskItems": {
                     "type": "array",
@@ -3225,7 +3280,8 @@
                         },
                         "dueDate": {
                           "type": "string",
-                          "example": "2030-12-31T00:00:00Z"
+                          "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                          "example": "2030-12-31"
                         }
                       },
                       "required": [
@@ -3407,20 +3463,32 @@
                           "properties": {
                             "total": {
                               "type": "number",
-                              "description": "Le nombre total de tâches dans le projet",
+                              "description": "Number of tasks of the project, the archived (done) ones included",
                               "example": 10
                             },
                             "completed": {
                               "type": "number",
-                              "description": "Le nombre de tâches complétées dans le projet",
+                              "description": "Number of done tasks of the project, the archived ones included",
+                              "example": 7
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                              "example": 3
+                            },
+                            "archived": {
+                              "type": "number",
+                              "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                               "example": 7
                             }
                           },
                           "required": [
                             "total",
-                            "completed"
+                            "completed",
+                            "active",
+                            "archived"
                           ],
-                          "description": "Les statistiques des tâches du projet"
+                          "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
                         "permissions": {
                           "type": "object",
@@ -3822,7 +3890,8 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "example": "2030-12-31T00:00:00Z"
+                    "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                    "example": "2030-12-31"
                   }
                 },
                 "required": [
@@ -4278,7 +4347,8 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "example": "2030-12-31T00:00:00Z"
+                    "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                    "example": "2030-12-31"
                   },
                   "taskItems": {
                     "type": "array",
@@ -4329,7 +4399,8 @@
                         },
                         "dueDate": {
                           "type": "string",
-                          "example": "2030-12-31T00:00:00Z"
+                          "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                          "example": "2030-12-31"
                         }
                       },
                       "required": [
@@ -4501,20 +4572,32 @@
                           "properties": {
                             "total": {
                               "type": "number",
-                              "description": "Le nombre total de tâches dans le projet",
+                              "description": "Number of tasks of the project, the archived (done) ones included",
                               "example": 10
                             },
                             "completed": {
                               "type": "number",
-                              "description": "Le nombre de tâches complétées dans le projet",
+                              "description": "Number of done tasks of the project, the archived ones included",
+                              "example": 7
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                              "example": 3
+                            },
+                            "archived": {
+                              "type": "number",
+                              "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                               "example": 7
                             }
                           },
                           "required": [
                             "total",
-                            "completed"
+                            "completed",
+                            "active",
+                            "archived"
                           ],
-                          "description": "Les statistiques des tâches du projet"
+                          "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
                         "permissions": {
                           "type": "object",
@@ -5022,20 +5105,32 @@
                           "properties": {
                             "total": {
                               "type": "number",
-                              "description": "Le nombre total de tâches dans le projet",
+                              "description": "Number of tasks of the project, the archived (done) ones included",
                               "example": 10
                             },
                             "completed": {
                               "type": "number",
-                              "description": "Le nombre de tâches complétées dans le projet",
+                              "description": "Number of done tasks of the project, the archived ones included",
+                              "example": 7
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                              "example": 3
+                            },
+                            "archived": {
+                              "type": "number",
+                              "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                               "example": 7
                             }
                           },
                           "required": [
                             "total",
-                            "completed"
+                            "completed",
+                            "active",
+                            "archived"
                           ],
-                          "description": "Les statistiques des tâches du projet"
+                          "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
                         "permissions": {
                           "type": "object",
@@ -5553,7 +5648,8 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "example": "2030-12-31T00:00:00Z"
+                    "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
+                    "example": "2030-12-31"
                   }
                 }
               }
@@ -5999,20 +6095,32 @@
                           "properties": {
                             "total": {
                               "type": "number",
-                              "description": "Le nombre total de tâches dans le projet",
+                              "description": "Number of tasks of the project, the archived (done) ones included",
                               "example": 10
                             },
                             "completed": {
                               "type": "number",
-                              "description": "Le nombre de tâches complétées dans le projet",
+                              "description": "Number of done tasks of the project, the archived ones included",
+                              "example": 7
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                              "example": 3
+                            },
+                            "archived": {
+                              "type": "number",
+                              "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                               "example": 7
                             }
                           },
                           "required": [
                             "total",
-                            "completed"
+                            "completed",
+                            "active",
+                            "archived"
                           ],
-                          "description": "Les statistiques des tâches du projet"
+                          "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
                         "permissions": {
                           "type": "object",
@@ -7221,20 +7329,32 @@
                             "properties": {
                               "total": {
                                 "type": "number",
-                                "description": "Le nombre total de tâches dans le projet",
+                                "description": "Number of tasks of the project, the archived (done) ones included",
                                 "example": 10
                               },
                               "completed": {
                                 "type": "number",
-                                "description": "Le nombre de tâches complétées dans le projet",
+                                "description": "Number of done tasks of the project, the archived ones included",
+                                "example": 7
+                              },
+                              "active": {
+                                "type": "number",
+                                "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                                "example": 3
+                              },
+                              "archived": {
+                                "type": "number",
+                                "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
                                 "example": 7
                               }
                             },
                             "required": [
                               "total",
-                              "completed"
+                              "completed",
+                              "active",
+                              "archived"
                             ],
-                            "description": "Les statistiques des tâches du projet"
+                            "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                           },
                           "permissions": {
                             "type": "object",
