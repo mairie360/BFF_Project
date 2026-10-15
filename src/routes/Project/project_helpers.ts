@@ -10,6 +10,7 @@ import type {
   GetProjectsResultView,
   ProjectListItemView,
   ProjetView,
+  ProjectStatus as ApiProjectStatus,
   TaskPriority as ApiTaskPriority,
   TaskStatus as ApiTaskStatus,
   TaskView,
@@ -106,10 +107,21 @@ const projectPriorityLabelMap: Record<BffProjectPriority, string> = {
 };
 
 const backendProjectStatusToBffMap: Record<string, BffProjectStatus> = {
+  Todo: "todo",
   Active: "in-progress",
+  Review: "review",
+  // Written by the close route ("suspend") and by the BFF before MAIR-558: still shown as review.
   Suspended: "review",
   Completed: "done",
   Error: "todo",
+};
+
+/** Status Project API stores for a BFF status (MAIR-558: `Todo` and `Review` are stored as such). */
+const bffProjectStatusToBackendMap: Record<BffProjectStatus, ApiProjectStatus> = {
+  todo: "Todo",
+  "in-progress": "Active",
+  review: "Review",
+  done: "Completed",
 };
 
 const backendTaskStatusToBffMap: Record<string, BffProjectStatus> = {
@@ -353,6 +365,14 @@ export function mapProjectStatus(status: string): BffProjectStatus {
   return backendProjectStatusToBffMap[status] ?? "todo";
 }
 
+export function mapProjectStatusToBackend(status: BffProjectStatus): ApiProjectStatus {
+  return bffProjectStatusToBackendMap[status];
+}
+
+export function mapPriorityToBackend(priority: BffProjectPriority): ApiTaskPriority {
+  return bffTaskPriorityToBackendMap[priority];
+}
+
 export function mapTaskStatus(status: string): BffProjectStatus {
   return backendTaskStatusToBffMap[status] ?? "todo";
 }
@@ -381,31 +401,6 @@ export function mapTaskPriority(priority: string): BffProjectPriority {
 
 export function mapTaskPriorityLabel(priority: BffProjectPriority): string {
   return projectPriorityLabelMap[priority];
-}
-
-function priorityWeight(priority: BffProjectPriority): number {
-  switch (priority) {
-    case "high":
-      return 3;
-    case "medium":
-      return 2;
-    case "low":
-      return 1;
-    default:
-      return 0;
-  }
-}
-
-export function deriveProjectPriority(tasks: TaskView[]): BffProjectPriority {
-  if (tasks.length === 0) {
-    return "medium";
-  }
-
-  const highest = [...tasks]
-    .map((task) => mapTaskPriority(task.priority))
-    .sort((left, right) => priorityWeight(right) - priorityWeight(left))[0];
-
-  return highest ?? "medium";
 }
 
 /** Share of done tasks, the `archivedTasks` (completed, MAIR-502) included. */
@@ -450,7 +445,8 @@ export function mapProjectToDto(
   },
 ): BffProjectListItem {
   const status = mapProjectStatus(project.status);
-  const priority = deriveProjectPriority(tasks);
+  // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
+  const priority = mapTaskPriority(project.priority);
   const responsible =
     users.length > 0
       ? mapPerson(users[0])
@@ -535,11 +531,12 @@ export function summaryFromCounts(result: GetProjectsResultView): {
   const { by_status: status, by_priority: priority } = result.summary;
   return {
     totalProjects: result.total,
-    // Same mapping as `mapProjectStatus`: a status Project API does not interpret (`Error`) is `todo`.
+    // Same mapping as `mapProjectStatus`: a status Project API does not interpret (`other`) is `todo`, a
+    // suspended project is in review.
     projectsByStatus: {
-      todo: status.other,
+      todo: status.todo + status.other,
       "in-progress": status.active,
-      review: status.suspended,
+      review: status.review + status.suspended,
       done: status.completed,
     },
     projectsByPriority: { high: priority.high, medium: priority.medium, low: priority.low },
@@ -652,6 +649,9 @@ export function mapProjectCreateBodyToBackend(
   return {
     name: body.title,
     description: body.description,
+    // Stored as chosen (MAIR-558); absent, Project API defaults to Active / Medium.
+    ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
+    ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
   };
 }
 

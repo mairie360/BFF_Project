@@ -1,5 +1,5 @@
 import type {
-  GetProjectsParams, GetProjectsResultView, ProjetView, TaskCollaborationView, TaskView, User,
+  GetProjectsParams, GetProjectsResultView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
 import {
   asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
@@ -259,16 +259,17 @@ function toApiUsers(users: Array<{ id: number; first_name: string; last_name: st
   }));
 }
 
-/** Updates the title, the description and/or the status of a project. */
+/** Updates the title, the description, the status and/or the priority of a project (both stored, MAIR-558). */
 export async function updateProjectRecord(
   caller: Caller,
   projectId: number,
-  input: { title?: string; description?: string; status?: string },
+  input: { title?: string; description?: string; status?: ProjectStatus; priority?: TaskPriority },
 ): Promise<void> {
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     ...(input.title !== undefined ? { name: input.title } : {}),
     ...(input.description !== undefined ? { description: input.description } : {}),
-    ...(input.status !== undefined ? { status: toApiProjectStatus(input.status) } : {}),
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.priority !== undefined ? { priority: input.priority } : {}),
   }, options));
 }
 
@@ -281,12 +282,6 @@ export async function setProjectClosed(
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     status: status === 'completed' ? 'Completed' : 'Suspended',
   }, options));
-}
-
-function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed' {
-  if (status === 'done') return 'Completed';
-  if (status === 'review') return 'Suspended';
-  return 'Active';
 }
 
 /** Comments and history of a task, as Project API assembles them (every page of both lists). */

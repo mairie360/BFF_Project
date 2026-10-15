@@ -3166,7 +3166,7 @@
           "Projects"
         ],
         "summary": "Create a project",
-        "description": "Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.",
+        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4272,7 +4272,7 @@
           "Projects"
         ],
         "summary": "Partially update a project",
-        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
         "parameters": [
           {
             "schema": {

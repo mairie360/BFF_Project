@@ -79,7 +79,10 @@ export function bearer(sub: string | number, claims: object = {}): string {
 // --- Project API (@mairie360/project-api-openapi) ---
 
 export function projetView(id: number, overrides: Partial<ProjetView> = {}): ProjetView {
-  return { id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active, ...overrides };
+  return {
+    id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active,
+    priority: TaskPriority.Medium, ...overrides,
+  };
 }
 
 /** Project of `GET /api/v1/projects/` with the aggregates of its tasks (MAIR-474): none by default. */
@@ -103,7 +106,9 @@ export function projectsResult(
     total,
     summary: summary ?? {
       by_status: {
+        todo: count((p) => p.status === ProjectStatus.Todo),
         active: count((p) => p.status === ProjectStatus.Active),
+        review: count((p) => p.status === ProjectStatus.Review),
         suspended: count((p) => p.status === ProjectStatus.Suspended),
         completed: count((p) => p.status === ProjectStatus.Completed),
         other: count((p) => p.status === ProjectStatus.Error),
