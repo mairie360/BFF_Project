@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "9.1.0",
-    "@mairie360/bffs-lib": "2.2.0",
+    "@mairie360/bffs-lib": "2.4.0",
     "@mairie360/core-api-openapi": "0.0.0-dev-95531e2",
     "@mairie360/project-api-openapi": "0.0.0-dev-2b0d884",
     "axios": "1.20.0",
