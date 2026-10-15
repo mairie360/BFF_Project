@@ -1,5 +1,5 @@
 import { OpenAPIRegistry, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-import { ErrorResponseSchema } from '@mairie360/bffs-lib';
+import { ErrorResponseSchema, textField } from '@mairie360/bffs-lib';
 import { z } from 'zod';
 import { isDueDate } from './routes/Project/due_date';
 
@@ -202,10 +202,18 @@ const PersonId = z.string().regex(/^(?:user-\d+)?$/, 'Expected a user-<id> ident
 const PersonIds = z.array(
   z.string().regex(/^user-\d+$/, 'Expected a user-<id> identifier').openapi({ example: 'user-1' }),
 );
-// Stored texts are rendered by the fronts: `<` and `>` are refused.
+// Stored texts are rendered by the fronts: `<` and `>` are refused. Titles, labels and descriptions follow Project
+// API's rules (MAIR-560: 1 to 255 characters, not blank, no control character; a description up to 5000 characters,
+// line breaks and tabs allowed), so a bad value is a 400 naming the field instead of the API's bare one.
 const noMarkup = (schema: z.ZodString) => schema.regex(/^[^<>]*$/, 'Must not contain < or >');
-const Title = (example: string) => noMarkup(z.string()).openapi({ example });
-const Labels = z.array(noMarkup(z.string()).openapi({ example: 'security' }));
+const Title = (example: string) => textField({ max: 255, min: 1, noMarkup: true }).openapi({ example });
+const Description = (example: string) => textField({ max: 5_000, multiline: true, noMarkup: true }).openapi({ example });
+const Labels = z.array(textField({ max: 255, min: 1, noMarkup: true }).openapi({ example: 'security' }));
+// `review` has no Project API task status yet (MAIR-566 brings per-project statuses): refused with a clear detail
+// instead of Project API's bare 400.
+const TaskStatus = ProjectStatus.refine((status) => status !== 'review', {
+  message: 'review is not available for tasks: use todo, in-progress or done',
+});
 // A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
 // The BFF turns it into the date-time Project API stores (MAIR-559).
 const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').openapi({
@@ -216,7 +224,7 @@ const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an
 export const CreateProjectTaskInput = z.object({
   title: Title('Scan task'),
 
-  status: ProjectStatus,
+  status: TaskStatus,
 
   priority: ProjectPriority,
 
@@ -230,7 +238,7 @@ export const CreateProjectTaskInput = z.object({
 export const CreateProjectBody = z.object({
   title: Title('Scan project'),
 
-  description: noMarkup(z.string()).openapi({ example: 'Project created by the ZAP scan' }),
+  description: Description('Project created by the ZAP scan'),
 
   status: ProjectStatus,
 
@@ -264,7 +272,7 @@ registry.register('UpdateProjectBody', UpdateProjectBody);
 export const CreateTaskBody = z.object({
   title: Title('Scan task'),
 
-  status: ProjectStatus,
+  status: TaskStatus,
 
   priority: ProjectPriority,
 
@@ -292,7 +300,7 @@ registry.register('UpdateTaskBody', UpdateTaskBody);
 // =====================
 
 export const UpdateTaskStatusBody = z.object({
-  status: ProjectStatus,
+  status: TaskStatus,
 });
 
 registry.register(
