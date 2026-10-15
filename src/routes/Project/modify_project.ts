@@ -6,6 +6,8 @@ import {
     buildProjectDtoForUser,
     buildTaskDtoForUser,
     fetchProjectBundle,
+    mapPriorityToBackend,
+    mapProjectStatusToBackend,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
@@ -24,7 +26,7 @@ registry.registerPath({
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
 
     request: {
         params: ProjectIdParams,
@@ -81,8 +83,13 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         ...(body.assigneeIds ?? []),
     ]);
 
-    if (body.title !== undefined || body.description !== undefined || body.status !== undefined) {
-        await updateProjectRecord(caller, projectId, body);
+    if (body.title !== undefined || body.description !== undefined || body.status !== undefined || body.priority !== undefined) {
+        await updateProjectRecord(caller, projectId, {
+            title: body.title,
+            description: body.description,
+            status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),
+            priority: body.priority === undefined ? undefined : mapPriorityToBackend(body.priority),
+        });
     }
 
     // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
@@ -96,7 +103,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users);
     }
 
-    // Only the state Project API persisted is returned (priority, labels and dueDate are not stored).
+    // Only the state Project API persisted is returned (labels and dueDate are not stored).
     const bundle = await fetchProjectBundle(caller, projectId);
     res.status(200).json({
         project: buildProjectDtoForUser(user, bundle),

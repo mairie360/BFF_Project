@@ -100,9 +100,10 @@ its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout,
   pages its tasks and, past the 100 embedded members, reads them from `GET …/users/` (`listProjectUsers`).
 - `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
   filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
-  counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Error`,
-  `in-progress` ↔ `Active`, `review` ↔ `Suspended`, `done` ↔ `Completed`) and priorities (`high` covers `Urgent`,
-  stored `High`); the Kanban columns count every match but list the ids of the page only.
+  counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Todo`,
+  `in-progress` ↔ `Active`, `review` ↔ `Review` and reads `Suspended` as `review`, `done` ↔ `Completed`; an unknown
+  status reads as `todo`) and priorities (`high` covers `Urgent`, stored `High`). Since MAIR-558 Project API stores the
+  project's status and priority as chosen; the Kanban columns count every match but list the ids of the page only.
 - `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
   `addTaskComment` → the matching Project API operations. Project API writes the task history itself (database
   trigger, MAIR-393): the BFF never writes it.

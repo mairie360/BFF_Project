@@ -391,7 +391,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       });
       mockProjectApi();
       projectApi.on('get', PROJECT.projects, { body: projectsResult([listed], 41, {
-        by_status: { active: 30, suspended: 6, completed: 4, other: 1 },
+        by_status: { todo: 2, active: 30, review: 3, suspended: 6, completed: 4, other: 1 },
         by_priority: { low: 5, medium: 10, high: 26 },
       }) });
 
@@ -407,14 +407,15 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         tasks: { total: 2, completed: 1, active: 1, archived: 1 },
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
-      // The counts cover every matching project, the Kanban columns list the ids of the page.
+      // The counts cover every matching project, the Kanban columns list the ids of the page. `todo` adds the
+      // statuses Project API does not interpret, `review` the suspended projects (MAIR-558).
       expect(response.body.summary).toEqual({
         totalProjects: 41,
-        projectsByStatus: { todo: 1, 'in-progress': 30, review: 6, done: 4 },
+        projectsByStatus: { todo: 3, 'in-progress': 30, review: 9, done: 4 },
         projectsByPriority: { high: 26, medium: 10, low: 5 },
       });
       expect(response.body.kanban.columns.map(({ status, count, projectIds }: { status: string; count: number; projectIds: string[] }) => [status, count, projectIds]))
-        .toEqual([['todo', 1, []], ['in-progress', 30, ['project-1']], ['review', 6, []], ['done', 4, []]]);
+        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 9, []], ['done', 4, []]]);
       expect(response.body.pagination).toEqual({ page: 3, limit: 10, total: 41, hasNextPage: true });
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
@@ -428,8 +429,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     });
 
     test.each([
-      ['todo', { status: 'Error' }],
-      ['review', { status: 'Suspended' }],
+      ['todo', { status: 'Todo' }],
+      ['review', { status: 'Review,Suspended' }],
       ['done', { status: 'Completed' }],
     ])('GET /projects-page sends the status %s as Project API\'s', async (status, expected) => {
       signIn(admin);
@@ -732,7 +733,10 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({ name: 'Fête du village', description: 'Organisation de la fête' });
+      // The chosen status and priority go with the creation (MAIR-558).
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({
+        name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium',
+      });
       expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
         .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
       expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
@@ -1182,22 +1186,56 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('PATCH /projects/:id returns the re-read state, not the unpersisted submitted fields', async () => {
       signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { priority: 'Low', due_date: '2026-10-15T00:00:00.000Z' })], [admin]) } });
+      // The mock re-reads a Low / Active project whatever was written: the response is the re-read state.
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { priority: 'Low' }), [taskView(2, { priority: 'High', due_date: '2026-10-15T00:00:00.000Z' })], [admin]) } });
 
       const response = await as(request(app).patch('/projects/project-1'), admin)
         .send({ priority: 'high', labels: ['urgent'], dueDate: '2030-01-01T00:00:00Z', status: 'todo' });
 
       expect(response.status).toBe(200);
+      // The priority is the project's stored one, not its tasks' highest (MAIR-558).
       expect(response.body.project).toMatchObject({
         priority: 'low', labels: [], dueDate: '2026-10-15T00:00:00.000Z', status: 'in-progress',
       });
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Active' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High' });
+    });
+
+    test.each([
+      [{ priority: 'low' }, { priority: 'Low' }],
+      [{ status: 'review' }, { status: 'Review' }],
+      [{ status: 'in-progress', priority: 'medium' }, { status: 'Active', priority: 'Medium' }],
+    ])('mair_558 PATCH /projects/:id stores %j as %j', async (sent, stored) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send(sent);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([stored]);
+    });
+
+    test('mair_558 a project created "to do" / "high" is read back as such', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: {
+        12: projectBundle(projetView(12, { name: 'Fête', status: 'Todo', priority: 'High' }), [taskView(30, { priority: 'Low' })], [alice]),
+      } });
+
+      const response = await as(request(app).post('/projects'), admin).send({
+        title: 'Fête', description: 'Organisation', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+      });
+
+      expect(response.status).toBe(201);
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Todo', priority: 'High' });
+      // One write for the status and the priority: no PATCH after the creation.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      expect(response.body.project).toMatchObject({ status: 'todo', statusLabel: 'À faire', priority: 'high' });
     });
 
     test('POST /projects returns the re-read state and persists a closed status', async () => {
       signIn(admin);
       mockProjectApi({ createdProjectId: 12, bundles: {
-        12: projectBundle(projetView(12, { name: 'Fête', status: 'Completed' }), [taskView(30, { priority: 'Low', status: 'Completed' })], [alice]),
+        12: projectBundle(projetView(12, { name: 'Fête', status: 'Completed', priority: 'Low' }), [taskView(30, { priority: 'Low', status: 'Completed' })], [alice]),
       } });
 
       const response = await as(request(app).post('/projects'), admin).send({
@@ -1208,7 +1246,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Completed' });
+      // The status is written with the creation (MAIR-558), no longer by a PATCH after it.
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Completed', priority: 'High' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
       expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
       expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
     });

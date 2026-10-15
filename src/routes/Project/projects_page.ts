@@ -24,9 +24,10 @@ const router = Router();
 /** Largest page Project API serves. */
 const MAX_PAGE_SIZE = 500;
 
-// Filters of the page as Project API's (MAIR-474). `todo` is the BFF status of a project whose stored status
-// Project API does not interpret (`Error`, see `mapProjectStatus`); `high` covers `Urgent` too (stored `High`).
-const STATUS_FILTER = { todo: 'Error', 'in-progress': 'Active', review: 'Suspended', done: 'Completed' } as const;
+// Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`;
+// `review` also covers the projects suspended by the close route (see `mapProjectStatus`); `high` covers
+// `Urgent` too (stored `High`).
+const STATUS_FILTER = { todo: 'Todo', 'in-progress': 'Active', review: 'Review,Suspended', done: 'Completed' } as const;
 const PRIORITY_FILTER = { high: 'High', medium: 'Medium', low: 'Low' } as const;
 
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
