@@ -457,6 +457,16 @@
             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
             "example": "2024-01-15T15:30:00Z"
           },
+          "statusId": {
+            "type": "string",
+            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+            "example": "status-1"
+          },
+          "statusName": {
+            "type": "string",
+            "description": "Name of that status, as the Kanban column shows it",
+            "example": "À valider"
+          },
           "permissions": {
             "type": "object",
             "properties": {
@@ -718,6 +728,12 @@
                 "dueDate"
               ]
             }
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^template-\\d+$",
+            "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
+            "example": "template-1"
           }
         },
         "required": [
@@ -910,6 +926,12 @@
             "type": "string",
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
+          },
+          "statusId": {
+            "type": "string",
+            "pattern": "^status-\\d+$",
+            "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+            "example": "status-1"
           }
         },
         "required": [
@@ -976,6 +998,12 @@
             "type": "string",
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
+          },
+          "statusId": {
+            "type": "string",
+            "pattern": "^status-\\d+$",
+            "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+            "example": "status-1"
           }
         }
       },
@@ -992,11 +1020,14 @@
             ],
             "description": "Le statut du projet",
             "example": "todo"
+          },
+          "statusId": {
+            "type": "string",
+            "pattern": "^status-\\d+$",
+            "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+            "example": "status-1"
           }
-        },
-        "required": [
-          "status"
-        ]
+        }
       },
       "CloseProjectBody": {
         "type": "object",
@@ -1612,6 +1643,16 @@
                   "type": "string",
                   "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                   "example": "2024-01-15T15:30:00Z"
+                },
+                "statusId": {
+                  "type": "string",
+                  "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                  "example": "status-1"
+                },
+                "statusName": {
+                  "type": "string",
+                  "description": "Name of that status, as the Kanban column shows it",
+                  "example": "À valider"
                 },
                 "permissions": {
                   "type": "object",
@@ -2232,6 +2273,182 @@
           "pagination"
         ]
       },
+      "CreateProjectTaskStatusBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan status"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "example": "#D97706"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in-progress",
+              "done"
+            ],
+            "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+            "example": "in-progress"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Position among the statuses, from 0",
+            "example": 2
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateProjectTaskStatusBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan status renamed"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "example": "#D97706"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in-progress",
+              "done"
+            ],
+            "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+            "example": "in-progress"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Position among the statuses, from 0",
+            "example": 2
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateProjectTemplateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan template"
+          },
+          "description": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Template created by the ZAP scan"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[^<>]*$",
+                  "example": "Scan status"
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-Fa-f]{6}$",
+                  "example": "#D97706"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in-progress",
+                    "done"
+                  ],
+                  "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                  "example": "in-progress"
+                }
+              },
+              "required": [
+                "name",
+                "category"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 30,
+            "description": "Statuses in order; at least one per category (todo, in-progress, done)"
+          }
+        },
+        "required": [
+          "name",
+          "statuses"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateProjectTemplateBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan template"
+          },
+          "description": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Template created by the ZAP scan"
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[^<>]*$",
+                  "example": "Scan status"
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-Fa-f]{6}$",
+                  "example": "#D97706"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in-progress",
+                    "done"
+                  ],
+                  "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                  "example": "in-progress"
+                }
+              },
+              "required": [
+                "name",
+                "category"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 30,
+            "description": "Statuses in order; at least one per category (todo, in-progress, done)"
+          }
+        },
+        "additionalProperties": false
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -2479,6 +2696,16 @@
                   "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                   "example": "2024-01-15T15:30:00Z"
                 },
+                "statusId": {
+                  "type": "string",
+                  "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                  "example": "status-1"
+                },
+                "statusName": {
+                  "type": "string",
+                  "description": "Name of that status, as the Kanban column shows it",
+                  "example": "À valider"
+                },
                 "permissions": {
                   "type": "object",
                   "properties": {
@@ -2555,6 +2782,173 @@
           "tasks",
           "pagination"
         ]
+      },
+      "ProjectTaskStatuses": {
+        "type": "object",
+        "properties": {
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectTaskStatus"
+            },
+            "description": "Statuses of the project, by position"
+          }
+        },
+        "required": [
+          "statuses"
+        ]
+      },
+      "ProjectTaskStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "status-1"
+          },
+          "name": {
+            "type": "string",
+            "example": "À valider"
+          },
+          "color": {
+            "type": "string",
+            "example": "#D97706"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in-progress",
+              "done"
+            ],
+            "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+            "example": "in-progress"
+          },
+          "position": {
+            "type": "integer",
+            "example": 2
+          },
+          "taskCount": {
+            "type": "integer",
+            "description": "Tasks in this status, archived ones included",
+            "example": 3
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "category",
+          "position",
+          "taskCount"
+        ],
+        "description": "A task status of a project: a Kanban column"
+      },
+      "ProjectTemplates": {
+        "type": "object",
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectTemplate"
+            }
+          }
+        },
+        "required": [
+          "templates"
+        ]
+      },
+      "ProjectTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "template-1"
+          },
+          "name": {
+            "type": "string",
+            "example": "Avec validation"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Tâches relues avant validation"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "Template of a project created without templateId; cannot be deleted",
+            "example": false
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "À valider"
+                },
+                "color": {
+                  "type": "string",
+                  "example": "#D97706"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in-progress",
+                    "done"
+                  ],
+                  "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                  "example": "in-progress"
+                },
+                "position": {
+                  "type": "integer",
+                  "example": 2
+                }
+              },
+              "required": [
+                "name",
+                "color",
+                "category",
+                "position"
+              ]
+            },
+            "description": "Statuses copied into a project created from it, by position"
+          },
+          "customFields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "example": "Budget"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Field type, as Project API names it",
+                  "example": "Number"
+                }
+              },
+              "required": [
+                "label",
+                "type"
+              ]
+            },
+            "description": "Custom task fields copied into the project"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "isDefault",
+          "statuses",
+          "customFields"
+        ],
+        "description": "A project template (MAIR-566)"
       }
     },
     "parameters": {}
@@ -3032,6 +3426,16 @@
                             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
+                          "statusId": {
+                            "type": "string",
+                            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                            "example": "status-1"
+                          },
+                          "statusName": {
+                            "type": "string",
+                            "description": "Name of that status, as the Kanban column shows it",
+                            "example": "À valider"
+                          },
                           "permissions": {
                             "type": "object",
                             "properties": {
@@ -3293,6 +3697,12 @@
                         "dueDate"
                       ]
                     }
+                  },
+                  "templateId": {
+                    "type": "string",
+                    "pattern": "^template-\\d+$",
+                    "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
+                    "example": "template-1"
                   }
                 },
                 "required": [
@@ -3697,6 +4107,16 @@
                             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
+                          "statusId": {
+                            "type": "string",
+                            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                            "example": "status-1"
+                          },
+                          "statusName": {
+                            "type": "string",
+                            "description": "Name of that status, as the Kanban column shows it",
+                            "example": "À valider"
+                          },
                           "permissions": {
                             "type": "object",
                             "properties": {
@@ -3892,6 +4312,12 @@
                     "type": "string",
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
+                  },
+                  "statusId": {
+                    "type": "string",
+                    "pattern": "^status-\\d+$",
+                    "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+                    "example": "status-1"
                   }
                 },
                 "required": [
@@ -4050,6 +4476,16 @@
                       "type": "string",
                       "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
+                    },
+                    "statusId": {
+                      "type": "string",
+                      "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                      "example": "status-1"
+                    },
+                    "statusName": {
+                      "type": "string",
+                      "description": "Name of that status, as the Kanban column shows it",
+                      "example": "À valider"
                     },
                     "permissions": {
                       "type": "object",
@@ -4806,6 +5242,16 @@
                             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
+                          "statusId": {
+                            "type": "string",
+                            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                            "example": "status-1"
+                          },
+                          "statusName": {
+                            "type": "string",
+                            "description": "Name of that status, as the Kanban column shows it",
+                            "example": "À valider"
+                          },
                           "permissions": {
                             "type": "object",
                             "properties": {
@@ -5339,6 +5785,16 @@
                             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
+                          "statusId": {
+                            "type": "string",
+                            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                            "example": "status-1"
+                          },
+                          "statusName": {
+                            "type": "string",
+                            "description": "Name of that status, as the Kanban column shows it",
+                            "example": "À valider"
+                          },
                           "permissions": {
                             "type": "object",
                             "properties": {
@@ -5650,6 +6106,12 @@
                     "type": "string",
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
+                  },
+                  "statusId": {
+                    "type": "string",
+                    "pattern": "^status-\\d+$",
+                    "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+                    "example": "status-1"
                   }
                 }
               }
@@ -5799,6 +6261,16 @@
                       "type": "string",
                       "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
+                    },
+                    "statusId": {
+                      "type": "string",
+                      "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                      "example": "status-1"
+                    },
+                    "statusName": {
+                      "type": "string",
+                      "description": "Name of that status, as the Kanban column shows it",
+                      "example": "À valider"
                     },
                     "permissions": {
                       "type": "object",
@@ -6329,6 +6801,16 @@
                             "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
+                          "statusId": {
+                            "type": "string",
+                            "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                            "example": "status-1"
+                          },
+                          "statusName": {
+                            "type": "string",
+                            "description": "Name of that status, as the Kanban column shows it",
+                            "example": "À valider"
+                          },
                           "permissions": {
                             "type": "object",
                             "properties": {
@@ -6504,11 +6986,14 @@
                     ],
                     "description": "Le statut du projet",
                     "example": "todo"
+                  },
+                  "statusId": {
+                    "type": "string",
+                    "pattern": "^status-\\d+$",
+                    "description": "A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category",
+                    "example": "status-1"
                   }
-                },
-                "required": [
-                  "status"
-                ]
+                }
               }
             }
           }
@@ -6656,6 +7141,16 @@
                       "type": "string",
                       "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
+                    },
+                    "statusId": {
+                      "type": "string",
+                      "description": "The status of the project the task is in (MAIR-566); `status` is its category",
+                      "example": "status-1"
+                    },
+                    "statusName": {
+                      "type": "string",
+                      "description": "Name of that status, as the Kanban column shows it",
+                      "example": "À valider"
                     },
                     "permissions": {
                       "type": "object",
@@ -8017,6 +8512,1075 @@
           },
           "404": {
             "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/statuses": {
+      "get": {
+        "tags": [
+          "Statuses"
+        ],
+        "summary": "Lists the task statuses of a project",
+        "description": "The Kanban columns of the project, by position (MAIR-566). They were copied from its template at its creation and are then the project's own. Each belongs to a category (`todo`, `in-progress`, `done`) that drives the archiving, the progress and the pending tasks.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du projet",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Identifiant du projet",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statuses of the project, by position, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTaskStatuses"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Statuses"
+        ],
+        "summary": "Adds a task status to a project",
+        "description": "Reserved to the project managers. Without `position` the status goes last; with it, the statuses from that position move one place down. `409` when another status of the project has the name.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du projet",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Identifiant du projet",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan status"
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$",
+                    "example": "#D97706"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "in-progress",
+                      "done"
+                    ],
+                    "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                    "example": "in-progress"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Position among the statuses, from 0",
+                    "example": 2
+                  }
+                },
+                "required": [
+                  "name",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Statuses of the project, by position, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTaskStatuses"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/statuses/{statusId}": {
+      "patch": {
+        "tags": [
+          "Statuses"
+        ],
+        "summary": "Renames, recolours, moves or recategorizes a task status",
+        "description": "Reserved to the project managers; an absent field is left unchanged. A new `category` moves the tasks of the status to it (a `done` status archives them), and is refused (`409`) when it would leave the former category without any status.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du projet",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Identifiant du projet",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du statut",
+              "example": "status-1"
+            },
+            "required": true,
+            "description": "Identifiant du statut",
+            "name": "statusId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan status renamed"
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$",
+                    "example": "#D97706"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "in-progress",
+                      "done"
+                    ],
+                    "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                    "example": "in-progress"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Position among the statuses, from 0",
+                    "example": 2
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Statuses of the project, by position, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTaskStatuses"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Statuses"
+        ],
+        "summary": "Deletes a task status",
+        "description": "Reserved to the project managers. The tasks of the status (archived ones included) move to `moveTo`, another status of the project, which is required as soon as the status holds tasks (`409` otherwise). The last status of a category cannot be deleted (`409`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du projet",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Identifiant du projet",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du statut",
+              "example": "status-999999"
+            },
+            "required": true,
+            "description": "Identifiant du statut",
+            "name": "statusId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^status-\\d+$",
+              "description": "Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise)",
+              "example": "status-2"
+            },
+            "required": false,
+            "description": "Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise)",
+            "name": "moveTo",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statuses of the project, by position, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTaskStatuses"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-templates": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Lists the project templates",
+        "description": "Templates a project can be created from (`templateId` of `POST /projects`), the default one included.",
+        "responses": {
+          "200": {
+            "description": "The templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplates"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Creates a project template",
+        "description": "Reserved to the Responsable and Admin roles. `statuses` are in order and hold at least one status per category (`todo`, `in-progress`, `done`). `409` when another template has the name.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan template"
+                  },
+                  "description": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Template created by the ZAP scan"
+                  },
+                  "statuses": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[^<>]*$",
+                          "example": "Scan status"
+                        },
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9A-Fa-f]{6}$",
+                          "example": "#D97706"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "todo",
+                            "in-progress",
+                            "done"
+                          ],
+                          "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                          "example": "in-progress"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "category"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "description": "Statuses in order; at least one per category (todo, in-progress, done)"
+                  }
+                },
+                "required": [
+                  "name",
+                  "statuses"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template created, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-templates/{templateId}": {
+      "patch": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Updates a project template",
+        "description": "Reserved to the Responsable and Admin roles; an absent field is left unchanged and `statuses` replaces the whole list. The projects already created from the template keep their statuses.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du modèle",
+              "example": "template-1"
+            },
+            "required": true,
+            "description": "Identifiant du modèle",
+            "name": "templateId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan template"
+                  },
+                  "description": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Template created by the ZAP scan"
+                  },
+                  "statuses": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[^<>]*$",
+                          "example": "Scan status"
+                        },
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9A-Fa-f]{6}$",
+                          "example": "#D97706"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "todo",
+                            "in-progress",
+                            "done"
+                          ],
+                          "description": "Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)",
+                          "example": "in-progress"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "category"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "description": "Statuses in order; at least one per category (todo, in-progress, done)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template updated, as re-read from Project API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Deletes a project template",
+        "description": "Reserved to the Responsable and Admin roles. The projects created from it keep their statuses; the default template cannot be deleted (`409`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Identifiant du modèle",
+              "example": "template-999999"
+            },
+            "required": true,
+            "description": "Identifiant du modèle",
+            "name": "templateId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Template deleted. Empty body."
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
             "content": {
               "application/json": {
                 "schema": {

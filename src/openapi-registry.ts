@@ -108,6 +108,8 @@ export const ProjectTask = z.object({
     completed: z.boolean().openapi({ description: 'Indique si la tâche est complétée', example: false }),
     createdAt: z.string().openapi({ description: 'La date de création de la tâche au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
     updatedAt: z.string().optional().openapi({ description: 'La date de dernière mise à jour de la tâche au format ISO 8601', example: '2024-01-15T15:30:00Z' }),
+    statusId: z.string().optional().openapi({ description: 'The status of the project the task is in (MAIR-566); `status` is its category', example: 'status-1' }),
+    statusName: z.string().optional().openapi({ description: 'Name of that status, as the Kanban column shows it', example: 'À valider' }),
     permissions: z.object({
       canView: z.boolean(),
       canEdit: z.boolean(),
@@ -209,10 +211,21 @@ const noMarkup = (schema: z.ZodString) => schema.regex(/^[^<>]*$/, 'Must not con
 const Title = (example: string) => textField({ max: 255, min: 1, noMarkup: true }).openapi({ example });
 const Description = (example: string) => textField({ max: 5_000, multiline: true, noMarkup: true }).openapi({ example });
 const Labels = z.array(textField({ max: 255, min: 1, noMarkup: true }).openapi({ example: 'security' }));
-// `review` has no Project API task status yet (MAIR-566 brings per-project statuses): refused with a clear detail
-// instead of Project API's bare 400.
+// A task's `status` is the category of its status (MAIR-566): `todo`, `in-progress` or `done`. `review` is refused with
+// a clear detail instead of Project API's bare 400; a review step is a status of the project (`statusId`), e.g. the
+// "À valider" status of the "Avec validation" template, in the `in-progress` category.
 const TaskStatus = ProjectStatus.refine((status) => status !== 'review', {
-  message: 'review is not available for tasks: use todo, in-progress or done',
+  message: 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project',
+});
+// A status of the task's project (`status-<id>`, from `GET /projects/{projectId}/statuses`, MAIR-566).
+const StatusIdField = z.string().regex(/^status-\d+$/, 'Expected a status-<id> identifier').openapi({
+  description: 'A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category',
+  example: 'status-1',
+});
+// A project template (`template-<id>`, from `GET /project-templates`, MAIR-566).
+const TemplateIdField = z.string().regex(/^template-\d+$/, 'Expected a template-<id> identifier').openapi({
+  description: 'Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template',
+  example: 'template-1',
 });
 // A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
 // The BFF turns it into the date-time Project API stores (MAIR-559).
@@ -253,6 +266,8 @@ export const CreateProjectBody = z.object({
   dueDate: DueDate,
 
   taskItems: z.array(CreateProjectTaskInput).optional(),
+
+  templateId: TemplateIdField.optional(),
 });
 
 registry.register('CreateProjectBody', CreateProjectBody);
@@ -261,7 +276,8 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // UPDATE PROJECT
 // =====================
 
-export const UpdateProjectBody = CreateProjectBody.partial();
+// The template only applies at creation (its statuses are copied then): not part of a PATCH.
+export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true }).partial();
 
 registry.register('UpdateProjectBody', UpdateProjectBody);
 
@@ -283,6 +299,8 @@ export const CreateTaskBody = z.object({
   labels: Labels,
 
   dueDate: DueDate,
+
+  statusId: StatusIdField.optional(),
 });
 
 registry.register('CreateTaskBody', CreateTaskBody);
@@ -299,8 +317,13 @@ registry.register('UpdateTaskBody', UpdateTaskBody);
 // UPDATE TASK STATUS
 // =====================
 
+// Either a category (`status`: the first status of it in the project) or a status of the project (`statusId`, MAIR-566,
+// which wins when both are sent).
 export const UpdateTaskStatusBody = z.object({
-  status: TaskStatus,
+  status: TaskStatus.optional(),
+  statusId: StatusIdField.optional(),
+}).refine((body) => body.status !== undefined || body.statusId !== undefined, {
+  message: 'Give status or statusId',
 });
 
 registry.register(
@@ -477,6 +500,117 @@ registry.register(
 );
 
 // =====================
+// TASK STATUSES AND PROJECT TEMPLATES (MAIR-566)
+// =====================
+
+// The three fixed categories a status belongs to: they drive the archiving (`done`), the progress and the pending tasks.
+export const StatusCategory = z.enum(['todo', 'in-progress', 'done']).openapi({
+  description: 'Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)',
+  example: 'in-progress',
+});
+const StatusName = (example: string) => textField({ max: 100, min: 1, noMarkup: true }).openapi({ example });
+const StatusColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Expected # followed by 6 hexadecimal digits').openapi({ example: '#D97706' });
+const StatusPosition = z.number().int().min(0).openapi({ description: 'Position among the statuses, from 0', example: 2 });
+
+export const ProjectTaskStatus = z.object({
+  id: z.string().openapi({ example: 'status-1' }),
+  name: z.string().openapi({ example: 'À valider' }),
+  color: z.string().openapi({ example: '#D97706' }),
+  category: StatusCategory,
+  position: z.number().int().openapi({ example: 2 }),
+  taskCount: z.number().int().openapi({ description: 'Tasks in this status, archived ones included', example: 3 }),
+}).openapi('ProjectTaskStatus', { description: 'A task status of a project: a Kanban column' });
+
+export const ProjectTaskStatuses = z.object({
+  statuses: z.array(ProjectTaskStatus).openapi({ description: 'Statuses of the project, by position' }),
+}).openapi('ProjectTaskStatuses');
+
+export const CreateProjectTaskStatusBody = z.object({
+  name: StatusName('Scan status'),
+  color: StatusColor.optional(),
+  category: StatusCategory,
+  position: StatusPosition.optional(),
+}).strict();
+registry.register('CreateProjectTaskStatusBody', CreateProjectTaskStatusBody);
+
+export const UpdateProjectTaskStatusBody = z.object({
+  name: StatusName('Scan status renamed').optional(),
+  color: StatusColor.optional(),
+  category: StatusCategory.optional(),
+  position: StatusPosition.optional(),
+}).strict();
+registry.register('UpdateProjectTaskStatusBody', UpdateProjectTaskStatusBody);
+
+export const ProjectStatusParams = z.object({
+  projectId: ProjectIdParams.shape.projectId,
+  statusId: z.string().openapi({ description: 'Identifiant du statut', example: 'status-1' }),
+});
+
+export const DeletedProjectStatusParams = ProjectStatusParams.extend({
+  // Not seeded by init-test.sql: a scan replaying the example gets a 404 and deletes nothing.
+  statusId: ProjectStatusParams.shape.statusId.openapi({ example: 'status-999999' }),
+});
+
+export const DeleteProjectStatusQuery = z.object({
+  moveTo: StatusIdField.optional().openapi({
+    description: 'Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise)',
+    example: 'status-2',
+  }),
+});
+
+const TemplateStatus = z.object({
+  name: z.string().openapi({ example: 'À valider' }),
+  color: z.string().openapi({ example: '#D97706' }),
+  category: StatusCategory,
+  position: z.number().int().openapi({ example: 2 }),
+});
+
+const TemplateCustomField = z.object({
+  label: z.string().openapi({ example: 'Budget' }),
+  type: z.string().openapi({ description: 'Field type, as Project API names it', example: 'Number' }),
+});
+
+export const ProjectTemplate = z.object({
+  id: z.string().openapi({ example: 'template-1' }),
+  name: z.string().openapi({ example: 'Avec validation' }),
+  description: z.string().nullable().openapi({ example: 'Tâches relues avant validation' }),
+  isDefault: z.boolean().openapi({ description: 'Template of a project created without templateId; cannot be deleted', example: false }),
+  statuses: z.array(TemplateStatus).openapi({ description: 'Statuses copied into a project created from it, by position' }),
+  customFields: z.array(TemplateCustomField).openapi({ description: 'Custom task fields copied into the project' }),
+}).openapi('ProjectTemplate', { description: 'A project template (MAIR-566)' });
+
+export const ProjectTemplates = z.object({
+  templates: z.array(ProjectTemplate),
+}).openapi('ProjectTemplates');
+
+const TemplateStatusInput = z.object({
+  name: StatusName('Scan status'),
+  color: StatusColor.optional(),
+  category: StatusCategory,
+}).strict();
+
+export const CreateProjectTemplateBody = z.object({
+  name: textField({ max: 100, min: 1, noMarkup: true }).openapi({ example: 'Scan template' }),
+  description: textField({ max: 1_000, multiline: true, noMarkup: true }).optional().openapi({ example: 'Template created by the ZAP scan' }),
+  statuses: z.array(TemplateStatusInput).min(1).max(30).openapi({
+    description: 'Statuses in order; at least one per category (todo, in-progress, done)',
+  }),
+}).strict();
+registry.register('CreateProjectTemplateBody', CreateProjectTemplateBody);
+
+export const UpdateProjectTemplateBody = CreateProjectTemplateBody.partial().strict();
+registry.register('UpdateProjectTemplateBody', UpdateProjectTemplateBody);
+
+export const ProjectTemplateParams = z.object({
+  templateId: z.string().openapi({ description: 'Identifiant du modèle', example: 'template-1' }),
+});
+
+export const DeletedProjectTemplateParams = ProjectTemplateParams.extend({
+  // Not seeded: a scan replaying the example gets a 404 and deletes nothing.
+  templateId: ProjectTemplateParams.shape.templateId.openapi({ example: 'template-999999' }),
+});
+
+// =====================
 // ERROR
 // =====================
 
@@ -494,6 +628,7 @@ const apiErrorDescriptions = {
   401: 'Missing, invalid or expired session',
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
+  409: 'Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)',
   500: 'Unexpected server error',
   502: 'Project API or Core API is unreachable or failed',
   503: 'Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)',

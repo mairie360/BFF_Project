@@ -66,7 +66,7 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 `app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))`, the lib's `securityHeaders` and
 `apiOnlyHeaders()` (strict `default-src 'none'` everywhere but `/docs`), then the session-bound routers
-(`/projects-page`, `/projects*`) get, in order:
+(`/projects-page`, `/projects*`, `/project-templates*`) get, in order:
 
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
@@ -84,6 +84,17 @@ There is no request-scoped storage: every upstream call receives the request exp
 its axios options from the lib's `asCaller(service, req)` (base URL, 5s timeout, caller's `Authorization`).
 
 `/health` and `/check_apis` are unauthenticated and never forward the caller's header.
+
+### Task statuses and project templates (MAIR-566)
+
+`src/routes/Project/statuses.ts` (`/projects/{projectId}/statuses`) and `src/routes/Project/templates.ts`
+(`/project-templates`) relay Project API's per-project statuses and templates; ids, category mapping (`Todo` /
+`InProgress` / `Completed` ↔ `todo` / `in-progress` / `done`) and the upstream calls live in `status_helpers.ts`.
+Status writes need `requireProjectManagement`; template writes need the Responsable or Admin role
+(`requireTemplateManagement`, Maire excluded like in Project API). Writes answer the re-read state, and Project
+API's 409s (name taken, status still holding tasks, last status of a category, default template) are declared and
+relayed. Tasks carry `statusId` / `statusName` (their `status` is the category); `statusId` on a task write and
+`templateId` on `POST /projects` are only shape-checked by the BFF, Project API checks they exist.
 
 ### Everything goes through the APIs
 

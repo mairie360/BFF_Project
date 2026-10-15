@@ -28,6 +28,8 @@ import deleteTaskRouter from './routes/Project/delete_task';
 import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
 import archivedTasksRouter from './routes/Project/archived_tasks';
+import statusesRouter from './routes/Project/statuses';
+import templatesRouter from './routes/Project/templates';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 
@@ -56,7 +58,7 @@ app.use('/check_apis', checkApis);
 // Session-bound routes: never cached, 401 before any upstream call without a Bearer token verified with
 // JWT_SECRET (HS256, expiry; bffs-lib requireSession, MAIR-474), then the caller's roles are read from the token
 // (Core API for an older token, never BFF User: MAIR-525). Project API checks that the session was not revoked.
-app.use(['/projects-page', '/projects'], noStore, requireSession, projectUserContextMiddleware);
+app.use(['/projects-page', '/projects', '/project-templates'], noStore, requireSession, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);
@@ -70,6 +72,8 @@ app.use('/projects', deleteTaskRouter);
 app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
 app.use('/projects', archivedTasksRouter);
+app.use('/projects', statusesRouter);
+app.use('/project-templates', templatesRouter);
 
 // Unknown routes and every error that reaches Express (malformed JSON, oversized body, unexpected
 // errors) end in the shared envelope `{ error: { code, message, details } }` instead of Express's HTML

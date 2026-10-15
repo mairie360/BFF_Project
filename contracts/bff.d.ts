@@ -379,6 +379,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -528,6 +538,11 @@ export interface paths {
                              */
                             dueDate: string;
                         }[];
+                        /**
+                         * @description Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template
+                         * @example template-1
+                         */
+                        templateId?: string;
                     };
                 };
             };
@@ -792,6 +807,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -911,6 +936,11 @@ export interface paths {
                          * @example 2030-12-31
                          */
                         dueDate: string;
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -1020,6 +1050,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -1381,6 +1421,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -1866,6 +1916,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -2082,6 +2142,11 @@ export interface paths {
                          * @example 2030-12-31
                          */
                         dueDate?: string;
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -2191,6 +2256,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -2553,6 +2628,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -2669,7 +2754,12 @@ export interface paths {
                          * @example todo
                          * @enum {string}
                          */
-                        status: "todo" | "in-progress" | "review" | "done";
+                        status?: "todo" | "in-progress" | "review" | "done";
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -2779,6 +2869,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -3553,6 +3653,901 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/statuses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the task statuses of a project
+         * @description The Kanban columns of the project, by position (MAIR-566). They were copied from its template at its creation and are then the project's own. Each belongs to a category (`todo`, `in-progress`, `done`) that drives the archiving, the progress and the pending tasks.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Adds a task status to a project
+         * @description Reserved to the project managers. Without `position` the status goes last; with it, the statuses from that position move one place down. `409` when another status of the project has the name.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan status */
+                        name: string;
+                        /** @example #D97706 */
+                        color?: string;
+                        /**
+                         * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                         * @example in-progress
+                         * @enum {string}
+                         */
+                        category: "todo" | "in-progress" | "done";
+                        /**
+                         * @description Position among the statuses, from 0
+                         * @example 2
+                         */
+                        position?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/statuses/{statusId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Deletes a task status
+         * @description Reserved to the project managers. The tasks of the status (archived ones included) move to `moveTo`, another status of the project, which is required as soon as the status holds tasks (`409` otherwise). The last status of a category cannot be deleted (`409`).
+         */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise) */
+                    moveTo?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                    /** @description Identifiant du statut */
+                    statusId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Renames, recolours, moves or recategorizes a task status
+         * @description Reserved to the project managers; an absent field is left unchanged. A new `category` moves the tasks of the status to it (a `done` status archives them), and is refused (`409`) when it would leave the former category without any status.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                    /** @description Identifiant du statut */
+                    statusId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan status renamed */
+                        name?: string;
+                        /** @example #D97706 */
+                        color?: string;
+                        /**
+                         * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                         * @example in-progress
+                         * @enum {string}
+                         */
+                        category?: "todo" | "in-progress" | "done";
+                        /**
+                         * @description Position among the statuses, from 0
+                         * @example 2
+                         */
+                        position?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/project-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the project templates
+         * @description Templates a project can be created from (`templateId` of `POST /projects`), the default one included.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The templates */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplates"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a project template
+         * @description Reserved to the Responsable and Admin roles. `statuses` are in order and hold at least one status per category (`todo`, `in-progress`, `done`). `409` when another template has the name.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan template */
+                        name: string;
+                        /** @example Template created by the ZAP scan */
+                        description?: string;
+                        /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+                        statuses: {
+                            /** @example Scan status */
+                            name: string;
+                            /** @example #D97706 */
+                            color?: string;
+                            /**
+                             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                             * @example in-progress
+                             * @enum {string}
+                             */
+                            category: "todo" | "in-progress" | "done";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Template created, as re-read from Project API */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplate"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/project-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Deletes a project template
+         * @description Reserved to the Responsable and Admin roles. The projects created from it keep their statuses; the default template cannot be deleted (`409`).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du modèle */
+                    templateId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Template deleted. Empty body. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Updates a project template
+         * @description Reserved to the Responsable and Admin roles; an absent field is left unchanged and `statuses` replaces the whole list. The projects already created from the template keep their statuses.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du modèle */
+                    templateId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan template */
+                        name?: string;
+                        /** @example Template created by the ZAP scan */
+                        description?: string;
+                        /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+                        statuses?: {
+                            /** @example Scan status */
+                            name: string;
+                            /** @example #D97706 */
+                            color?: string;
+                            /**
+                             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                             * @example in-progress
+                             * @enum {string}
+                             */
+                            category: "todo" | "in-progress" | "done";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Template updated, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplate"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3848,6 +4843,16 @@ export interface components {
              * @example 2024-01-15T15:30:00Z
              */
             updatedAt?: string;
+            /**
+             * @description The status of the project the task is in (MAIR-566); `status` is its category
+             * @example status-1
+             */
+            statusId?: string;
+            /**
+             * @description Name of that status, as the Kanban column shows it
+             * @example À valider
+             */
+            statusName?: string;
             permissions: {
                 canView: boolean;
                 canEdit: boolean;
@@ -3949,6 +4954,11 @@ export interface components {
                  */
                 dueDate: string;
             }[];
+            /**
+             * @description Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template
+             * @example template-1
+             */
+            templateId?: string;
         };
         UpdateProjectBody: {
             /** @example Scan project */
@@ -4024,6 +5034,11 @@ export interface components {
              * @example 2030-12-31
              */
             dueDate: string;
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         UpdateTaskBody: {
             /** @example Scan task */
@@ -4049,6 +5064,11 @@ export interface components {
              * @example 2030-12-31
              */
             dueDate?: string;
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         UpdateTaskStatusBody: {
             /**
@@ -4056,7 +5076,12 @@ export interface components {
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status?: "todo" | "in-progress" | "review" | "done";
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         CloseProjectBody: {
             /**
@@ -4381,6 +5406,16 @@ export interface components {
                  * @example 2024-01-15T15:30:00Z
                  */
                 updatedAt?: string;
+                /**
+                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                 * @example status-1
+                 */
+                statusId?: string;
+                /**
+                 * @description Name of that status, as the Kanban column shows it
+                 * @example À valider
+                 */
+                statusName?: string;
                 permissions: {
                     canView: boolean;
                     canEdit: boolean;
@@ -4630,6 +5665,78 @@ export interface components {
                 hasNextPage: boolean;
             };
         };
+        CreateProjectTaskStatusBody: {
+            /** @example Scan status */
+            name: string;
+            /** @example #D97706 */
+            color?: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category: "todo" | "in-progress" | "done";
+            /**
+             * @description Position among the statuses, from 0
+             * @example 2
+             */
+            position?: number;
+        };
+        UpdateProjectTaskStatusBody: {
+            /** @example Scan status renamed */
+            name?: string;
+            /** @example #D97706 */
+            color?: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category?: "todo" | "in-progress" | "done";
+            /**
+             * @description Position among the statuses, from 0
+             * @example 2
+             */
+            position?: number;
+        };
+        CreateProjectTemplateBody: {
+            /** @example Scan template */
+            name: string;
+            /** @example Template created by the ZAP scan */
+            description?: string;
+            /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+            statuses: {
+                /** @example Scan status */
+                name: string;
+                /** @example #D97706 */
+                color?: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+            }[];
+        };
+        UpdateProjectTemplateBody: {
+            /** @example Scan template */
+            name?: string;
+            /** @example Template created by the ZAP scan */
+            description?: string;
+            /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+            statuses?: {
+                /** @example Scan status */
+                name: string;
+                /** @example #D97706 */
+                color?: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+            }[];
+        };
         ErrorResponse: {
             error: {
                 /** @enum {string} */
@@ -4756,6 +5863,16 @@ export interface components {
                  * @example 2024-01-15T15:30:00Z
                  */
                 updatedAt?: string;
+                /**
+                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                 * @example status-1
+                 */
+                statusId?: string;
+                /**
+                 * @description Name of that status, as the Kanban column shows it
+                 * @example À valider
+                 */
+                statusName?: string;
                 permissions: {
                     canView: boolean;
                     canEdit: boolean;
@@ -4771,6 +5888,74 @@ export interface components {
                 total: number;
                 hasNextPage: boolean;
             };
+        };
+        ProjectTaskStatuses: {
+            /** @description Statuses of the project, by position */
+            statuses: components["schemas"]["ProjectTaskStatus"][];
+        };
+        /** @description A task status of a project: a Kanban column */
+        ProjectTaskStatus: {
+            /** @example status-1 */
+            id: string;
+            /** @example À valider */
+            name: string;
+            /** @example #D97706 */
+            color: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category: "todo" | "in-progress" | "done";
+            /** @example 2 */
+            position: number;
+            /**
+             * @description Tasks in this status, archived ones included
+             * @example 3
+             */
+            taskCount: number;
+        };
+        ProjectTemplates: {
+            templates: components["schemas"]["ProjectTemplate"][];
+        };
+        /** @description A project template (MAIR-566) */
+        ProjectTemplate: {
+            /** @example template-1 */
+            id: string;
+            /** @example Avec validation */
+            name: string;
+            /** @example Tâches relues avant validation */
+            description: string | null;
+            /**
+             * @description Template of a project created without templateId; cannot be deleted
+             * @example false
+             */
+            isDefault: boolean;
+            /** @description Statuses copied into a project created from it, by position */
+            statuses: {
+                /** @example À valider */
+                name: string;
+                /** @example #D97706 */
+                color: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+                /** @example 2 */
+                position: number;
+            }[];
+            /** @description Custom task fields copied into the project */
+            customFields: {
+                /** @example Budget */
+                label: string;
+                /**
+                 * @description Field type, as Project API names it
+                 * @example Number
+                 */
+                type: string;
+            }[];
         };
     };
     responses: never;

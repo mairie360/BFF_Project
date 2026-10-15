@@ -15,6 +15,8 @@ import './routes/Project/project_details';
 import './routes/Project/projects_page';
 import './routes/Project/task_collaboration';
 import './routes/Project/archived_tasks';
+import './routes/Project/statuses';
+import './routes/Project/templates';
 
 // Runtime documentation and exported clients use the same mounted routes.
 export const openApiDocument = new OpenApiGeneratorV31(registry.definitions).generateDocument({

@@ -5,7 +5,9 @@ import {
     buildTaskDtoForUser,
     mapTaskStatusToBackend,
     patchTaskOnApi,
+    type PatchTaskView,
     requireTaskParams,
+    statusIdToBackend,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
@@ -72,9 +74,11 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
     const caller = callerOf(req, ERROR_STATUSES);
 
     const { user } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
-    await patchTaskOnApi(caller, projectId, taskId, {
-        status: mapTaskStatusToBackend(body.status),
-    });
+    // A status of the project (MAIR-566) wins; a category alone takes the first status of it in the project.
+    const patch: PatchTaskView = body.statusId !== undefined
+        ? statusIdToBackend(body.statusId)
+        : { status: mapTaskStatusToBackend(body.status!) };
+    await patchTaskOnApi(caller, projectId, taskId, patch);
 
     // The task alone and the members that name its assignee, not every task of the project (MAIR-474).
     const updated = await getTaskWithMembers(caller, projectId, taskId);
