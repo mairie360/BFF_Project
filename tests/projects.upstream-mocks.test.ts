@@ -35,6 +35,10 @@ const PROJECT = {
   task: '/api/v1/projects/{projectId}/tasks/{taskId}/',
   collaboration: '/api/v1/projects/{projectId}/tasks/{taskId}/collaboration',
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
+  statuses: '/api/v1/projects/{projectId}/statuses/',
+  status: '/api/v1/projects/{projectId}/statuses/{statusId}/',
+  templates: '/api/v1/project-templates/',
+  template: '/api/v1/project-templates/{templateId}/',
   health: '/health',
 } as const;
 const CORE = { directory: '/api/v1/user/', me: '/api/v1/user/me/', health: '/health' } as const;
@@ -858,9 +862,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         ['a line break in a project title', 'patch', '/projects/project-1', { title: 'Fête\ndu village' }, 'body.title', 'Must not contain line breaks or control characters'],
         ['a blank task title of a new project', 'post', '/projects', { ...createBody, taskItems: [{ ...createBody.taskItems[0], title: '' }] }, 'body.taskItems.0.title', 'Must not be empty'],
         ['a 256-character task label', 'post', '/projects/project-1/tasks', { ...taskBody, labels: ['ok', 'a'.repeat(256)] }, 'body.labels.1', 'Must be at most 255 characters'],
-        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
-        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
-        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done'],
+        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
         ['an unknown task status', 'patch', '/projects/project-1/tasks/task-2', { status: 'blocked' }, 'body.status', ''],
         ['a malformed due date', 'patch', '/projects/project-1/tasks/task-2', { dueDate: '05/11/2026' }, 'body.dueDate', 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time'],
       ];
@@ -1442,5 +1446,229 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
     });
+  });
+});
+
+describe('MAIR-566 per-project task statuses and project templates', () => {
+  const statusView = (id: number, name: string, category: 'Todo' | 'InProgress' | 'Completed', position: number, task_count = 0) =>
+    ({ id, name, color: '#64748B', category, position, task_count });
+  const projectStatuses = [
+    statusView(32, 'Terminé', 'Completed', 3, 5),
+    statusView(30, 'À faire', 'Todo', 0, 2),
+    statusView(31, 'En cours', 'InProgress', 1, 1),
+    statusView(33, 'À valider', 'InProgress', 2, 0),
+  ];
+  const template = (id: number, overrides: object = {}) => ({
+    id, name: `Modèle ${id}`, description: null, is_default: false, custom_fields: [],
+    statuses: [
+      { name: 'Terminé', color: '#16A34A', category: 'Completed', position: 2 },
+      { name: 'À faire', color: '#64748B', category: 'Todo', position: 0 },
+      { name: 'En cours', color: '#2563EB', category: 'InProgress', position: 1 },
+    ],
+    ...overrides,
+  });
+  const writes = () => projectApi.requests.filter((call) => call.method !== 'GET');
+
+  function mockStatuses() {
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(5, { status_id: 33, status_name: 'À valider', status: 'InProgress' })], [admin, alice]) } });
+    projectApi.on('get', PROJECT.statuses, ({ pathParams }) => (Number(pathParams.projectId) === 1
+      ? { body: { statuses: projectStatuses } }
+      : textError(404, 'Not found.')));
+    projectApi.on('post', PROJECT.statuses, { body: { status_id: 34 } });
+    projectApi.on('patch', PROJECT.status, { status: 204 });
+    projectApi.on('delete', PROJECT.status, { status: 204 });
+    projectApi.on('get', PROJECT.templates, { body: { templates: [template(1, { name: 'Simple', is_default: true }), template(2)] } });
+    projectApi.on('get', PROJECT.template, ({ pathParams }) => ({ body: template(Number(pathParams.templateId)) }));
+    projectApi.on('post', PROJECT.templates, { body: { template_id: 7 } });
+    projectApi.on('patch', PROJECT.template, { status: 204 });
+    projectApi.on('delete', PROJECT.template, { status: 204 });
+  }
+
+  test('GET /projects/:id/statuses lists the statuses by position with their category', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/projects/project-1/statuses'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/statuses', response);
+    expect(response.body.statuses.map((status: { id: string; name: string; category: string; taskCount: number }) =>
+      [status.id, status.name, status.category, status.taskCount])).toEqual([
+      ['status-30', 'À faire', 'todo', 2],
+      ['status-31', 'En cours', 'in-progress', 1],
+      ['status-33', 'À valider', 'in-progress', 0],
+      ['status-32', 'Terminé', 'done', 5],
+    ]);
+  });
+
+  test('GET /projects/:id/statuses is a 404 for an invisible project, without reading its statuses', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/projects/project-9/statuses'), alice);
+
+    expect(response.status).toBe(404);
+    expect(projectApi.calls(PROJECT.statuses, 'GET')).toHaveLength(0);
+  });
+
+  test('mair_566 a manager adds, renames and deletes statuses; the answer is the re-read list', async () => {
+    signIn(admin);
+    mockStatuses();
+
+    const created = await as(request(app).post('/projects/project-1/statuses'), admin)
+      .send({ name: 'À valider', color: '#D97706', category: 'in-progress', position: 2 });
+    const renamed = await as(request(app).patch('/projects/project-1/statuses/status-33'), admin)
+      .send({ name: 'Relecture', category: 'done' });
+    const deleted = await as(request(app).delete('/projects/project-1/statuses/status-33?moveTo=status-31'), admin);
+
+    expect([created.status, renamed.status, deleted.status]).toEqual([201, 200, 200]);
+    expectBffContract('post', '/projects/project-1/statuses', created);
+    expectBffContract('delete', '/projects/project-1/statuses/status-33', deleted);
+    expect(projectApi.calls(PROJECT.statuses, 'POST')[0].body).toEqual({ name: 'À valider', color: '#D97706', category: 'InProgress', position: 2 });
+    expect(projectApi.calls(PROJECT.status, 'PATCH')[0].body).toEqual({ name: 'Relecture', category: 'Completed' });
+    const [deletion] = projectApi.calls(PROJECT.status, 'DELETE');
+    expect(deletion.url.pathname).toBe('/api/v1/projects/1/statuses/33/');
+    expect(deletion.url.searchParams.get('move_to')).toBe('31');
+    expect(created.body.statuses).toHaveLength(4);
+  });
+
+  test('mair_566 a user who cannot manage the project changes no status', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const responses = await Promise.all([
+      as(request(app).post('/projects/project-1/statuses'), alice).send({ name: 'X', category: 'todo' }),
+      as(request(app).patch('/projects/project-1/statuses/status-30'), alice).send({ name: 'Y' }),
+      as(request(app).delete('/projects/project-1/statuses/status-30'), alice),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
+    expect(writes()).toEqual([]);
+  });
+
+  test('mair_566 deleting a status that holds tasks without moveTo relays Project API\'s 409', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('delete', PROJECT.status, textError(409, 'The status holds tasks: give `move_to`, the status to move them to.'));
+
+    const response = await as(request(app).delete('/projects/project-1/statuses/status-30'), admin);
+
+    expect(response.status).toBe(409);
+    expectBffContract('delete', '/projects/project-1/statuses/status-30', response);
+  });
+
+  test.each([
+    ['post', '/projects/project-1/statuses', { name: 'X', category: 'review' }],
+    ['post', '/projects/project-1/statuses', { name: 'X', category: 'todo', color: 'red' }],
+    ['post', '/projects/project-1/statuses', { name: '<b>X</b>', category: 'todo' }],
+    ['patch', '/projects/project-1/statuses/status-30', { unknown: true }],
+    ['delete', '/projects/project-1/statuses/status-30?moveTo=31', undefined],
+  ] as const)('mair_566 %s %s refuses an invalid request before any write (%#)', async (method, url, body) => {
+    signIn(admin);
+    mockStatuses();
+
+    const call = as(request(app)[method](url), admin);
+    const response = await (body ? call.send(body) : call);
+
+    expect(response.status).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  test('GET /project-templates maps the templates and their statuses by position', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/project-templates'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-templates', response);
+    expect(response.body.templates[0]).toEqual({
+      id: 'template-1', name: 'Simple', description: null, isDefault: true, customFields: [],
+      statuses: [
+        { name: 'À faire', color: '#64748B', category: 'todo', position: 0 },
+        { name: 'En cours', color: '#2563EB', category: 'in-progress', position: 1 },
+        { name: 'Terminé', color: '#16A34A', category: 'done', position: 2 },
+      ],
+    });
+  });
+
+  test('mair_566 only the Responsable and Admin roles manage templates', async () => {
+    mockStatuses();
+    const body = { name: 'Atelier', statuses: [{ name: 'Idée', category: 'todo' }, { name: 'Fait', category: 'done' }] };
+
+    signIn(alice);
+    const refused = await Promise.all([
+      as(request(app).post('/project-templates'), alice).send(body),
+      as(request(app).patch('/project-templates/template-2'), alice).send({ name: 'Autre' }),
+      as(request(app).delete('/project-templates/template-2'), alice),
+    ]);
+    expect(refused.map((response) => response.status)).toEqual([403, 403, 403]);
+    expect(writes()).toEqual([]);
+
+    signIn(marie);
+    const created = await as(request(app).post('/project-templates'), marie).send(body);
+    expect(created.status).toBe(201);
+    expectBffContract('post', '/project-templates', created);
+    expect(projectApi.calls(PROJECT.templates, 'POST')[0].body).toEqual({
+      name: 'Atelier', description: null, custom_fields: [],
+      statuses: [{ name: 'Idée', category: 'Todo' }, { name: 'Fait', category: 'Completed' }],
+    });
+    expect(created.body.id).toBe('template-7');
+  });
+
+  test('mair_566 deleting the default template relays Project API\'s 409', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('delete', PROJECT.template, textError(409, 'The default template cannot be deleted.'));
+
+    const response = await as(request(app).delete('/project-templates/template-1'), admin);
+
+    expect(response.status).toBe(409);
+    expectBffContract('delete', '/project-templates/template-1', response);
+  });
+
+  test('mair_566 a project is created from the chosen template', async () => {
+    signIn(admin);
+    mockProjectApi({ createdProjectId: 12, bundles: { 12: projectBundle(projetView(12), [], [alice]) } });
+
+    const response = await as(request(app).post('/projects'), admin).send({
+      title: 'Marché', description: 'Travaux', status: 'todo', priority: 'medium', templateId: 'template-3',
+      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+    });
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ template_id: 3 });
+  });
+
+  test('mair_566 a task is created in, moved to and shown with a status of its project', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('post', PROJECT.tasks, { body: createTaskResult(5) });
+
+    const created = await as(request(app).post('/projects/project-1/tasks'), admin).send({
+      title: 'Relire', status: 'in-progress', statusId: 'status-33', priority: 'medium',
+      responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14',
+    });
+    const moved = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send({ statusId: 'status-33' });
+    const byCategory = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send({ status: 'done' });
+
+    expect([created.status, moved.status, byCategory.status]).toEqual([201, 200, 200]);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ status_id: 33 });
+    expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([{ status_id: 33 }, { status: 'Completed' }]);
+    expect(moved.body).toMatchObject({ status: 'in-progress', statusId: 'status-33', statusName: 'À valider' });
+    expectBffContract('patch', '/projects/project-1/tasks/task-5/status', moved);
+  });
+
+  test.each([
+    [{ statusId: '33' }],
+    [{}],
+  ])('mair_566 the status route refuses %j before any write', async (body) => {
+    signIn(admin);
+    mockStatuses();
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expect(writes()).toEqual([]);
   });
 });

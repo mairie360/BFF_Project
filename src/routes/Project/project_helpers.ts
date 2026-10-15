@@ -26,6 +26,7 @@ import {
 import type { ProjectUserContext } from "../../auth/project-user";
 import { logger } from "../../logger";
 import { toBackendDueDate } from "./due_date";
+import { parseStatusId, parseTemplateId, statusPublicId } from "./status_helpers";
 import {
   getProjectBundle,
   getProjectPermissions,
@@ -54,6 +55,8 @@ export interface PatchTaskView {
   priority?: ApiTaskPriority;
   assigned_to?: number | null;
   due_date?: string;
+  /** A status of the task's project (MAIR-566); Project API sets `status` to its category. */
+  status_id?: number;
 }
 
 export interface TaskInputLike {
@@ -64,6 +67,8 @@ export interface TaskInputLike {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
+  /** `status-<id>` of the task's project (MAIR-566): wins over `status`, the task takes its category. */
+  statusId?: string;
 }
 
 export interface BffCreateProjectInput {
@@ -75,6 +80,7 @@ export interface BffCreateProjectInput {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
+  templateId?: string;
   taskItems?: Array<
     Pick<
       TaskInputLike,
@@ -595,8 +601,22 @@ export function mapTaskToDto(
     completed: status === "done",
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
+    // The status of the project the task is in (MAIR-566); `status` is its category.
+    ...(task.status_id != null ? { statusId: statusPublicId(task.status_id) } : {}),
+    ...(task.status_name != null ? { statusName: task.status_name } : {}),
     permissions,
   };
+}
+
+/**
+ * `status_id` of a `statusId` (MAIR-566). The id is only checked for its shape here: Project API refuses a status of
+ * another project with a 400 the route relays.
+ */
+export function statusIdToBackend(statusId: string | undefined): { status_id?: number } {
+  if (statusId === undefined) return {};
+  const parsed = parseStatusId(statusId);
+  if (parsed === null) throw validationError("body", [{ path: ["statusId"], message: "Expected a status-<id> identifier" }]);
+  return { status_id: parsed };
 }
 
 export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
@@ -608,6 +628,7 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   return {
     name: task.title,
     status: bffTaskStatusToBackendMap[task.status],
+    ...statusIdToBackend(task.statusId),
     priority: bffTaskPriorityToBackendMap[task.priority],
     assigned_to: assignedTo,
     description: null,
@@ -634,6 +655,8 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
 
   if (typeof task.title === "string") body.name = task.title;
   if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
+  const { status_id: statusId } = statusIdToBackend(task.statusId);
+  if (statusId !== undefined) body.status_id = statusId;
   if (typeof task.priority === "string") body.priority = bffTaskPriorityToBackendMap[task.priority];
   if (typeof task.responsibleId === "string") body.assigned_to = parseUserId(task.responsibleId);
   // An empty due date changes nothing: Project API reads `null` as "unchanged" and cannot clear it.
@@ -652,7 +675,16 @@ export function mapProjectCreateBodyToBackend(
     // Stored as chosen (MAIR-558); absent, Project API defaults to Active / Medium.
     ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
     ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
+    ...templateIdToBackend(body.templateId),
   };
+}
+
+/** `template_id` of a `templateId` (MAIR-566); absent, Project API uses the default template. */
+function templateIdToBackend(templateId: string | undefined): { template_id?: number } {
+  if (templateId === undefined) return {};
+  const parsed = parseTemplateId(templateId);
+  if (parsed === null) throw validationError("body", [{ path: ["templateId"], message: "Expected a template-<id> identifier" }]);
+  return { template_id: parsed };
 }
 
 export function collectMembers(usersByProject: User[][]): Array<{
