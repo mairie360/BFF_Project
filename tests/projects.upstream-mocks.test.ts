@@ -318,8 +318,10 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects/project-1', response);
       expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1']);
-      // 3 archived (done) of 4 tasks.
-      expect(response.body.project).toMatchObject({ progress: 75, tasks: { total: 4, completed: 3 } });
+      // 3 archived (done) of 4 tasks; the active and archived counts tell them apart (MAIR-559).
+      expect(response.body.project).toMatchObject({
+        progress: 75, tasks: { total: 4, completed: 3, active: 1, archived: 3 },
+      });
     });
 
     test('GET /projects/:id/archived-tasks pages the archived tasks Project API returns', async () => {
@@ -401,7 +403,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         id: 'project-1', title: 'Rénovation de la médiathèque', status: 'in-progress', priority: 'high',
         progress: 50, dueDate: '2026-10-15T00:00:00Z',
         responsible: { id: 'user-2', name: 'Alice Martin', avatarUrl: null },
-        tasks: { total: 2, completed: 1 },
+        // The completed task is the archived one (MAIR-559).
+        tasks: { total: 2, completed: 1, active: 1, archived: 1 },
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
       // The counts cover every matching project, the Kanban columns list the ids of the page.
@@ -770,6 +773,66 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
       expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ name: 'Renommée' });
       expect(historyWrites()).toEqual([]);
+    });
+
+    describe('due date sent as a date alone (MAIR-559)', () => {
+      const taskBody = {
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-05',
+      };
+
+      test('POST /projects/:id/tasks sends Project API midnight UTC of that day', async () => {
+        signIn(marie);
+        mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30, { title: 'Réserver la salle', assigned_to: alice.id })], [alice, marie]) } });
+
+        const response = await as(request(app).post('/projects/project-1/tasks'), marie).send(taskBody);
+
+        expect(response.status).toBe(201);
+        expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ due_date: '2026-11-05T00:00:00.000Z' });
+      });
+
+      test('POST /projects converts the due date of its task items', async () => {
+        signIn(marie);
+        mockProjectApi({ createdProjectId: 12, createdTaskId: 30, bundles: { 12: projectBundle(projetView(12), [taskView(30)], [alice, marie]) } });
+        projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+        const response = await as(request(app).post('/projects'), marie)
+          .send({ ...createBody, dueDate: '2026-11-30', taskItems: [{ ...createBody.taskItems[0], dueDate: '2026-11-05' }] });
+
+        expect(response.status).toBe(201);
+        expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ due_date: '2026-11-05T00:00:00.000Z' });
+      });
+
+      test('PATCH /projects/:id/tasks/:taskId converts the date and leaves an empty one unchanged', async () => {
+        signIn(marie);
+        mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+        const moved = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ dueDate: '2026-12-01' });
+        const cleared = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ title: 'Salle', dueDate: '' });
+
+        expect(moved.status).toBe(200);
+        expect(cleared.status).toBe(200);
+        expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([
+          { due_date: '2026-12-01T00:00:00.000Z' },
+          { name: 'Salle' },
+        ]);
+      });
+
+      test.each(['05/11/2026', '2026-02-30', '2026-11-05T10:00', 'demain'])(
+        'refuses the due date %s with a 400 before any write',
+        async (dueDate) => {
+          signIn(marie);
+          mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+          const created = await as(request(app).post('/projects/project-1/tasks'), marie).send({ ...taskBody, dueDate });
+          const patched = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ dueDate });
+
+          expect(created.status).toBe(400);
+          expect(patched.status).toBe(400);
+          expect(projectApi.calls(PROJECT.tasks, 'POST')).toEqual([]);
+          expect(projectApi.calls(PROJECT.task, 'PATCH')).toEqual([]);
+        },
+      );
     });
 
     test('POST /projects/:id/tasks/:taskId/comments stores the comment through Project API', async () => {

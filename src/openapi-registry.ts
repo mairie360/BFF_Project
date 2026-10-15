@@ -1,6 +1,7 @@
 import { OpenAPIRegistry, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { ErrorResponseSchema } from '@mairie360/bffs-lib';
 import { z } from 'zod';
+import { isDueDate } from './routes/Project/due_date';
 
 // On ajoute les méthodes .openapi() à Zod
 extendZodWithOpenApi(z);
@@ -65,9 +66,19 @@ export const ProjectListItem = z.object({
     dueDate: z.string().openapi({ description: 'La date d\'échéance du projet au format ISO 8601', example: '2024-12-31T23:59:59Z' }),
     createdAt: z.string().openapi({ description: 'La date de création du projet au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
     tasks: z.object({
-        total: z.number().openapi({ description: 'Le nombre total de tâches dans le projet', example: 10 }),
-        completed: z.number().openapi({ description: 'Le nombre de tâches complétées dans le projet', example: 7 }),
-    }).openapi({ description: 'Les statistiques des tâches du projet' }),
+        total: z.number().openapi({ description: 'Number of tasks of the project, the archived (done) ones included', example: 10 }),
+        completed: z.number().openapi({ description: 'Number of done tasks of the project, the archived ones included', example: 7 }),
+        active: z.number().openapi({
+          description: 'Number of active tasks, the ones the project detail lists (MAIR-559)',
+          example: 3,
+        }),
+        archived: z.number().openapi({
+          description: 'Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)',
+          example: 7,
+        }),
+    }).openapi({
+      description: 'Task counts of the project: `progress` is `completed / total`; `active + archived = total`',
+    }),
     permissions: z.object({
         canView: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut voir le projet', example: true }),
         canEdit: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut éditer le projet', example: true }),
@@ -195,7 +206,12 @@ const PersonIds = z.array(
 const noMarkup = (schema: z.ZodString) => schema.regex(/^[^<>]*$/, 'Must not contain < or >');
 const Title = (example: string) => noMarkup(z.string()).openapi({ example });
 const Labels = z.array(noMarkup(z.string()).openapi({ example: 'security' }));
-const DueDate = z.string().openapi({ example: '2030-12-31T00:00:00Z' });
+// A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
+// The BFF turns it into the date-time Project API stores (MAIR-559).
+const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').openapi({
+  description: 'Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none',
+  example: '2030-12-31',
+});
 
 export const CreateProjectTaskInput = z.object({
   title: Title('Scan task'),
