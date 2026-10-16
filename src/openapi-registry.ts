@@ -163,6 +163,13 @@ export const DeletedTaskParams = ProjectTaskParams.extend({
   taskId: ProjectTaskParams.shape.taskId.openapi({ example: 'task-2' }),
 });
 
+// POST /projects/{projectId}/statuses gets its own example project (seeded by init-test.sql, MAIR-566): the statuses
+// a scan creates there would otherwise take names in project-1, whose status-1 the PATCH example renames, and turn
+// those renames into name conflicts (409) that depend on what the scan sent before.
+export const StatusCreationProjectIdParams = ProjectIdParams.extend({
+  projectId: ProjectIdParams.shape.projectId.openapi({ example: 'project-3' }),
+});
+
 // =====================
 // QUERIES
 // =====================

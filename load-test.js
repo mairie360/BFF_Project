@@ -19,7 +19,9 @@ import { createCoverage } from '/coverage.js';
 //   in the order get, put, post, delete, options, head, patch, trace, so `PATCH .../close` runs
 //   before `POST /projects`. `prepare()` therefore creates the working project (with one task)
 //   before the handlers run; the POST handlers create the disposable project and task that the
-//   DELETE handlers remove, and `cleanup()` deletes the working project and its duplicate.
+//   DELETE handlers remove, and `cleanup()` deletes the working project and its duplicate. The status and template
+//   handlers (MAIR-566) follow the same pattern: POST creates the disposable status / template that DELETE removes,
+//   PATCH works on a status of the working project / on the working template that `prepare()` creates.
 // - `reads` (up to the read VUs of the profile): replays only the GET handlers, which read the rows
 //   seeded by init-perf.sql and never depend on `state`.
 // - `page_rush`: `GET /projects-page` as seeded agents at a fixed arrival rate, failing if k6 has to
@@ -139,6 +141,23 @@ function taskBody(title) {
     assigneeIds: [`user-${ADMIN_ID}`],
     labels: ['perf'],
     dueDate: DUE_DATE,
+  };
+}
+
+/** Every category of a status holds at least one status (Project API keeps one per category). */
+function coversEveryCategory(statuses) {
+  return ['todo', 'in-progress', 'done'].every((category) => (statuses || []).some((s) => s.category === category));
+}
+
+function templateBody(name) {
+  return {
+    name,
+    description: 'Template created by the k6 load test',
+    statuses: [
+      { name: 'À faire', color: '#64748B', category: 'todo' },
+      { name: 'En cours', color: '#D97706', category: 'in-progress' },
+      { name: 'Terminé', color: '#16A34A', category: 'done' },
+    ],
   };
 }
 
@@ -270,12 +289,93 @@ const handlers = {
       }),
       { 'comment 201': (r) => r.status === 201 },
     ),
+
+  // --- Task statuses of a project (MAIR-566) ---
+  // The hot project's statuses, copied from the default template: one per category at least, and every one of its
+  // 2 000 tasks (archived ones included) counted in a status.
+  'GET /projects/{projectId}/statuses': ({ request }) =>
+    check(request({ path: { projectId: HOT_PROJECT_ID }, headers: randomHotManager() }), {
+      'statuses 200': (r) => r.status === 200,
+      'statuses read the hot project': (r) => r.status === 200 && coversEveryCategory(r.json('statuses'))
+        && r.json('statuses').reduce((total, s) => total + s.taskCount, 0) >= 2000,
+    }),
+  // Disposable status of the working project (no task), removed by DELETE .../statuses/{statusId}. The answer lists
+  // every status of the project: one of the template's is kept as the working status PATCH renames.
+  'POST /projects/{projectId}/statuses': ({ request, data }) => {
+    const name = unique('k6 disposable status');
+    const res = request({
+      path: { projectId: need(state.projectId, 'working project') },
+      body: { name, color: '#2563EB', category: 'todo' },
+      headers: data.admin,
+    });
+    const statuses = (json(res) || {}).statuses || [];
+    const created = statuses.find((s) => s.name === name);
+    check(res, {
+      'create status 201': (r) => r.status === 201,
+      'create status lists it': () => created !== undefined,
+    });
+    state.disposableStatusId = (created || {}).id;
+    state.statusId = (statuses.find((s) => created === undefined || s.id !== created.id) || {}).id;
+  },
+  // The disposable status holds no task and its category keeps the template's status: no moveTo, no 409.
+  'DELETE /projects/{projectId}/statuses/{statusId}': ({ request, data }) => {
+    const statusId = need(state.disposableStatusId, 'disposable status');
+    check(request({ path: { projectId: need(state.projectId, 'working project'), statusId }, headers: data.admin }), {
+      'delete status 200': (r) => r.status === 200,
+      'delete status removes it': (r) => r.status === 200 && r.json('statuses').every((s) => s.id !== statusId),
+    });
+  },
+  // Renames and recolours a status of the working project, deleted with it by cleanup().
+  'PATCH /projects/{projectId}/statuses/{statusId}': ({ request, data }) => {
+    const name = unique('k6 renamed status');
+    const statusId = need(state.statusId, 'working status');
+    check(request({
+      path: { projectId: need(state.projectId, 'working project'), statusId },
+      body: { name, color: '#16A34A' },
+      headers: data.admin,
+    }), {
+      'patch status 200': (r) => r.status === 200,
+      'patch status renames it': (r) => r.status === 200
+        && r.json('statuses').some((s) => s.id === statusId && s.name === name && s.color.toUpperCase() === '#16A34A'),
+    });
+  },
+
+  // --- Project templates (MAIR-566; written by the Responsable and Admin roles only) ---
+  // The templates seeded by the Database (Simple, the default one, and the three others), read by any agent.
+  'GET /project-templates': ({ request }) =>
+    check(request({ headers: randomAgent() }), {
+      'templates 200': (r) => r.status === 200,
+      'templates read the seeded ones': (r) => r.status === 200 && r.json('templates').length >= 4
+        && r.json('templates').some((t) => t.isDefault) && r.json('templates').every((t) => coversEveryCategory(t.statuses)),
+    }),
+  // Disposable template, removed by DELETE /project-templates/{templateId}.
+  'POST /project-templates': ({ request, data }) => {
+    const res = request({ body: templateBody(unique('k6 disposable template')), headers: data.admin });
+    check(res, { 'create template 201': (r) => r.status === 201 });
+    state.disposableTemplateId = (json(res) || {}).id;
+  },
+  'DELETE /project-templates/{templateId}': ({ request, data }) =>
+    check(request({ path: { templateId: need(state.disposableTemplateId, 'disposable template') }, headers: data.admin }), {
+      'delete template 204': (r) => r.status === 204,
+    }),
+  // The working template created by prepare(), deleted by cleanup().
+  'PATCH /project-templates/{templateId}': ({ request, data }) => {
+    const name = unique('k6 patched template');
+    check(request({
+      path: { templateId: need(state.templateId, 'working template') },
+      body: { name, description: 'Template patched by the k6 load test' },
+      headers: data.admin,
+    }), {
+      'patch template 200': (r) => r.status === 200,
+      'patch template renames it': (r) => r.status === 200 && r.json('name') === name,
+    });
+  },
 };
 
 const coverage = createCoverage(handlers);
 const readOperations = coverage.operations.filter((o) => o.method === 'GET');
 
-// Creates the working project (with one task) of a `crud` iteration. The created tasks come back
+// Creates the working project (with one task) and the working template of a `crud` iteration. The created tasks come back
 // in the top-level `taskItems` of the answer.
 function prepare(data) {
   const body = projectBody(unique('k6 working project'));
@@ -287,15 +387,27 @@ function prepare(data) {
   const created = json(res) || {};
   state.projectId = (created.project || {}).id;
   state.taskId = ((created.taskItems || [])[0] || {}).id;
+  // The working template PATCH /project-templates/{templateId} updates (MAIR-566).
+  const template = http.post(coverage.url('POST /project-templates'), JSON.stringify(templateBody(unique('k6 working template'))), {
+    headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin),
+    tags: { op: 'POST /project-templates' },
+  });
+  state.templateId = (json(template) || {}).id;
 }
 
-// Deletes the working project and its duplicate (their tasks go with them).
+// Deletes the working project and its duplicate (their tasks and statuses go with them), and the working template.
 function cleanup(data) {
   for (const projectId of [state.projectId, state.duplicateProjectId]) {
     if (!projectId) continue;
     http.del(coverage.url('DELETE /projects/{projectId}', { projectId }), null, {
       headers: data.admin,
       tags: { op: 'DELETE /projects/{projectId}' },
+    });
+  }
+  if (state.templateId) {
+    http.del(coverage.url('DELETE /project-templates/{templateId}', { templateId: state.templateId }), null, {
+      headers: data.admin,
+      tags: { op: 'DELETE /project-templates/{templateId}' },
     });
   }
 }

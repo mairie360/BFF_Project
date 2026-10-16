@@ -8657,7 +8657,7 @@
             "schema": {
               "type": "string",
               "description": "Identifiant du projet",
-              "example": "project-1"
+              "example": "project-3"
             },
             "required": true,
             "description": "Identifiant du projet",

@@ -10,6 +10,7 @@ import {
     ProjectIdParams,
     ProjectStatusParams,
     ProjectTaskStatuses,
+    StatusCreationProjectIdParams,
     UpdateProjectTaskStatusBody,
 } from '../../openapi-registry';
 import { requireProjectIdParam } from './project_helpers';
@@ -72,7 +73,7 @@ registry.registerPath({
     summary: 'Adds a task status to a project',
     description: 'Reserved to the project managers. Without `position` the status goes last; with it, the statuses from that position move one place down. `409` when another status of the project has the name.',
     request: {
-        params: ProjectIdParams,
+        params: StatusCreationProjectIdParams,
         body: { required: true, content: { 'application/json': { schema: CreateProjectTaskStatusBody } } },
     },
     responses: { ...apiErrorResponses(...WRITE_STATUSES), 201: statusesResponse },
