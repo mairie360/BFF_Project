@@ -558,6 +558,15 @@ export const DeletedProjectStatusParams = ProjectStatusParams.extend({
   statusId: ProjectStatusParams.shape.statusId.openapi({ example: 'status-999999' }),
 });
 
+// PATCH /projects/{projectId}/statuses/{statusId} gets its own example project (seeded by init-test.sql, MAIR-566):
+// its 200 lists every status of the project with its task count, so in project-1, whose tasks the scan creates,
+// deletes and moves meanwhile, two probes got different bodies depending on timing and ZAP read the difference as
+// an injection. status-11 is the `in-progress` status of project-4, already in the example category.
+export const UpdatedProjectStatusParams = ProjectStatusParams.extend({
+  projectId: ProjectIdParams.shape.projectId.openapi({ example: 'project-4' }),
+  statusId: ProjectStatusParams.shape.statusId.openapi({ example: 'status-11' }),
+});
+
 export const DeleteProjectStatusQuery = z.object({
   moveTo: StatusIdField.optional().openapi({
     description: 'Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise)',

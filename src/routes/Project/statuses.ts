@@ -11,6 +11,7 @@ import {
     ProjectStatusParams,
     ProjectTaskStatuses,
     StatusCreationProjectIdParams,
+    UpdatedProjectStatusParams,
     UpdateProjectTaskStatusBody,
 } from '../../openapi-registry';
 import { requireProjectIdParam } from './project_helpers';
@@ -97,7 +98,7 @@ registry.registerPath({
     summary: 'Renames, recolours, moves or recategorizes a task status',
     description: 'Reserved to the project managers; an absent field is left unchanged. A new `category` moves the tasks of the status to it (a `done` status archives them), and is refused (`409`) when it would leave the former category without any status.',
     request: {
-        params: ProjectStatusParams,
+        params: UpdatedProjectStatusParams,
         body: { required: true, content: { 'application/json': { schema: UpdateProjectTaskStatusBody } } },
     },
     responses: { ...apiErrorResponses(...WRITE_STATUSES), 200: statusesResponse },

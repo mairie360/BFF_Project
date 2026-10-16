@@ -8814,7 +8814,7 @@
             "schema": {
               "type": "string",
               "description": "Identifiant du projet",
-              "example": "project-1"
+              "example": "project-4"
             },
             "required": true,
             "description": "Identifiant du projet",
@@ -8825,7 +8825,7 @@
             "schema": {
               "type": "string",
               "description": "Identifiant du statut",
-              "example": "status-1"
+              "example": "status-11"
             },
             "required": true,
             "description": "Identifiant du statut",
