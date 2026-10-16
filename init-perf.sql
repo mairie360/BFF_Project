@@ -53,10 +53,13 @@ CROSS JOIN LATERAL (
 ) m
 ON CONFLICT DO NOTHING;
 
--- Project 1000 + p is owned by agent 100001 + p % 2000, created over the last 500 days.
-INSERT INTO projects (id, title, description, owner_id, created_at)
+-- Project 1000 + p is owned by agent 100001 + p % 2000, created over the last 500 days. Its
+-- priority is its own (MAIR-558): one project in three is high, project 0 first, so every
+-- `q=perf project <n>` of the filtered projects-page (n < 50) matches a high project.
+INSERT INTO projects (id, title, description, owner_id, created_at, priority)
 SELECT 1000 + p, 'Perf project ' || p, 'Performance seed',
-       100001 + p % 2000, now() - (p % 500) * interval '1 day' - p * interval '1 second'
+       100001 + p % 2000, now() - (p % 500) * interval '1 day' - p * interval '1 second',
+       (ARRAY['high', 'medium', 'low'])[1 + p % 3]::task_priority
 FROM generate_series(0, 4999) AS p
 ON CONFLICT (id) DO NOTHING;
 
@@ -93,13 +96,15 @@ SELECT 87, 100001 + c % 300, 'Perf comment ' || c, now() - c * interval '1 minut
 FROM generate_series(1, 1000) AS c
 WHERE NOT EXISTS (SELECT 1 FROM task_comments WHERE task_id = 87 AND message = 'Perf comment 1');
 
--- 1 000 status changes of task 87, logged by fn_log_task_change like real writes.
+-- 1 000 status changes of task 87, logged by fn_log_task_change like real writes. Only the three
+-- categories still in use: since MAIR-566 the database reads `review` as `in_progress`, so a cycle
+-- through it would skip one change in four.
 DO $$
 BEGIN
     IF (SELECT count(*) FROM task_history WHERE task_id = 87) < 1000 THEN
         FOR i IN 1..1000 LOOP
             UPDATE tasks
-            SET status = (ARRAY['todo', 'in_progress', 'review', 'completed'])[1 + i % 4]::task_status,
+            SET status = (ARRAY['todo', 'in_progress', 'completed'])[1 + i % 3]::task_status,
                 updated_by = 1
             WHERE id = 87;
         END LOOP;
