@@ -645,6 +645,7 @@ const apiErrorDescriptions = {
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
   409: 'Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)',
+  429: 'Project API or Core API rate limit reached: retry after the Retry-After header (seconds)',
   500: 'Unexpected server error',
   502: 'Project API or Core API is unreachable or failed',
   503: 'Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)',
@@ -653,7 +654,9 @@ const apiErrorDescriptions = {
 export type ApiErrorStatus = keyof typeof apiErrorDescriptions;
 
 export function apiErrorResponses(...statuses: ApiErrorStatus[]) {
-  return Object.fromEntries(statuses.map((status) => [status, {
+  // A route answering 502 calls an upstream, whose 429 bffs-lib >= 2.4.0 relays with its Retry-After (MAIR-562).
+  const declared: ApiErrorStatus[] = statuses.includes(502) && !statuses.includes(429) ? [...statuses, 429] : statuses;
+  return Object.fromEntries(declared.map((status) => [status, {
     description: apiErrorDescriptions[status],
     content: { 'application/json': { schema: ErrorResponse } },
   }]));

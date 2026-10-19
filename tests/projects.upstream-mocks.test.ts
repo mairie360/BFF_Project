@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import type { Express } from 'express';
 import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
@@ -647,6 +648,32 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('get', '/projects-page', response);
       expect(response.body.error).toEqual({ code: 'BAD_GATEWAY', message: 'Upstream service error', details: [] });
       expect(JSON.stringify(response.body)).not.toContain('database');
+    });
+
+    test('mair_562 a persistent Project API 429 is answered 429 with Retry-After, not 502', async () => {
+      signIn(admin);
+      mockProjectApi();
+      projectApi.on('get', PROJECT.projects, { ...textError(429, 'Too many requests'), headers: { 'Retry-After': '30' } });
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(429);
+      expect(response.headers['retry-after']).toBe('30');
+      expectBffContract('get', '/projects-page', response);
+      expect(response.body.error.code).toBe('TOO_MANY_REQUESTS');
+    });
+
+    test('mair_562 every route answering 502 also declares the upstream 429 relayed by bffs-lib', () => {
+      const document = JSON.parse(readFileSync(path.join(__dirname, '..', 'contracts', 'openapi.json'), 'utf8')) as {
+        paths: Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+      };
+      const undeclared = Object.entries(document.paths)
+        .filter(([route]) => route !== '/check_apis')
+        .flatMap(([route, operations]) => Object.entries(operations).map(([method, operation]) => ({ route, method, responses: operation.responses ?? {} })))
+        .filter(({ responses }) => '502' in responses && !('429' in responses))
+        .map(({ method, route }) => `${method.toUpperCase()} ${route}`);
+
+      expect(undeclared).toEqual([]);
     });
 
     test('retries an idempotent Project API read once after a transient failure', async () => {
