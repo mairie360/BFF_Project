@@ -190,6 +190,8 @@ export function directoryUser(agent: Agent): DirectoryUser {
     first_name: agent.first_name,
     last_name: agent.last_name,
     email: `${agent.first_name.toLowerCase()}@mairie.test`,
+    // Core >= 2.1.0 (MAIR-564): one role per user in `role`, the deprecated `roles` holds at most that one.
+    role: agent.role,
     roles: [agent.role],
     group_ids: [1],
   };
