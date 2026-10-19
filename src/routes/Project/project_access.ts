@@ -4,6 +4,7 @@ import { parseUserId } from './project_helpers';
 import { canManageProjects, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
 import {
   getProjectBundle,
+  getProjectTask,
   getProjectPermissions,
   getTaskPermissions,
   listAssignableUsers,
@@ -24,8 +25,10 @@ export type ProjectAccess = {
   permissions: ProjectPermissions;
 };
 
-/** What a task guard resolved: the project access plus the task and the caller's rights on it. */
-export type TaskAccess = ProjectAccess & {
+/** What a task guard resolved: the caller, the task and the caller's rights on its project and on it. */
+export type TaskAccess = {
+  user: ProjectUserContext;
+  permissions: ProjectPermissions;
   task: TaskView;
   taskPermissions: TaskPermissions;
 };
@@ -73,12 +76,19 @@ export async function requireProjectManagement(caller: Caller, user: ProjectUser
   return access;
 }
 
-/** Reads the bundle once; 404 when the project or the task is unknown or invisible. */
+/**
+ * Reads the task alone (MAIR-474: not every task of its project); 404 when the project is unknown or invisible, or
+ * the task is not one of its tasks. Project API answers it only when the project is visible to the caller.
+ */
 async function loadTaskAccess(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
-  const access = await loadProjectAccess(caller, user, projectId);
-  const task = access?.bundle.tasks.find((entry) => entry.id === taskId);
-  if (!access || !task) throw new HttpError(404, 'Task not found or not visible.');
-  return { ...access, task, taskPermissions: getTaskPermissions(user, task.assigned_to) };
+  const task = await getProjectTask(caller, projectId, taskId);
+  if (!task) throw new HttpError(404, 'Task not found or not visible.');
+  return {
+    user,
+    permissions: getProjectPermissions(user, true),
+    task,
+    taskPermissions: getTaskPermissions(user, task.assigned_to),
+  };
 }
 
 export async function requireTaskView(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {

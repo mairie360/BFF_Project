@@ -85,6 +85,7 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
             assigneeIds: body.assigneeIds,
             labels: body.labels,
             dueDate: body.dueDate,
+            statusId: body.statusId,
         }),
     );
 

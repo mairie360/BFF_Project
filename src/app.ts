@@ -1,12 +1,14 @@
 import 'dotenv/config';
 import { openApiDocument as swaggerSpec } from './openapi';
+import { logger } from './logger';
 import {
   apiOnlyHeaders,
   errorHandler,
   noStore,
   notFoundHandler,
   parseTrustProxy,
-  requireBearer,
+  requestLogger,
+  requireSession,
   securityHeaders,
 } from '@mairie360/bffs-lib';
 import express from 'express';
@@ -25,12 +27,17 @@ import modifyTaskStatusRouter from './routes/Project/modify_task_status';
 import deleteTaskRouter from './routes/Project/delete_task';
 import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
+import archivedTasksRouter from './routes/Project/archived_tasks';
+import statusesRouter from './routes/Project/statuses';
+import templatesRouter from './routes/Project/templates';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 
 const app = express();
 // Client IP (req.ip) behind the ingress: see parseTrustProxy.
 app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+// First: every request gets an id and one JSON log line when it ends (method, route, status, duration; MAIR-531).
+app.use(requestLogger({ logger }));
 // Security headers shared by every BFF on every response, /docs included; stricter API-only headers
 // (default-src 'none', no embedding) everywhere else, set before body parsing so that they also cover
 // body-parse errors.
@@ -48,9 +55,10 @@ app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
 
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
-// Session-bound routes: never cached, 401 before any upstream call without a Bearer token, then the
-// caller's session is resolved with BFF User.
-app.use(['/projects-page', '/projects'], noStore, requireBearer, projectUserContextMiddleware);
+// Session-bound routes: never cached, 401 before any upstream call without a Bearer token verified with
+// JWT_SECRET (HS256, expiry; bffs-lib requireSession, MAIR-474), then the caller's roles are read from the token
+// (Core API for an older token, never BFF User: MAIR-525). Project API checks that the session was not revoked.
+app.use(['/projects-page', '/projects', '/project-templates'], noStore, requireSession, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);
@@ -63,11 +71,14 @@ app.use('/projects', modifyTaskStatusRouter);
 app.use('/projects', deleteTaskRouter);
 app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
+app.use('/projects', archivedTasksRouter);
+app.use('/projects', statusesRouter);
+app.use('/project-templates', templatesRouter);
 
 // Unknown routes and every error that reaches Express (malformed JSON, oversized body, unexpected
 // errors) end in the shared envelope `{ error: { code, message, details } }` instead of Express's HTML
 // page: the status is kept and an unexpected error becomes a generic 500 without leaking its message.
 app.use(notFoundHandler);
-app.use(errorHandler());
+app.use(errorHandler({ logger }));
 
 export default app;

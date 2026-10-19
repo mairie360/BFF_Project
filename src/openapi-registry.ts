@@ -1,6 +1,7 @@
 import { OpenAPIRegistry, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-import { ErrorResponseSchema } from '@mairie360/bffs-lib';
+import { ErrorResponseSchema, textField } from '@mairie360/bffs-lib';
 import { z } from 'zod';
+import { isDueDate } from './routes/Project/due_date';
 
 // On ajoute les méthodes .openapi() à Zod
 extendZodWithOpenApi(z);
@@ -57,15 +58,27 @@ export const ProjectListItem = z.object({
     priority: ProjectPriority,
     priorityLabel: z.string().openapi({ description: 'Le libellé de la priorité du projet', example: 'Haute' }),
     responsible: Person,
-    assignees: z.array(Person).openapi({ description: 'La liste des personnes assignées au projet' }),
+    assignees: z.array(Person).openapi({
+      description: 'Members of the project; in the projects page, its first 5 members only (the project detail lists them all)',
+    }),
     labels: z.array(z.string()).openapi({ description: 'La liste des étiquettes associées au projet', example: ['frontend', 'urgent'] }),
     progress: z.number().min(0).max(100).openapi({ description: 'Le pourcentage d\'avancement du projet', example: 75 }),
     dueDate: z.string().openapi({ description: 'La date d\'échéance du projet au format ISO 8601', example: '2024-12-31T23:59:59Z' }),
     createdAt: z.string().openapi({ description: 'La date de création du projet au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
     tasks: z.object({
-        total: z.number().openapi({ description: 'Le nombre total de tâches dans le projet', example: 10 }),
-        completed: z.number().openapi({ description: 'Le nombre de tâches complétées dans le projet', example: 7 }),
-    }).openapi({ description: 'Les statistiques des tâches du projet' }),
+        total: z.number().openapi({ description: 'Number of tasks of the project, the archived (done) ones included', example: 10 }),
+        completed: z.number().openapi({ description: 'Number of done tasks of the project, the archived ones included', example: 7 }),
+        active: z.number().openapi({
+          description: 'Number of active tasks, the ones the project detail lists (MAIR-559)',
+          example: 3,
+        }),
+        archived: z.number().openapi({
+          description: 'Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)',
+          example: 7,
+        }),
+    }).openapi({
+      description: 'Task counts of the project: `progress` is `completed / total`; `active + archived = total`',
+    }),
     permissions: z.object({
         canView: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut voir le projet', example: true }),
         canEdit: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut éditer le projet', example: true }),
@@ -95,6 +108,8 @@ export const ProjectTask = z.object({
     completed: z.boolean().openapi({ description: 'Indique si la tâche est complétée', example: false }),
     createdAt: z.string().openapi({ description: 'La date de création de la tâche au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
     updatedAt: z.string().optional().openapi({ description: 'La date de dernière mise à jour de la tâche au format ISO 8601', example: '2024-01-15T15:30:00Z' }),
+    statusId: z.string().optional().openapi({ description: 'The status of the project the task is in (MAIR-566); `status` is its category', example: 'status-1' }),
+    statusName: z.string().optional().openapi({ description: 'Name of that status, as the Kanban column shows it', example: 'À valider' }),
     permissions: z.object({
       canView: z.boolean(),
       canEdit: z.boolean(),
@@ -148,6 +163,13 @@ export const DeletedTaskParams = ProjectTaskParams.extend({
   taskId: ProjectTaskParams.shape.taskId.openapi({ example: 'task-2' }),
 });
 
+// POST /projects/{projectId}/statuses gets its own example project (seeded by init-test.sql, MAIR-566): the statuses
+// a scan creates there would otherwise take names in project-1, whose status-1 the PATCH example renames, and turn
+// those renames into name conflicts (409) that depend on what the scan sent before.
+export const StatusCreationProjectIdParams = ProjectIdParams.extend({
+  projectId: ProjectIdParams.shape.projectId.openapi({ example: 'project-3' }),
+});
+
 // =====================
 // QUERIES
 // =====================
@@ -156,7 +178,7 @@ export const DeletedTaskParams = ProjectTaskParams.extend({
 const DateFilter = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Expected a date');
 
 export const ProjectsPageQuery = z.object({
-  q: z.string().optional().openapi({ example: 'scan' }),
+  q: z.string().max(255).optional().openapi({ description: 'Case-insensitive text searched in the name and the description', example: 'scan' }),
 
   status: z
     .enum(['all', 'todo', 'in-progress', 'review', 'done'])
@@ -189,16 +211,40 @@ const PersonId = z.string().regex(/^(?:user-\d+)?$/, 'Expected a user-<id> ident
 const PersonIds = z.array(
   z.string().regex(/^user-\d+$/, 'Expected a user-<id> identifier').openapi({ example: 'user-1' }),
 );
-// Stored texts are rendered by the fronts: `<` and `>` are refused.
+// Stored texts are rendered by the fronts: `<` and `>` are refused. Titles, labels and descriptions follow Project
+// API's rules (MAIR-560: 1 to 255 characters, not blank, no control character; a description up to 5000 characters,
+// line breaks and tabs allowed), so a bad value is a 400 naming the field instead of the API's bare one.
 const noMarkup = (schema: z.ZodString) => schema.regex(/^[^<>]*$/, 'Must not contain < or >');
-const Title = (example: string) => noMarkup(z.string()).openapi({ example });
-const Labels = z.array(noMarkup(z.string()).openapi({ example: 'security' }));
-const DueDate = z.string().openapi({ example: '2030-12-31T00:00:00Z' });
+const Title = (example: string) => textField({ max: 255, min: 1, noMarkup: true }).openapi({ example });
+const Description = (example: string) => textField({ max: 5_000, multiline: true, noMarkup: true }).openapi({ example });
+const Labels = z.array(textField({ max: 255, min: 1, noMarkup: true }).openapi({ example: 'security' }));
+// A task's `status` is the category of its status (MAIR-566): `todo`, `in-progress` or `done`. `review` is refused with
+// a clear detail instead of Project API's bare 400; a review step is a status of the project (`statusId`), e.g. the
+// "À valider" status of the "Avec validation" template, in the `in-progress` category.
+const TaskStatus = ProjectStatus.refine((status) => status !== 'review', {
+  message: 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project',
+});
+// A status of the task's project (`status-<id>`, from `GET /projects/{projectId}/statuses`, MAIR-566).
+const StatusIdField = z.string().regex(/^status-\d+$/, 'Expected a status-<id> identifier').openapi({
+  description: 'A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category',
+  example: 'status-1',
+});
+// A project template (`template-<id>`, from `GET /project-templates`, MAIR-566).
+const TemplateIdField = z.string().regex(/^template-\d+$/, 'Expected a template-<id> identifier').openapi({
+  description: 'Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template',
+  example: 'template-1',
+});
+// A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
+// The BFF turns it into the date-time Project API stores (MAIR-559).
+const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').openapi({
+  description: 'Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none',
+  example: '2030-12-31',
+});
 
 export const CreateProjectTaskInput = z.object({
   title: Title('Scan task'),
 
-  status: ProjectStatus,
+  status: TaskStatus,
 
   priority: ProjectPriority,
 
@@ -212,7 +258,7 @@ export const CreateProjectTaskInput = z.object({
 export const CreateProjectBody = z.object({
   title: Title('Scan project'),
 
-  description: noMarkup(z.string()).openapi({ example: 'Project created by the ZAP scan' }),
+  description: Description('Project created by the ZAP scan'),
 
   status: ProjectStatus,
 
@@ -227,6 +273,8 @@ export const CreateProjectBody = z.object({
   dueDate: DueDate,
 
   taskItems: z.array(CreateProjectTaskInput).optional(),
+
+  templateId: TemplateIdField.optional(),
 });
 
 registry.register('CreateProjectBody', CreateProjectBody);
@@ -235,7 +283,8 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // UPDATE PROJECT
 // =====================
 
-export const UpdateProjectBody = CreateProjectBody.partial();
+// The template only applies at creation (its statuses are copied then): not part of a PATCH.
+export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true }).partial();
 
 registry.register('UpdateProjectBody', UpdateProjectBody);
 
@@ -246,7 +295,7 @@ registry.register('UpdateProjectBody', UpdateProjectBody);
 export const CreateTaskBody = z.object({
   title: Title('Scan task'),
 
-  status: ProjectStatus,
+  status: TaskStatus,
 
   priority: ProjectPriority,
 
@@ -257,6 +306,8 @@ export const CreateTaskBody = z.object({
   labels: Labels,
 
   dueDate: DueDate,
+
+  statusId: StatusIdField.optional(),
 });
 
 registry.register('CreateTaskBody', CreateTaskBody);
@@ -273,8 +324,13 @@ registry.register('UpdateTaskBody', UpdateTaskBody);
 // UPDATE TASK STATUS
 // =====================
 
+// Either a category (`status`: the first status of it in the project) or a status of the project (`statusId`, MAIR-566,
+// which wins when both are sent).
 export const UpdateTaskStatusBody = z.object({
-  status: ProjectStatus,
+  status: TaskStatus.optional(),
+  statusId: StatusIdField.optional(),
+}).refine((body) => body.status !== undefined || body.statusId !== undefined, {
+  message: 'Give status or statusId',
 });
 
 registry.register(
@@ -307,8 +363,23 @@ export const TaskHistoryEntry = z.object({
 });
 
 export const TaskCollaborationResponse = z.object({
-  comments: z.array(TaskComment),
-  history: z.array(TaskHistoryEntry),
+  comments: z.array(TaskComment).openapi({
+    description: 'The most recent comments of the page, in reading order (oldest first)',
+  }),
+  history: z.array(TaskHistoryEntry).openapi({ description: 'The most recent history entries of the page, newest first' }),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    commentsTotal: z.number().openapi({ description: 'Number of comments of the task' }),
+    historyTotal: z.number().openapi({ description: 'Number of history entries of the task' }),
+    hasNextPage: z.boolean().openapi({ description: 'Older comments or history entries remain' }),
+  }),
+});
+
+/** Page of the follow-up of a task: `page` from 1, `limit` from 1 to 100 (50 by default). */
+export const TaskCollaborationQuery = z.object({
+  page: z.coerce.number().int().min(1).max(100_000).optional().openapi({ example: 1 }),
+  limit: z.coerce.number().int().min(1).max(100).optional().openapi({ example: 50 }),
 });
 
 registry.register('CloseProjectBody', CloseProjectBody);
@@ -412,8 +483,10 @@ export const ProjectsPageResponse = z.object({
       z.object({
         status: ProjectStatus,
         label: z.string(),
-        projectIds: z.array(z.string()),
-        count: z.number(),
+        projectIds: z.array(z.string()).openapi({
+          description: 'Ids of the projects of the current page in this column (the only ones the response holds)',
+        }),
+        count: z.number().openapi({ description: 'Number of matching projects in this column, every page included' }),
       }),
     ),
   }),
@@ -434,6 +507,126 @@ registry.register(
 );
 
 // =====================
+// TASK STATUSES AND PROJECT TEMPLATES (MAIR-566)
+// =====================
+
+// The three fixed categories a status belongs to: they drive the archiving (`done`), the progress and the pending tasks.
+export const StatusCategory = z.enum(['todo', 'in-progress', 'done']).openapi({
+  description: 'Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)',
+  example: 'in-progress',
+});
+const StatusName = (example: string) => textField({ max: 100, min: 1, noMarkup: true }).openapi({ example });
+const StatusColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Expected # followed by 6 hexadecimal digits').openapi({ example: '#D97706' });
+const StatusPosition = z.number().int().min(0).openapi({ description: 'Position among the statuses, from 0', example: 2 });
+
+export const ProjectTaskStatus = z.object({
+  id: z.string().openapi({ example: 'status-1' }),
+  name: z.string().openapi({ example: 'À valider' }),
+  color: z.string().openapi({ example: '#D97706' }),
+  category: StatusCategory,
+  position: z.number().int().openapi({ example: 2 }),
+  taskCount: z.number().int().openapi({ description: 'Tasks in this status, archived ones included', example: 3 }),
+}).openapi('ProjectTaskStatus', { description: 'A task status of a project: a Kanban column' });
+
+export const ProjectTaskStatuses = z.object({
+  statuses: z.array(ProjectTaskStatus).openapi({ description: 'Statuses of the project, by position' }),
+}).openapi('ProjectTaskStatuses');
+
+export const CreateProjectTaskStatusBody = z.object({
+  name: StatusName('Scan status'),
+  color: StatusColor.optional(),
+  category: StatusCategory,
+  position: StatusPosition.optional(),
+}).strict();
+registry.register('CreateProjectTaskStatusBody', CreateProjectTaskStatusBody);
+
+export const UpdateProjectTaskStatusBody = z.object({
+  name: StatusName('Scan status renamed').optional(),
+  color: StatusColor.optional(),
+  category: StatusCategory.optional(),
+  position: StatusPosition.optional(),
+}).strict();
+registry.register('UpdateProjectTaskStatusBody', UpdateProjectTaskStatusBody);
+
+export const ProjectStatusParams = z.object({
+  projectId: ProjectIdParams.shape.projectId,
+  statusId: z.string().openapi({ description: 'Identifiant du statut', example: 'status-1' }),
+});
+
+export const DeletedProjectStatusParams = ProjectStatusParams.extend({
+  // Not seeded by init-test.sql: a scan replaying the example gets a 404 and deletes nothing.
+  statusId: ProjectStatusParams.shape.statusId.openapi({ example: 'status-999999' }),
+});
+
+// PATCH /projects/{projectId}/statuses/{statusId} gets its own example project (seeded by init-test.sql, MAIR-566):
+// its 200 lists every status of the project with its task count, so in project-1, whose tasks the scan creates,
+// deletes and moves meanwhile, two probes got different bodies depending on timing and ZAP read the difference as
+// an injection. status-11 is the `in-progress` status of project-4, already in the example category.
+export const UpdatedProjectStatusParams = ProjectStatusParams.extend({
+  projectId: ProjectIdParams.shape.projectId.openapi({ example: 'project-4' }),
+  statusId: ProjectStatusParams.shape.statusId.openapi({ example: 'status-11' }),
+});
+
+export const DeleteProjectStatusQuery = z.object({
+  moveTo: StatusIdField.optional().openapi({
+    description: 'Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise)',
+    example: 'status-2',
+  }),
+});
+
+const TemplateStatus = z.object({
+  name: z.string().openapi({ example: 'À valider' }),
+  color: z.string().openapi({ example: '#D97706' }),
+  category: StatusCategory,
+  position: z.number().int().openapi({ example: 2 }),
+});
+
+const TemplateCustomField = z.object({
+  label: z.string().openapi({ example: 'Budget' }),
+  type: z.string().openapi({ description: 'Field type, as Project API names it', example: 'Number' }),
+});
+
+export const ProjectTemplate = z.object({
+  id: z.string().openapi({ example: 'template-1' }),
+  name: z.string().openapi({ example: 'Avec validation' }),
+  description: z.string().nullable().openapi({ example: 'Tâches relues avant validation' }),
+  isDefault: z.boolean().openapi({ description: 'Template of a project created without templateId; cannot be deleted', example: false }),
+  statuses: z.array(TemplateStatus).openapi({ description: 'Statuses copied into a project created from it, by position' }),
+  customFields: z.array(TemplateCustomField).openapi({ description: 'Custom task fields copied into the project' }),
+}).openapi('ProjectTemplate', { description: 'A project template (MAIR-566)' });
+
+export const ProjectTemplates = z.object({
+  templates: z.array(ProjectTemplate),
+}).openapi('ProjectTemplates');
+
+const TemplateStatusInput = z.object({
+  name: StatusName('Scan status'),
+  color: StatusColor.optional(),
+  category: StatusCategory,
+}).strict();
+
+export const CreateProjectTemplateBody = z.object({
+  name: textField({ max: 100, min: 1, noMarkup: true }).openapi({ example: 'Scan template' }),
+  description: textField({ max: 1_000, multiline: true, noMarkup: true }).optional().openapi({ example: 'Template created by the ZAP scan' }),
+  statuses: z.array(TemplateStatusInput).min(1).max(30).openapi({
+    description: 'Statuses in order; at least one per category (todo, in-progress, done)',
+  }),
+}).strict();
+registry.register('CreateProjectTemplateBody', CreateProjectTemplateBody);
+
+export const UpdateProjectTemplateBody = CreateProjectTemplateBody.partial().strict();
+registry.register('UpdateProjectTemplateBody', UpdateProjectTemplateBody);
+
+export const ProjectTemplateParams = z.object({
+  templateId: z.string().openapi({ description: 'Identifiant du modèle', example: 'template-1' }),
+});
+
+export const DeletedProjectTemplateParams = ProjectTemplateParams.extend({
+  // Not seeded: a scan replaying the example gets a 404 and deletes nothing.
+  templateId: ProjectTemplateParams.shape.templateId.openapi({ example: 'template-999999' }),
+});
+
+// =====================
 // ERROR
 // =====================
 
@@ -442,8 +635,8 @@ registry.register(
 // adds .openapi() to schemas created after the extension.
 export const ErrorResponse = registry.register('ErrorResponse', ErrorResponseSchema.clone());
 
-// Error statuses answered with ErrorResponse. The /projects* routes require a Bearer token and resolve the
-// session with BFF User (401, 502), and answer 503 when an upstream URL is not configured. Each route passes the
+// Error statuses answered with ErrorResponse. The /projects* routes require a verified Bearer token (401), read the
+// caller's roles from it or from Core API (401, 502), and answer 503 when an upstream URL is not configured. Each route passes the
 // same list to `callerOf(req, ERROR_STATUSES)` (services/projectData.ts): an upstream 4xx is only relayed when
 // the route declares it, any other upstream status becomes 502 (`callUpstream` of @mairie360/bffs-lib).
 const apiErrorDescriptions = {
@@ -451,9 +644,10 @@ const apiErrorDescriptions = {
   401: 'Missing, invalid or expired session',
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
+  409: 'Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)',
   500: 'Unexpected server error',
-  502: 'BFF User, Project API or Core API is unreachable or failed',
-  503: 'BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL)',
+  502: 'Project API or Core API is unreachable or failed',
+  503: 'Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)',
 } as const;
 
 export type ApiErrorStatus = keyof typeof apiErrorDescriptions;

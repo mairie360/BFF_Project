@@ -15,7 +15,8 @@ Les chemins sont relatifs au BFF. Les proxies web conservent méthode, paramètr
 | POST | `/projects/{projectId}/tasks` | 201 Tâche créée avec succès |
 | DELETE | `/projects/{projectId}` | 204 Projet supprimé avec succès |
 | PATCH | `/projects/{projectId}` | 200 Projet mis à jour avec succès |
-| GET | `/projects/{projectId}` | 200 Projet trouvé |
+| GET | `/projects/{projectId}` | 200 Projet trouvé (tâches actives) |
+| GET | `/projects/{projectId}/archived-tasks` | 200 Tâches archivées, paginées |
 | DELETE | `/projects/{projectId}/tasks/{taskId}` | 204 Tâche supprimée avec succès |
 | PATCH | `/projects/{projectId}/tasks/{taskId}` | 200 Tâche mise à jour avec succès |
 | POST | `/projects/{projectId}/duplicate` | 201 Projet dupliqué avec succès |

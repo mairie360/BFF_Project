@@ -7,7 +7,8 @@ describe('upstream URL configuration', () => {
   afterEach(() => { process.env = { ...saved }; });
 
   test('the entry point checks every upstream the BFF calls', () => {
-    expect([...UPSTREAM_SERVICES].sort()).toEqual(['CORE_API', 'PROJECT_API', 'USER_BFF']);
+    // MAIR-525: only APIs, never another BFF.
+    expect([...UPSTREAM_SERVICES].sort()).toEqual(['CORE_API', 'PROJECT_API']);
   });
 
   test('startup fails naming every missing or invalid upstream URL, without a localhost default', () => {
@@ -15,17 +16,15 @@ describe('upstream URL configuration', () => {
       delete process.env[`${service}_URL`];
       delete process.env[`${service}_PORT`];
     }
-    process.env.CORE_API_URL = 'core-api';
     process.env.PROJECT_API_URL = 'http://project-api:3001';
     process.env.PROJECT_API_PORT = 'not-a-port';
 
-    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('Missing or invalid upstream configuration: USER_BFF_URL');
+    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('Missing or invalid upstream configuration: CORE_API_URL');
     delete process.env.PROJECT_API_URL;
-    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('USER_BFF_URL, PROJECT_API_URL');
+    expect(() => assertConfigured(UPSTREAM_SERVICES)).toThrow('PROJECT_API_URL, CORE_API_URL');
   });
 
   test('startup passes once every upstream is configured', () => {
-    process.env.USER_BFF_URL = 'http://bff-user:4000';
     process.env.PROJECT_API_URL = 'project-api';
     process.env.PROJECT_API_PORT = '3001';
     process.env.CORE_API_URL = 'core-api:3000';

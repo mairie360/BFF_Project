@@ -4,25 +4,25 @@ import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
 import { OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract } from './support/orval-contract';
-import type { GetProjectResultView, ProjetView } from '@mairie360/project-api-openapi/model';
+import type { GetProjectResultView, ProjectListItemView } from '@mairie360/project-api-openapi/model';
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
   agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
-  projectUsersResult, projectsResult, projetView, sessionResponse, taskComment, taskHistoryEntry, taskView, userBffUrls, type Agent,
+  projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
+import { captureLogs } from './support/logs';
 
-// Toute l'application est testée avec les vrais clients orval/axios contre de vrais serveurs HTTP simulant
-// BFF User (GET /me), Project API et Core API (annuaire, /check_apis). Leurs contrats sont reconstruits depuis
+// The whole app is tested with the real orval/axios clients against real HTTP servers simulating Project API and
+// Core API (caller's profile and roles, directory, /check_apis); no other BFF is called (MAIR-525). Leurs contrats sont reconstruits depuis
 // les paquets @mairie360/*-openapi installés (tests/support/orval-contract.ts) : chaque mock refuse les routes,
 // paramètres et corps absents du contrat amont et valide ses réponses de succès. Les erreurs ne sont pas typées
 // par orval : toute réponse d'erreur simulée est marquée `outOfContract`. Chaque réponse du BFF est validée
 // contre contracts/openapi.json. Le BFF n'a plus d'accès à PostgreSQL. Les corps simulés sont typés par les modèles
 // générés et les chemins attendus viennent des helpers d'URL des clients générés.
 
-const userBff = new ContractMockServer('USER_BFF', loadOrvalContract('@mairie360/bff-user-openapi'));
 const projectApi = new ContractMockServer('PROJECT_API', loadOrvalContract('@mairie360/project-api-openapi'));
 const coreApi = new ContractMockServer('CORE_API', loadOrvalContract('@mairie360/core-api-openapi'));
-const mocks = [userBff, projectApi, coreApi];
+const mocks = [projectApi, coreApi];
 // Gabarits des contrats amont (clés des mocks) ; les chemins concrets attendus viennent des helpers d'URL.
 const PROJECT = {
   projects: '/api/v1/projects/',
@@ -31,13 +31,17 @@ const PROJECT = {
   users: '/api/v1/projects/{projectId}/users/',
   user: '/api/v1/projects/{projectId}/users/{userId}/',
   tasks: '/api/v1/projects/{projectId}/tasks/',
+  archivedTasks: '/api/v1/projects/{projectId}/archived-tasks/',
   task: '/api/v1/projects/{projectId}/tasks/{taskId}/',
   collaboration: '/api/v1/projects/{projectId}/tasks/{taskId}/collaboration',
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
+  statuses: '/api/v1/projects/{projectId}/statuses/',
+  status: '/api/v1/projects/{projectId}/statuses/{statusId}/',
+  templates: '/api/v1/project-templates/',
+  template: '/api/v1/project-templates/{templateId}/',
   health: '/health',
 } as const;
-const CORE = { directory: '/api/v1/user/', health: '/health' } as const;
-const USER_BFF = { me: '/me', health: '/health' } as const;
+const CORE = { directory: '/api/v1/user/', me: '/api/v1/user/me/', health: '/health' } as const;
 const bffContract = OpenApiContract.load(path.join(__dirname, '..', 'contracts', 'openapi.json'));
 
 const { admin, alice, marie } = agents;
@@ -52,9 +56,8 @@ afterAll(async () => { await Promise.all(mocks.map((mock) => mock.stop())); });
 
 beforeEach(() => {
   for (const mock of mocks) mock.reset();
-  jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  captureLogs();
   // Every upstream URL (<SERVICE>_URL + <SERVICE>_PORT) is read again on every call.
-  process.env.USER_BFF_URL = userBff.url;
   const coreApiUrl = new URL(coreApi.url);
   process.env.CORE_API_URL = coreApiUrl.hostname;
   process.env.CORE_API_PORT = coreApiUrl.port;
@@ -84,14 +87,13 @@ function expectBffContract(method: string, pathname: string, response: request.R
   if (schema) expect(bffContract.validate(schema, response.body)).toEqual([]);
 }
 
-/** A `/me` body without `user.id` (optional in the BFF User contract). */
-function withoutUserId(session: ReturnType<typeof sessionResponse>) {
-  const user = { ...session.user };
-  delete user.id;
-  return { ...session, user };
-}
-const signIn = (agent: Agent, reply: MockReply = { body: sessionResponse(agent) }) => userBff.on('get', USER_BFF.me, reply);
+/** Core `GET /api/v1/user/me/` answers the profile of `agent` (roles, groups, name). */
+const signIn = (agent: Agent, reply: MockReply = { body: coreMe(agent) }) => coreApi.on('get', CORE.me, reply);
+/** A token issued before the `role` claim (MAIR-529): the BFF reads the roles from Core. */
 const as = (call: request.Test, agent: Agent) => call.set('Authorization', bearer(agent.id));
+/** A token carrying `claims`, by default the agent's `role`: the BFF reads it, without calling Core (MAIR-525). */
+const withClaims = (call: request.Test, agent: Agent, claims: object = { role: agent.role }) =>
+  call.set('Authorization', bearer(agent.id, claims));
 /** Appels reçus par Project API, sous la forme `MÉTHODE chemin` (chemin tel que le construit le client généré). */
 const upstreamSequence = () => projectApi.requests.map((call) => `${call.method} ${call.url.pathname}`);
 const called = (method: string, url: string) => `${method} ${url}`;
@@ -103,7 +105,7 @@ const pageOf = (url: URL) => ({ limit: Number(url.searchParams.get('limit') ?? 1
 const textError = (status: number, raw: string): MockReply => ({ status, raw, contentType: 'text/plain', outOfContract: true });
 
 type Scenario = {
-  projects?: ProjetView[];
+  projects?: ProjectListItemView[];
   bundles?: Record<number, GetProjectResultView>;
   createdProjectId?: number;
   createdTaskId?: number;
@@ -124,11 +126,16 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
   projectApi.on('post', PROJECT.users, { status: 200 });
   projectApi.on('delete', PROJECT.user, { status: 204 });
   projectApi.on('post', PROJECT.tasks, { body: createTaskResult(createdTaskId) });
+  // GET …/tasks/{taskId}/: the task alone, 404 when the project or the task is unknown (MAIR-474).
+  projectApi.on('get', PROJECT.task, ({ pathParams }) => {
+    const task = bundles[Number(pathParams.projectId)]?.tasks.find((entry) => entry.id === Number(pathParams.taskId));
+    return task ? { body: task } : textError(404, 'Unknown task.');
+  });
   projectApi.on('patch', PROJECT.task, { status: 204 });
   projectApi.on('delete', PROJECT.task, { status: 204 });
 }
 
-describe('Project BFF with contract-driven BFF User, Project API and Core API mocks', () => {
+describe('Project BFF with contract-driven Project API and Core API mocks', () => {
   test('every response carries the shared security headers and no X-Powered-By', async () => {
     const [api, docs, malformed] = await Promise.all([
       request(app).get('/health'),
@@ -180,32 +187,32 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('no-store');
-      expect(userBff.calls(USER_BFF.me, 'get')[0].headers.authorization).toBe(bearer(admin.id));
+      expect(coreApi.calls(CORE.me, 'get')[0].headers.authorization).toBe(bearer(admin.id));
       expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(admin.id));
       expect(coreApi.calls(CORE.directory, 'get')[0].headers.authorization).toBe(bearer(admin.id));
     });
 
-    test('falls back on the token sub when BFF User returns no user id', async () => {
-      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+    test('takes the caller id from the verified token', async () => {
+      signIn(alice);
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: alice.id })], [alice]) } });
 
       const response = await as(request(app).get('/projects/project-1'), alice);
 
       expect(response.status).toBe(200);
-      // The task assigned to the caller (id read from the sub of the token BFF User accepted) is visible.
+      // The task assigned to the caller (id read from the sub of the verified token) is visible.
       expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2']);
     });
 
-    test('answers 401 when neither BFF User nor the token identify the caller', async () => {
-      signIn(alice, { body: withoutUserId(sessionResponse(alice)) });
+    test('answers 401 to an opaque token without any upstream call', async () => {
+      signIn(alice);
       const opaque = await request(app).get('/projects-page').set('Authorization', 'Bearer opaque-token');
 
       expect(opaque.status).toBe(401);
-      expect(projectApi.requests).toHaveLength(0);
+      expect(mocks.flatMap((mock) => mock.requests)).toHaveLength(0);
     });
 
-    test('forwards the caller session to /me and normalizes role aliases', async () => {
-      signIn(marie, { body: { ...sessionResponse(marie, { role: 'manager' }), roles: ['Utilisateur', { id: 9, name: 'ROLE_RESPONSABLE' }] } });
+    test('reads the roles of an older token from Core and normalizes role aliases', async () => {
+      signIn(marie, { body: coreMe(marie, { role: 'manager', roles: ['Utilisateur', 'ROLE_RESPONSABLE'] }) });
       mockProjectApi();
 
       const response = await as(request(app).get('/projects-page'), marie);
@@ -216,20 +223,70 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
         role: 'Responsable', scope: 'team', canCreateProject: true, canManageProjects: true, canManageTasks: true,
         canUpdateAssignedTaskStatus: true, canCommentTasks: true,
       });
-      const [me] = userBff.calls(USER_BFF.me, 'get');
-      expect(me.url.pathname).toBe(userBffUrls.getGetMeUrl());
+      // One Core read serves the roles and the groups of the assignable users.
+      const [me] = coreApi.calls(CORE.me, 'get');
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+      expect(me.url.pathname).toBe(coreApiUrls.getGetMeUrl());
       expect(me.headers.authorization).toBe(bearer(marie.id));
       expect(projectApi.calls(PROJECT.projects, 'get')[0].headers.authorization).toBe(bearer(marie.id));
     });
 
+    test('MAIR-525: reads the role in the token and never calls Core for it', async () => {
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const page = await withClaims(request(app).get('/projects-page'), admin, { role: 'admin' });
+      const details = await withClaims(request(app).get('/projects/project-1'), admin, { role: 'admin' });
+
+      expect(page.status).toBe(200);
+      expect(page.body.access).toMatchObject({ role: 'Admin', scope: 'all' });
+      expect(details.status).toBe(200);
+      expect(coreApi.calls(CORE.me)).toHaveLength(0);
+    });
+
+    test('MAIR-525: a token whose role is unknown is a Guest, whatever Core says', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), alice, { role: 'Visiteur' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Guest', canCreateProject: false });
+    });
+
     test.each([
-      ['a BFF User 500', { status: 500, body: { message: 'boom' }, outOfContract: true }, 'Upstream service error'],
-      ['a BFF User 403', { status: 403, body: { message: 'forbidden' }, outOfContract: true }, 'Upstream service error'],
-      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html' }, 'The USER_BFF answer is invalid.'],
-      ['a dropped connection', { dropConnection: true }, 'The USER_BFF service is unavailable.'],
-    ] as Array<[string, MockReply, string]>)('maps %s to 502 without leaking details', async (_label, reply, message) => {
+      ['an empty `role` claim', { role: '' }],
+      ['only a `roles` claim (ignored)', { roles: ['admin'] }],
+    ])('MAIR-529: a token with %s reads the role from Core', async (_label, claims) => {
+      signIn(marie);
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), alice, claims);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Responsable' });
+      expect(coreApi.calls(CORE.me, 'get').length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('MAIR-525: a Responsable from the token reads Core once, for the groups of the assignable users', async () => {
+      signIn(marie);
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), marie);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Responsable', scope: 'team' });
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+      expect(coreApi.calls(CORE.directory, 'get')[0].url.searchParams.get('group_ids')).toBe('1');
+    });
+
+    test.each([
+      ['a Core 500', { status: 500, raw: 'boom', contentType: 'text/plain', outOfContract: true }, 'Upstream service error'],
+      ['a Core 403', { status: 403, raw: 'forbidden', contentType: 'text/plain', outOfContract: true }, 'Upstream service error'],
+      ['an invalid JSON body', { raw: '<html>proxy</html>', contentType: 'text/html', outOfContract: true }, 'The CORE_API answer is invalid.'],
+      ['a dropped connection', { dropConnection: true }, 'The CORE_API service is unavailable.'],
+    ] as Array<[string, MockReply, string]>)('maps %s on the roles of an older token to 502 without leaking details', async (_label, reply, message) => {
       signIn(alice, reply);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
 
       const response = await as(request(app).get('/projects-page'), alice);
 
@@ -238,51 +295,182 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.requests).toHaveLength(0);
     });
 
-    test('propagates a BFF User 401 and an unreachable BFF User', async () => {
-      signIn(alice, { status: 401, body: { error: { code: 'UNAUTHORIZED', message: 'Token expiré', details: [] } }, outOfContract: true });
+    test('propagates a Core 401 and an unreachable Core', async () => {
+      signIn(alice, { status: 401, raw: 'Token expiré', contentType: 'text/plain', outOfContract: true });
       const refused = await as(request(app).get('/projects-page'), alice);
 
-      process.env.USER_BFF_URL = await unreachableUrl();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      process.env.CORE_API_PORT = new URL(await unreachableUrl()).port;
+      captureLogs();
       const unreachable = await as(request(app).get('/projects-page'), alice);
 
       expect(refused.status).toBe(401);
       expect(refused.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Authentication required', details: [] });
       expect(unreachable.status).toBe(502);
-      expect(unreachable.body.error.message).toBe('The USER_BFF service is unavailable.');
+      expect(unreachable.body.error.message).toBe('The CORE_API service is unavailable.');
+    });
+  });
+
+  describe('archived tasks (MAIR-502)', () => {
+    test('GET /projects/:id lists the active tasks and counts the archived ones as done', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [
+        taskView(1, { status: 'InProgress' }),
+      ], [admin], { tasks_archived: 3 }) } });
+
+      const response = await as(request(app).get('/projects/project-1'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects/project-1', response);
+      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1']);
+      // 3 archived (done) of 4 tasks; the active and archived counts tell them apart (MAIR-559).
+      expect(response.body.project).toMatchObject({
+        progress: 75, tasks: { total: 4, completed: 3, active: 1, archived: 3 },
+      });
+    });
+
+    test('GET /projects/:id/archived-tasks pages the archived tasks Project API returns', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
+      projectApi.on('get', PROJECT.archivedTasks, () => ({ body: {
+        tasks: [taskView(7, { status: 'Completed', archived_at: '2026-10-02T14:30:00Z', assigned_to: alice.id })],
+        total: 45,
+      } }));
+
+      const response = await as(request(app).get('/projects/project-1/archived-tasks?page=2&limit=20'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects/project-1/archived-tasks', response);
+      expect(response.body.tasks).toEqual([expect.objectContaining({ id: 'task-7', status: 'done' })]);
+      expect(response.body.pagination).toEqual({ page: 2, limit: 20, total: 45, hasNextPage: true });
+      const [call] = projectApi.calls(PROJECT.archivedTasks, 'GET');
+      expect(Object.fromEntries(call.url.searchParams)).toEqual({ limit: '20', offset: '20' });
+    });
+
+    test('GET /projects/:id/archived-tasks only shows an agent the tasks assigned to them', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice, marie]) } });
+      projectApi.on('get', PROJECT.archivedTasks, { body: {
+        tasks: [
+          taskView(7, { status: 'Completed', archived_at: '2026-10-02T14:30:00Z', assigned_to: alice.id }),
+          taskView(8, { status: 'Completed', archived_at: '2026-10-01T14:30:00Z', assigned_to: marie.id }),
+        ],
+        total: 2,
+      } });
+
+      const response = await as(request(app).get('/projects/project-1/archived-tasks'), alice);
+
+      expect(response.status).toBe(200);
+      expect(response.body.tasks.map((task: { id: string }) => task.id)).toEqual(['task-7']);
+    });
+
+    test('GET /projects/:id/archived-tasks answers 404 for a project out of sight', async () => {
+      signIn(alice);
+      mockProjectApi();
+      projectApi.on('get', PROJECT.archivedTasks, textError(404, 'Not found.'));
+
+      const response = await as(request(app).get('/projects/project-9/archived-tasks'), alice);
+
+      expect(response.status).toBe(404);
+      expectBffContract('get', '/projects/project-9/archived-tasks', response);
+    });
+
+    test.each(['page=0', 'limit=101', 'limit=abc'])('GET /projects/:id/archived-tasks refuses %s with 400', async (query) => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects/project-1/archived-tasks?${query}`), admin);
+
+      expect(response.status).toBe(400);
+      expect(projectApi.calls(PROJECT.archivedTasks, 'GET')).toHaveLength(0);
     });
   });
 
   describe('reads', () => {
-    test('GET /projects-page builds the page from the projects Project API exposes to the caller', async () => {
+    test('GET /projects-page builds the page from one Project API call, with its aggregates and counts', async () => {
       signIn(admin);
-      mockProjectApi({
-        projects: [projetView(1, { name: 'Rénovation de la médiathèque' }), projetView(2, { name: 'Archivage', status: 'Completed' })],
-        bundles: {
-          1: projectBundle(projetView(1, { name: 'Rénovation de la médiathèque' }), [
-            taskView(1, { status: 'Completed', priority: 'High', due_date: '2026-11-01T00:00:00.000Z' }),
-            taskView(2, { priority: 'Low', due_date: '2026-10-15T00:00:00.000Z', assigned_to: alice.id }),
-          ], [alice, marie]),
-          2: projectBundle(projetView(2, { name: 'Archivage', status: 'Completed' }), [taskView(3, { status: 'Completed' })]),
-        },
+      const listed = projectListItem(1, {
+        name: 'Rénovation de la médiathèque', tasks_total: 2, tasks_completed: 1, priority: 'High',
+        due_date: '2026-10-15T00:00:00Z', members: [{ id: alice.id, name: 'Alice Martin' }, { id: marie.id, name: 'Marie Durand' }],
+        members_total: 2,
       });
+      mockProjectApi();
+      projectApi.on('get', PROJECT.projects, { body: projectsResult([listed], 41, {
+        by_status: { todo: 2, active: 30, review: 3, suspended: 6, completed: 4, other: 1 },
+        by_priority: { low: 5, medium: 10, high: 26 },
+      }) });
 
-      const response = await as(request(app).get('/projects-page?status=in-progress&limit=10&page=1&view=table'), admin);
+      const response = await as(request(app).get('/projects-page?q=%20m%C3%A9diath%C3%A8que%20&status=in-progress&priority=high&dueBefore=2026-12-31&limit=10&page=3&view=table'), admin);
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects-page', response);
       expect(response.body.projects).toEqual([expect.objectContaining({
         id: 'project-1', title: 'Rénovation de la médiathèque', status: 'in-progress', priority: 'high',
-        progress: 50, dueDate: '2026-10-15T00:00:00.000Z',
+        progress: 50, dueDate: '2026-10-15T00:00:00Z',
         responsible: { id: 'user-2', name: 'Alice Martin', avatarUrl: null },
-        tasks: { total: 2, completed: 1 },
+        // The completed task is the archived one (MAIR-559).
+        tasks: { total: 2, completed: 1, active: 1, archived: 1 },
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
-      expect(response.body.summary.totalProjects).toBe(1);
+      // The counts cover every matching project, the Kanban columns list the ids of the page. `todo` adds the
+      // statuses Project API does not interpret, `review` the suspended projects (MAIR-558).
+      expect(response.body.summary).toEqual({
+        totalProjects: 41,
+        projectsByStatus: { todo: 3, 'in-progress': 30, review: 9, done: 4 },
+        projectsByPriority: { high: 26, medium: 10, low: 5 },
+      });
+      expect(response.body.kanban.columns.map(({ status, count, projectIds }: { status: string; count: number; projectIds: string[] }) => [status, count, projectIds]))
+        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 9, []], ['done', 4, []]]);
+      expect(response.body.pagination).toEqual({ page: 3, limit: 10, total: 41, hasNextPage: true });
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
-      // The status filter runs on the list: the bundle of the Completed project is never read.
-      expect(upstreamSequence().sort()).toEqual([called('GET', projectApiUrls.getGetProjectsUrl()), called('GET', projectApiUrls.getGetProjectUrl(1))]);
+      // One Project API call carrying the filters and the page: no bundle is read.
+      const [call] = projectApi.calls(PROJECT.projects, 'GET');
+      expect(Object.fromEntries(call.url.searchParams)).toEqual({
+        limit: '10', offset: '20', search: 'médiathèque', status: 'Active', priority: 'High',
+        due_before: '2026-12-31T00:00:00.000Z',
+      });
+      expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+    });
+
+    test.each([
+      ['todo', { status: 'Todo' }],
+      ['review', { status: 'Review,Suspended' }],
+      ['done', { status: 'Completed' }],
+    ])('GET /projects-page sends the status %s as Project API\'s', async (status, expected) => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects-page?status=${status}&priority=all`), admin);
+
+      expect(response.status).toBe(200);
+      expect(Object.fromEntries(projectApi.calls(PROJECT.projects, 'GET')[0].url.searchParams)).toEqual({ limit: '10', offset: '0', ...expected });
+    });
+
+    test('GET /projects-page maps a project without task or member like the project detail does', async () => {
+      signIn(admin);
+      mockProjectApi({ projects: [projectListItem(4, { name: 'Vide', status: 'Error' })] });
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expectBffContract('get', '/projects-page', response);
+      const [project] = response.body.projects;
+      expect(project).toMatchObject({ status: 'todo', priority: 'medium', progress: 0, tasks: { total: 0, completed: 0 } });
+      // The project itself stands for the missing responsible.
+      expect(project.responsible).toEqual({ id: 'project-4', name: 'Vide', avatarUrl: null });
+      expect(project.assignees).toEqual([project.responsible]);
+      expect(Number.isNaN(Date.parse(project.dueDate))).toBe(false);
+    });
+
+    test('GET /projects-page refuses a search longer than Project API accepts without calling it', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects-page?q=${'a'.repeat(256)}`), admin);
+
+      expect(response.status).toBe(400);
+      expectBffContract('get', '/projects-page', response);
+      expect(projectApi.requests).toHaveLength(0);
     });
 
     test('GET /projects/:id returns the project an employee may see, with only their tasks', async () => {
@@ -334,33 +522,15 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(response.body.history[0].action).toBe('status_changed');
     });
 
-    test('GET /projects-page reads every page of the Project API project list', async () => {
-      signIn(admin);
-      const projects = [projetView(1), projetView(2), projetView(3)];
-      mockProjectApi({ bundles: Object.fromEntries(projects.map((project) => [project.id, projectBundle(project, [taskView(project.id)])])) });
-      // Pages of two projects, whatever limit the BFF asks for.
-      projectApi.on('get', PROJECT.projects, ({ url }) => {
-        const { offset } = pageOf(url);
-        return { body: projectsResult(projects.slice(offset, offset + 2), projects.length) };
-      });
-
-      const response = await as(request(app).get('/projects-page'), admin);
-
-      expect(response.status).toBe(200);
-      expectBffContract('get', '/projects-page', response);
-      expect(response.body.projects.map((project: { id: string }) => project.id).sort()).toEqual(['project-1', 'project-2', 'project-3']);
-      expect(projectApi.calls(PROJECT.projects, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
-    });
-
     test('GET /projects/:id reads every page of tasks and every member past the embedded ones', async () => {
       signIn(admin);
-      const tasks = [taskView(1), taskView(2), taskView(3)];
+      const tasks = [taskView(1), taskView(2), taskView(3), taskView(4), taskView(5)];
       const users = [admin, alice, marie];
       mockProjectApi();
       projectApi.on('get', PROJECT.project, ({ url }) => {
         const { offset } = pageOf(url);
         // Two tasks per page, and only the first member embedded.
-        return { body: projectBundle(projetView(1), tasks.slice(offset, offset + 2), users.slice(0, 1), { tasks_total: 3, users_total: 3 }) };
+        return { body: projectBundle(projetView(1), tasks.slice(offset, offset + 2), users.slice(0, 1), { tasks_total: 5, users_total: 3 }) };
       });
       projectApi.on('get', PROJECT.users, ({ url }) => {
         const { offset } = pageOf(url);
@@ -371,36 +541,104 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects/project-1', response);
-      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1', 'task-2', 'task-3']);
-      expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
+      expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-1', 'task-2', 'task-3', 'task-4', 'task-5']);
+      // The first page gives the totals, the others are read in parallel, stepping by the size served.
+      expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).offset).sort()).toEqual([0, 2, 4]);
       expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
     });
 
-    test('GET /projects/:id/tasks/:taskId/collaboration reads every page of comments and history', async () => {
+    test('MAIR-525: reads the member pages after the first one in parallel, in a constant number of waves', async () => {
       signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
-      const comments = [taskComment({ id: 'comment-1' }), taskComment({ id: 'comment-2' }), taskComment({ id: 'comment-3' })];
-      const history = [taskHistoryEntry({ id: 'history-1' })];
-      projectApi.on('get', PROJECT.collaboration, ({ url }) => {
+      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}` }));
+      mockProjectApi();
+      projectApi.on('get', PROJECT.project, { body: projectBundle(projetView(1), [], [admin], { users_total: 9 }) });
+      projectApi.on('get', PROJECT.users, ({ url }) => {
         const { offset } = pageOf(url);
-        return { body: collaboration(comments.slice(offset, offset + 2), history.slice(offset, offset + 2), {
+        // Two members per page, slowly: pages read one after the other would never overlap.
+        return { body: projectUsersResult(users.slice(offset, offset + 2), 9), delayMs: 30 };
+      });
+
+      const response = await as(request(app).get('/projects/project-1'), admin);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.users, 'GET').map((call) => pageOf(call.url).offset).sort((a, b) => a - b)).toEqual([0, 2, 4, 6, 8]);
+      // Page 0 alone, then the four others together.
+      expect(projectApi.maxInFlight).toBe(4);
+    });
+
+    // MAIR-502: the follow-up is paged, the most recent comments (kept in reading order) and history entries first.
+    function mockCollaboration(commentCount: number, historyCount: number) {
+      const comments = Array.from({ length: commentCount }, (_, i) => taskComment({ id: `comment-${i + 1}` }));
+      const history = Array.from({ length: historyCount }, (_, i) => taskHistoryEntry({ id: `history-${historyCount - i}` }));
+      projectApi.on('get', PROJECT.collaboration, ({ url }) => {
+        const { limit, offset } = pageOf(url);
+        // comments_order=latest pages the comments from the most recent one, like the history.
+        const ordered = url.searchParams.get('comments_order') === 'latest' ? [...comments].reverse() : comments;
+        return { body: collaboration(ordered.slice(offset, offset + limit), history.slice(offset, offset + limit), {
           comments_total: comments.length, history_total: history.length,
         }) };
       });
+    }
+    const idsOf = (entries: Array<{ id: string }>) => entries.map((entry) => entry.id);
 
-      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration'), admin);
+    test('GET /projects/:id/tasks/:taskId/collaboration returns the most recent comments and history entries', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(5, 4);
+
+      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration?limit=2'), admin);
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/projects/project-1/tasks/task-2/collaboration', response);
-      expect(response.body.comments.map((comment: { id: string }) => comment.id)).toEqual(['comment-1', 'comment-2', 'comment-3']);
-      expect(response.body.history.map((entry: { id: string }) => entry.id)).toEqual(['history-1']);
-      expect(projectApi.calls(PROJECT.collaboration, 'GET').map((call) => pageOf(call.url).offset)).toEqual([0, 2]);
+      expect(idsOf(response.body.comments)).toEqual(['comment-4', 'comment-5']);
+      expect(idsOf(response.body.history)).toEqual(['history-4', 'history-3']);
+      expect(response.body.pagination).toEqual({ page: 1, limit: 2, commentsTotal: 5, historyTotal: 4, hasNextPage: true });
+      // One read from the latest comment, never the whole feeds.
+      const calls = projectApi.calls(PROJECT.collaboration, 'GET');
+      expect(calls.map((call) => Object.fromEntries(call.url.searchParams))).toEqual([
+        { limit: '2', offset: '0', comments_order: 'latest' },
+      ]);
+    });
+
+    test('GET /projects/:id/tasks/:taskId/collaboration goes back in time page by page', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(5, 4);
+
+      const page3 = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration?limit=2&page=3'), admin);
+
+      expect(page3.status).toBe(200);
+      expect(idsOf(page3.body.comments)).toEqual(['comment-1']);
+      expect(idsOf(page3.body.history)).toEqual([]);
+      expect(page3.body.pagination.hasNextPage).toBe(false);
+    });
+
+    test('GET /projects/:id/tasks/:taskId/collaboration keeps every comment in reading order when they fit in a page', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+      mockCollaboration(3, 1);
+
+      const response = await as(request(app).get('/projects/project-1/tasks/task-2/collaboration'), admin);
+
+      expect(idsOf(response.body.comments)).toEqual(['comment-1', 'comment-2', 'comment-3']);
+      expect(response.body.pagination).toEqual({ page: 1, limit: 50, commentsTotal: 3, historyTotal: 1, hasNextPage: false });
+      expect(projectApi.calls(PROJECT.collaboration, 'GET')).toHaveLength(1);
+    });
+
+    test.each(['page=0', 'limit=0', 'limit=101'])('GET /projects/:id/tasks/:taskId/collaboration refuses %s with 400', async (query) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+      const response = await as(request(app).get(`/projects/project-1/tasks/task-2/collaboration?${query}`), admin);
+
+      expect(response.status).toBe(400);
+      expect(projectApi.calls(PROJECT.collaboration, 'GET')).toHaveLength(0);
     });
 
     test('maps a Project API failure to 502 without leaking its body', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       projectApi.on('get', PROJECT.projects, textError(500, 'An error occurred while accessing the database.'));
 
       const response = await as(request(app).get('/projects-page'), admin);
@@ -428,7 +666,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     test('never retries a write', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       projectApi.on('post', PROJECT.projects, { status: 503, raw: 'busy', contentType: 'text/plain', outOfContract: true });
 
       const response = await as(request(app).post('/projects'), admin).send({
@@ -468,7 +706,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     test('answers a generic 500 when an unexpected error happens, without leaking it', async () => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       // A success body the mapping cannot read: the TypeError it raises must stay in the logs.
       projectApi.on('get', PROJECT.project, { body: { project: null, tasks: null, users: null }, outOfContract: true });
 
@@ -499,7 +737,10 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({ name: 'Fête du village', description: 'Organisation de la fête' });
+      // The chosen status and priority go with the creation (MAIR-558).
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({
+        name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium',
+      });
       expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
         .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
       expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
@@ -540,6 +781,120 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
       expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ name: 'Renommée' });
       expect(historyWrites()).toEqual([]);
+    });
+
+    describe('due date sent as a date alone (MAIR-559)', () => {
+      const taskBody = {
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-05',
+      };
+
+      test('POST /projects/:id/tasks sends Project API midnight UTC of that day', async () => {
+        signIn(marie);
+        mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30, { title: 'Réserver la salle', assigned_to: alice.id })], [alice, marie]) } });
+
+        const response = await as(request(app).post('/projects/project-1/tasks'), marie).send(taskBody);
+
+        expect(response.status).toBe(201);
+        expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ due_date: '2026-11-05T00:00:00.000Z' });
+      });
+
+      test('POST /projects converts the due date of its task items', async () => {
+        signIn(marie);
+        mockProjectApi({ createdProjectId: 12, createdTaskId: 30, bundles: { 12: projectBundle(projetView(12), [taskView(30)], [alice, marie]) } });
+        projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+        const response = await as(request(app).post('/projects'), marie)
+          .send({ ...createBody, dueDate: '2026-11-30', taskItems: [{ ...createBody.taskItems[0], dueDate: '2026-11-05' }] });
+
+        expect(response.status).toBe(201);
+        expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ due_date: '2026-11-05T00:00:00.000Z' });
+      });
+
+      test('PATCH /projects/:id/tasks/:taskId converts the date and leaves an empty one unchanged', async () => {
+        signIn(marie);
+        mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+        const moved = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ dueDate: '2026-12-01' });
+        const cleared = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ title: 'Salle', dueDate: '' });
+
+        expect(moved.status).toBe(200);
+        expect(cleared.status).toBe(200);
+        expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([
+          { due_date: '2026-12-01T00:00:00.000Z' },
+          { name: 'Salle' },
+        ]);
+      });
+
+      test.each(['05/11/2026', '2026-02-30', '2026-11-05T10:00', 'demain'])(
+        'refuses the due date %s with a 400 before any write',
+        async (dueDate) => {
+          signIn(marie);
+          mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+          const created = await as(request(app).post('/projects/project-1/tasks'), marie).send({ ...taskBody, dueDate });
+          const patched = await as(request(app).patch('/projects/project-1/tasks/task-2'), marie).send({ dueDate });
+
+          expect(created.status).toBe(400);
+          expect(patched.status).toBe(400);
+          expect(projectApi.calls(PROJECT.tasks, 'POST')).toEqual([]);
+          expect(projectApi.calls(PROJECT.task, 'PATCH')).toEqual([]);
+        },
+      );
+    });
+
+    // MAIR-560: Project API's 400 body is never relayed (a bare "Invalid request"), so the BFF refuses what Project API
+    // would, naming the field, before any upstream call.
+    describe('per-field validation errors (MAIR-560)', () => {
+      const taskBody = {
+        title: 'Réserver la salle', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-05',
+      };
+      const upstreamWrites = () => [
+        ...projectApi.calls(PROJECT.projects, 'POST'), ...projectApi.calls(PROJECT.project, 'PATCH'),
+        ...projectApi.calls(PROJECT.tasks, 'POST'), ...projectApi.calls(PROJECT.task, 'PATCH'),
+      ];
+      const cases: Array<[string, 'post' | 'patch', string, Record<string, unknown>, string, string]> = [
+        ['a blank project title', 'post', '/projects', { ...createBody, title: '   ' }, 'body.title', 'Must not be empty'],
+        ['a 256-character project title', 'post', '/projects', { ...createBody, title: 'a'.repeat(256) }, 'body.title', 'Must be at most 255 characters'],
+        ['a 5001-character description', 'post', '/projects', { ...createBody, description: 'a'.repeat(5_001) }, 'body.description', 'Must be at most 5000 characters'],
+        ['a control character in a description', 'patch', '/projects/project-1', { description: 'a\u0000b' }, 'body.description', 'Must not contain control characters other than line breaks and tabs'],
+        ['a line break in a project title', 'patch', '/projects/project-1', { title: 'Fête\ndu village' }, 'body.title', 'Must not contain line breaks or control characters'],
+        ['a blank task title of a new project', 'post', '/projects', { ...createBody, taskItems: [{ ...createBody.taskItems[0], title: '' }] }, 'body.taskItems.0.title', 'Must not be empty'],
+        ['a 256-character task label', 'post', '/projects/project-1/tasks', { ...taskBody, labels: ['ok', 'a'.repeat(256)] }, 'body.labels.1', 'Must be at most 255 characters'],
+        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['an unknown task status', 'patch', '/projects/project-1/tasks/task-2', { status: 'blocked' }, 'body.status', ''],
+        ['a malformed due date', 'patch', '/projects/project-1/tasks/task-2', { dueDate: '05/11/2026' }, 'body.dueDate', 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time'],
+      ];
+
+      test.each(cases)('refuses %s with a 400 naming the field, before any write', async (_label, method, url, body, path, message) => {
+        signIn(marie);
+        mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [marie]) } });
+
+        const response = await as(request(app)[method](url), marie).send(body);
+
+        expect(response.status).toBe(400);
+        expect(response.body.error.code).toBe('BAD_REQUEST');
+        const detail = response.body.error.details.find((item: { path?: string }) => item.path === path);
+        expect(detail).toBeDefined();
+        if (message) expect(detail.message).toBe(message);
+        expect(upstreamWrites()).toEqual([]);
+      });
+
+      test('accepts 255 accented characters, line breaks in a description and < > free texts', async () => {
+        signIn(marie);
+        mockProjectApi({ createdTaskId: 30, bundles: { 1: projectBundle(projetView(1), [taskView(30)], [marie]) } });
+
+        const created = await as(request(app).post('/projects/project-1/tasks'), marie)
+          .send({ ...taskBody, title: 'é'.repeat(255), labels: ['Urgent'] });
+        const patched = await as(request(app).patch('/projects/project-1'), marie)
+          .send({ description: 'Première ligne\n\tseconde ligne' });
+
+        expect(created.status).toBe(201);
+        expect(patched.status).toBe(200);
+      });
     });
 
     test('POST /projects/:id/tasks/:taskId/comments stores the comment through Project API', async () => {
@@ -706,8 +1061,10 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     ] as const)('%s %s maps a Project API 500 to 502 without leaking it', async (method, url, body) => {
       signIn(admin);
       mockProjectApi();
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
+      // The project guards read the project, the task guards the task alone (MAIR-474).
       projectApi.on('get', PROJECT.project, textError(500, 'An error occurred while accessing the database.'));
+      projectApi.on('get', PROJECT.task, textError(500, 'An error occurred while accessing the database.'));
 
       const call = as(request(app)[method](url), admin);
       const response = await (body === undefined ? call : call.send(body));
@@ -833,22 +1190,56 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
     test('PATCH /projects/:id returns the re-read state, not the unpersisted submitted fields', async () => {
       signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { priority: 'Low', due_date: '2026-10-15T00:00:00.000Z' })], [admin]) } });
+      // The mock re-reads a Low / Active project whatever was written: the response is the re-read state.
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { priority: 'Low' }), [taskView(2, { priority: 'High', due_date: '2026-10-15T00:00:00.000Z' })], [admin]) } });
 
       const response = await as(request(app).patch('/projects/project-1'), admin)
         .send({ priority: 'high', labels: ['urgent'], dueDate: '2030-01-01T00:00:00Z', status: 'todo' });
 
       expect(response.status).toBe(200);
+      // The priority is the project's stored one, not its tasks' highest (MAIR-558).
       expect(response.body.project).toMatchObject({
         priority: 'low', labels: [], dueDate: '2026-10-15T00:00:00.000Z', status: 'in-progress',
       });
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Active' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High' });
+    });
+
+    test.each([
+      [{ priority: 'low' }, { priority: 'Low' }],
+      [{ status: 'review' }, { status: 'Review' }],
+      [{ status: 'in-progress', priority: 'medium' }, { status: 'Active', priority: 'Medium' }],
+    ])('mair_558 PATCH /projects/:id stores %j as %j', async (sent, stored) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send(sent);
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([stored]);
+    });
+
+    test('mair_558 a project created "to do" / "high" is read back as such', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: {
+        12: projectBundle(projetView(12, { name: 'Fête', status: 'Todo', priority: 'High' }), [taskView(30, { priority: 'Low' })], [alice]),
+      } });
+
+      const response = await as(request(app).post('/projects'), admin).send({
+        title: 'Fête', description: 'Organisation', status: 'todo', priority: 'high',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+      });
+
+      expect(response.status).toBe(201);
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Todo', priority: 'High' });
+      // One write for the status and the priority: no PATCH after the creation.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      expect(response.body.project).toMatchObject({ status: 'todo', statusLabel: 'À faire', priority: 'high' });
     });
 
     test('POST /projects returns the re-read state and persists a closed status', async () => {
       signIn(admin);
       mockProjectApi({ createdProjectId: 12, bundles: {
-        12: projectBundle(projetView(12, { name: 'Fête', status: 'Completed' }), [taskView(30, { priority: 'Low', status: 'Completed' })], [alice]),
+        12: projectBundle(projetView(12, { name: 'Fête', status: 'Completed', priority: 'Low' }), [taskView(30, { priority: 'Low', status: 'Completed' })], [alice]),
       } });
 
       const response = await as(request(app).post('/projects'), admin).send({
@@ -859,14 +1250,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Completed' });
+      // The status is written with the creation (MAIR-558), no longer by a PATCH after it.
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Completed', priority: 'High' });
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
       expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
       expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
     });
 
     test('POST /projects deletes the created project when a later step fails', async () => {
       signIn(admin);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       mockProjectApi({ createdProjectId: 12 });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
 
@@ -887,7 +1280,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
     test('POST /projects/:id/duplicate deletes the duplicate when a later step fails', async () => {
       signIn(admin);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
       projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
@@ -898,7 +1291,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
     });
 
-    test('the access guards read the project bundle once per request', async () => {
+    test('the access guards read the project bundle once per request, and a task guard only the task', async () => {
       signIn(admin);
       mockProjectApi({ createdProjectId: 12, bundles: {
         1: projectBundle(projetView(1), [taskView(2)], [admin]),
@@ -914,10 +1307,17 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const duplicate = reads() - details - update;
       await as(request(app).delete('/projects/project-1/tasks/task-2'), admin);
       const deleteTask = reads() - details - update - duplicate;
+      await as(request(app).patch('/projects/project-1/tasks/task-2/status'), admin).send({ status: 'done' });
+      const statusUpdate = reads() - details - update - duplicate - deleteTask;
 
-      // details: guard only; update: guard + re-read; duplicate: guard + re-read of the copy; delete: guard only.
-      expect({ details, update, duplicate, deleteTask }).toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 1 });
-      expect(userBff.calls(USER_BFF.me, 'get')).toHaveLength(4);
+      // details: guard only; update: guard + re-read; duplicate: guard + re-read of the copy; the task routes read
+      // the task alone (MAIR-474), never the project with every task.
+      expect({ details, update, duplicate, deleteTask, statusUpdate })
+        .toEqual({ details: 1, update: 2, duplicate: 2, deleteTask: 0, statusUpdate: 0 });
+      // delete: guard; status: guard + re-read of the task.
+      expect(projectApi.calls(PROJECT.task, 'GET')).toHaveLength(3);
+      // An older token: its roles come from Core, once per request.
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(5);
     });
 
     test.each([
@@ -951,13 +1351,12 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
   describe('upstream configuration', () => {
     test.each([
-      ['USER_BFF', () => userBff.requests],
       ['PROJECT_API', () => projectApi.requests],
       ['CORE_API', () => coreApi.requests],
     ] as const)('answers 503 without any call to %s when its URL is missing (no localhost default)', async (service, received) => {
       signIn(marie);
-      mockProjectApi({ projects: [projetView(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockProjectApi({ projects: [projectListItem(1)], bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+      captureLogs();
       delete process.env[`${service}_URL`];
       delete process.env[`${service}_PORT`];
 
@@ -971,7 +1370,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
     test('a write route declares and answers 503 when Project API is not configured', async () => {
       signIn(marie);
-      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      captureLogs();
       delete process.env.PROJECT_API_URL;
 
       const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'done' });
@@ -998,8 +1397,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
     beforeEach(() => {
       projectApi.on('get', PROJECT.health, { raw: 'OK', contentType: 'text/plain' });
       coreApi.on('get', CORE.health, { raw: 'OK', contentType: 'text/plain' });
-      userBff.on('get', USER_BFF.health, { raw: 'OK', contentType: 'text/plain' });
-      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      captureLogs();
     });
 
     test('reports every upstream connected through its /health operation', async () => {
@@ -1008,18 +1406,16 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(200);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
       expect(upstreamSequence()).toEqual([called('GET', projectApiUrls.getHealthUrl())]);
       expect(coreApi.requests.map((call) => call.url.pathname)).toEqual([coreApiUrls.getHealthUrl()]);
-      expect(userBff.requests.map((call) => call.url.pathname)).toEqual([userBffUrls.getGetHealthUrl()]);
-      expect(mocks.flatMap((mock) => mock.requests).map((call) => call.headers.authorization)).toEqual([undefined, undefined, undefined]);
+      expect(mocks.flatMap((mock) => mock.requests).map((call) => call.headers.authorization)).toEqual([undefined, undefined]);
       expect(response.headers['cache-control']).toBeUndefined();
     });
 
     test.each([
-      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' }],
-      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected', user_bff: 'Connected' }],
-      ['BFF User', () => userBff.on('get', USER_BFF.health, { status: 503, raw: 'down', contentType: 'text/plain', outOfContract: true }), { core_api: 'Connected', project_api: 'Connected', user_bff: 'Unreachable' }],
+      ['Project API', () => projectApi.on('get', PROJECT.health, { dropConnection: true }), { core_api: 'Connected', project_api: 'Unreachable' }],
+      ['Core API', () => coreApi.on('get', CORE.health, { dropConnection: true }), { core_api: 'Unreachable', project_api: 'Connected' }],
     ])('answers 502 when %s is unreachable', async (_service, breakService, expected) => {
       breakService();
 
@@ -1037,7 +1433,7 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
 
       expect(response.status).toBe(502);
       expectBffContract('get', '/check_apis', response);
-      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'Error', core_api: 'Connected', project_api: 'Unreachable' });
       expect(projectApi.requests).toEqual([]);
     });
 
@@ -1048,7 +1444,231 @@ describe('Project BFF with contract-driven BFF User, Project API and Core API mo
       const response = await request(app).get('/check_apis');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected', user_bff: 'Connected' });
+      expect(response.body).toEqual({ status: 'OK', core_api: 'Connected', project_api: 'Connected' });
     });
+  });
+});
+
+describe('MAIR-566 per-project task statuses and project templates', () => {
+  const statusView = (id: number, name: string, category: 'Todo' | 'InProgress' | 'Completed', position: number, task_count = 0) =>
+    ({ id, name, color: '#64748B', category, position, task_count });
+  const projectStatuses = [
+    statusView(32, 'Terminé', 'Completed', 3, 5),
+    statusView(30, 'À faire', 'Todo', 0, 2),
+    statusView(31, 'En cours', 'InProgress', 1, 1),
+    statusView(33, 'À valider', 'InProgress', 2, 0),
+  ];
+  const template = (id: number, overrides: object = {}) => ({
+    id, name: `Modèle ${id}`, description: null, is_default: false, custom_fields: [],
+    statuses: [
+      { name: 'Terminé', color: '#16A34A', category: 'Completed', position: 2 },
+      { name: 'À faire', color: '#64748B', category: 'Todo', position: 0 },
+      { name: 'En cours', color: '#2563EB', category: 'InProgress', position: 1 },
+    ],
+    ...overrides,
+  });
+  const writes = () => projectApi.requests.filter((call) => call.method !== 'GET');
+
+  function mockStatuses() {
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(5, { status_id: 33, status_name: 'À valider', status: 'InProgress' })], [admin, alice]) } });
+    projectApi.on('get', PROJECT.statuses, ({ pathParams }) => (Number(pathParams.projectId) === 1
+      ? { body: { statuses: projectStatuses } }
+      : textError(404, 'Not found.')));
+    projectApi.on('post', PROJECT.statuses, { body: { status_id: 34 } });
+    projectApi.on('patch', PROJECT.status, { status: 204 });
+    projectApi.on('delete', PROJECT.status, { status: 204 });
+    projectApi.on('get', PROJECT.templates, { body: { templates: [template(1, { name: 'Simple', is_default: true }), template(2)] } });
+    projectApi.on('get', PROJECT.template, ({ pathParams }) => ({ body: template(Number(pathParams.templateId)) }));
+    projectApi.on('post', PROJECT.templates, { body: { template_id: 7 } });
+    projectApi.on('patch', PROJECT.template, { status: 204 });
+    projectApi.on('delete', PROJECT.template, { status: 204 });
+  }
+
+  test('GET /projects/:id/statuses lists the statuses by position with their category', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/projects/project-1/statuses'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/statuses', response);
+    expect(response.body.statuses.map((status: { id: string; name: string; category: string; taskCount: number }) =>
+      [status.id, status.name, status.category, status.taskCount])).toEqual([
+      ['status-30', 'À faire', 'todo', 2],
+      ['status-31', 'En cours', 'in-progress', 1],
+      ['status-33', 'À valider', 'in-progress', 0],
+      ['status-32', 'Terminé', 'done', 5],
+    ]);
+  });
+
+  test('GET /projects/:id/statuses is a 404 for an invisible project, without reading its statuses', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/projects/project-9/statuses'), alice);
+
+    expect(response.status).toBe(404);
+    expect(projectApi.calls(PROJECT.statuses, 'GET')).toHaveLength(0);
+  });
+
+  test('mair_566 a manager adds, renames and deletes statuses; the answer is the re-read list', async () => {
+    signIn(admin);
+    mockStatuses();
+
+    const created = await as(request(app).post('/projects/project-1/statuses'), admin)
+      .send({ name: 'À valider', color: '#D97706', category: 'in-progress', position: 2 });
+    const renamed = await as(request(app).patch('/projects/project-1/statuses/status-33'), admin)
+      .send({ name: 'Relecture', category: 'done' });
+    const deleted = await as(request(app).delete('/projects/project-1/statuses/status-33?moveTo=status-31'), admin);
+
+    expect([created.status, renamed.status, deleted.status]).toEqual([201, 200, 200]);
+    expectBffContract('post', '/projects/project-1/statuses', created);
+    expectBffContract('delete', '/projects/project-1/statuses/status-33', deleted);
+    expect(projectApi.calls(PROJECT.statuses, 'POST')[0].body).toEqual({ name: 'À valider', color: '#D97706', category: 'InProgress', position: 2 });
+    expect(projectApi.calls(PROJECT.status, 'PATCH')[0].body).toEqual({ name: 'Relecture', category: 'Completed' });
+    const [deletion] = projectApi.calls(PROJECT.status, 'DELETE');
+    expect(deletion.url.pathname).toBe('/api/v1/projects/1/statuses/33/');
+    expect(deletion.url.searchParams.get('move_to')).toBe('31');
+    expect(created.body.statuses).toHaveLength(4);
+  });
+
+  test('mair_566 a user who cannot manage the project changes no status', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const responses = await Promise.all([
+      as(request(app).post('/projects/project-1/statuses'), alice).send({ name: 'X', category: 'todo' }),
+      as(request(app).patch('/projects/project-1/statuses/status-30'), alice).send({ name: 'Y' }),
+      as(request(app).delete('/projects/project-1/statuses/status-30'), alice),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
+    expect(writes()).toEqual([]);
+  });
+
+  test('mair_566 deleting a status that holds tasks without moveTo relays Project API\'s 409', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('delete', PROJECT.status, textError(409, 'The status holds tasks: give `move_to`, the status to move them to.'));
+
+    const response = await as(request(app).delete('/projects/project-1/statuses/status-30'), admin);
+
+    expect(response.status).toBe(409);
+    expectBffContract('delete', '/projects/project-1/statuses/status-30', response);
+  });
+
+  test.each([
+    ['post', '/projects/project-1/statuses', { name: 'X', category: 'review' }],
+    ['post', '/projects/project-1/statuses', { name: 'X', category: 'todo', color: 'red' }],
+    ['post', '/projects/project-1/statuses', { name: '<b>X</b>', category: 'todo' }],
+    ['patch', '/projects/project-1/statuses/status-30', { unknown: true }],
+    ['delete', '/projects/project-1/statuses/status-30?moveTo=31', undefined],
+  ] as const)('mair_566 %s %s refuses an invalid request before any write (%#)', async (method, url, body) => {
+    signIn(admin);
+    mockStatuses();
+
+    const call = as(request(app)[method](url), admin);
+    const response = await (body ? call.send(body) : call);
+
+    expect(response.status).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  test('GET /project-templates maps the templates and their statuses by position', async () => {
+    signIn(alice);
+    mockStatuses();
+
+    const response = await as(request(app).get('/project-templates'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-templates', response);
+    expect(response.body.templates[0]).toEqual({
+      id: 'template-1', name: 'Simple', description: null, isDefault: true, customFields: [],
+      statuses: [
+        { name: 'À faire', color: '#64748B', category: 'todo', position: 0 },
+        { name: 'En cours', color: '#2563EB', category: 'in-progress', position: 1 },
+        { name: 'Terminé', color: '#16A34A', category: 'done', position: 2 },
+      ],
+    });
+  });
+
+  test('mair_566 only the Responsable and Admin roles manage templates', async () => {
+    mockStatuses();
+    const body = { name: 'Atelier', statuses: [{ name: 'Idée', category: 'todo' }, { name: 'Fait', category: 'done' }] };
+
+    signIn(alice);
+    const refused = await Promise.all([
+      as(request(app).post('/project-templates'), alice).send(body),
+      as(request(app).patch('/project-templates/template-2'), alice).send({ name: 'Autre' }),
+      as(request(app).delete('/project-templates/template-2'), alice),
+    ]);
+    expect(refused.map((response) => response.status)).toEqual([403, 403, 403]);
+    expect(writes()).toEqual([]);
+
+    signIn(marie);
+    const created = await as(request(app).post('/project-templates'), marie).send(body);
+    expect(created.status).toBe(201);
+    expectBffContract('post', '/project-templates', created);
+    expect(projectApi.calls(PROJECT.templates, 'POST')[0].body).toEqual({
+      name: 'Atelier', description: null, custom_fields: [],
+      statuses: [{ name: 'Idée', category: 'Todo' }, { name: 'Fait', category: 'Completed' }],
+    });
+    expect(created.body.id).toBe('template-7');
+  });
+
+  test('mair_566 deleting the default template relays Project API\'s 409', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('delete', PROJECT.template, textError(409, 'The default template cannot be deleted.'));
+
+    const response = await as(request(app).delete('/project-templates/template-1'), admin);
+
+    expect(response.status).toBe(409);
+    expectBffContract('delete', '/project-templates/template-1', response);
+  });
+
+  test('mair_566 a project is created from the chosen template', async () => {
+    signIn(admin);
+    mockProjectApi({ createdProjectId: 12, bundles: { 12: projectBundle(projetView(12), [], [alice]) } });
+
+    const response = await as(request(app).post('/projects'), admin).send({
+      title: 'Marché', description: 'Travaux', status: 'todo', priority: 'medium', templateId: 'template-3',
+      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+    });
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ template_id: 3 });
+  });
+
+  test('mair_566 a task is created in, moved to and shown with a status of its project', async () => {
+    signIn(admin);
+    mockStatuses();
+    projectApi.on('post', PROJECT.tasks, { body: createTaskResult(5) });
+
+    const created = await as(request(app).post('/projects/project-1/tasks'), admin).send({
+      title: 'Relire', status: 'in-progress', statusId: 'status-33', priority: 'medium',
+      responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14',
+    });
+    const moved = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send({ statusId: 'status-33' });
+    const byCategory = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send({ status: 'done' });
+
+    expect([created.status, moved.status, byCategory.status]).toEqual([201, 200, 200]);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ status_id: 33 });
+    expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([{ status_id: 33 }, { status: 'Completed' }]);
+    expect(moved.body).toMatchObject({ status: 'in-progress', statusId: 'status-33', statusName: 'À valider' });
+    expectBffContract('patch', '/projects/project-1/tasks/task-5/status', moved);
+  });
+
+  test.each([
+    [{ statusId: '33' }],
+    [{}],
+  ])('mair_566 the status route refuses %j before any write', async (body) => {
+    signIn(admin);
+    mockStatuses();
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-5/status'), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expect(writes()).toEqual([]);
   });
 });
