@@ -3531,6 +3531,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -4202,6 +4212,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -4575,6 +4595,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -4663,6 +4693,16 @@
           },
           "404": {
             "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5347,6 +5387,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -5880,6 +5930,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -5979,6 +6039,16 @@
           },
           "404": {
             "description": "Project or task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6352,6 +6422,16 @@
           },
           "404": {
             "description": "Project or task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -6906,6 +6986,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -7232,6 +7322,16 @@
           },
           "404": {
             "description": "Project or task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7976,6 +8076,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Server error",
             "content": {
@@ -8236,6 +8346,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -8404,6 +8524,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -8520,6 +8650,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -8606,6 +8746,16 @@
           },
           "404": {
             "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8761,6 +8911,16 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8933,6 +9093,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -9068,6 +9238,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -9141,6 +9321,16 @@
           },
           "404": {
             "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9303,6 +9493,16 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9484,6 +9684,16 @@
               }
             }
           },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {
@@ -9581,6 +9791,16 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
             "content": {
               "application/json": {
                 "schema": {
