@@ -436,6 +436,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -855,6 +864,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1099,6 +1117,15 @@ export interface paths {
                 };
                 /** @description Project not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1469,6 +1496,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1549,6 +1585,15 @@ export interface paths {
                 };
                 /** @description Project not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1973,6 +2018,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -2065,6 +2119,15 @@ export interface paths {
                 };
                 /** @description Project or task not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2305,6 +2368,15 @@ export interface paths {
                 };
                 /** @description Project or task not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2685,6 +2757,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -2918,6 +2999,15 @@ export interface paths {
                 };
                 /** @description Project or task not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3253,6 +3343,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Server error */
                 500: {
                     headers: {
@@ -3398,6 +3497,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3519,6 +3627,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3616,6 +3733,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3705,6 +3831,15 @@ export interface paths {
                 };
                 /** @description Project or task not found or not visible */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3832,6 +3967,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3945,6 +4089,15 @@ export interface paths {
                 };
                 /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4075,6 +4228,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -4155,6 +4317,15 @@ export interface paths {
                 };
                 /** @description Project or task not found or not visible */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4281,6 +4452,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -4387,6 +4567,15 @@ export interface paths {
                 };
                 /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4510,6 +4699,15 @@ export interface paths {
                 };
                 /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
