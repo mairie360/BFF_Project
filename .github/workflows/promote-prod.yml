@@ -1,7 +1,7 @@
 name: Promote to Prod
 
 # MAIR-494: manual promotion of a commit of main to prod (mairie360/CICD promote-prod.yml).
-# `gh workflow run promote-prod.yml [-f sha=<sha>]`; the Prod environment approval still applies.
+# `gh workflow run promote-prod.yml` (add `-f sha=SHA` for a given commit); the Prod environment approval still applies.
 on:
   workflow_dispatch:
     inputs:

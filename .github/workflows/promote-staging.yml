@@ -1,7 +1,7 @@
 name: Promote to Staging
 
 # MAIR-494: manual promotion of a commit of main to staging (mairie360/CICD promote-staging.yml).
-# `gh workflow run promote-staging.yml [-f sha=<sha>]`; the Staging environment approval still applies.
+# `gh workflow run promote-staging.yml` (add `-f sha=SHA` for a given commit); the Staging environment approval still applies.
 on:
   workflow_dispatch:
     inputs:
