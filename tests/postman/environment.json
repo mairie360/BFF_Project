@@ -1,0 +1,114 @@
+{
+  "name": "BFF Project integration",
+  "_postman_variable_scope": "environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_secret",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "admin_user_id",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "agent_user_id",
+      "value": "2",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "run_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_admin",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_agent",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "default_template_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "template_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "project_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "duplicate_project_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "seed_task_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "todo_status_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "in_progress_status_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "done_status_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "review_status_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "comment_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ]
+}
