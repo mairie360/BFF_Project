@@ -15,14 +15,5 @@
       "depNameTemplate": "mairie360/CICD",
       "datasourceTemplate": "github-tags"
     }
-  ],
-  "packageRules": [
-    {
-      "description": "cicd.yml, promote-staging.yml and promote-prod.yml pin the same CICD release: bump them in one PR (MAIR-494).",
-      "matchPackageNames": [
-        "mairie360/CICD"
-      ],
-      "groupName": "mairie360/CICD"
-    }
   ]
 }
