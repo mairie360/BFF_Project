@@ -1,7 +1,10 @@
 name: BFF Project CICD
 
 on:
+  # MAIR-612: main only. The prod tag pushed by the release app must not start the pipeline,
+  # and other branches are covered by their pull_request run.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -12,11 +15,11 @@ permissions:
 
 jobs:
   CICD:
-    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v4.4.0
+    uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v4.4.3
     with:
       package_name: bff-project
       node_version: "24"
-      cicd_version: v4.4.0
+      cicd_version: v4.4.3
       openapi_spec_path: contracts/openapi.json
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
