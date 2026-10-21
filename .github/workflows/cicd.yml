@@ -1,7 +1,10 @@
 name: BFF Project CICD
 
 on:
+  # MAIR-612: main only. The prod tag pushed by the release app must not start the pipeline,
+  # and other branches are covered by their pull_request run.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
