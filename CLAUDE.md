@@ -292,6 +292,15 @@ and the refusals only a real Project API shows (404 on an invisible project, 409
 commits no secret. The collection is generated for now from a session script; edit the JSON directly
 (Postman v2.1), keeping one folder per journey and English names.
 
+### Non-regression tests of a bug fix
+
+Every bug fix ships three tests that fail on the old code and pass on the fix, named after the ticket or the bug:
+a **technical unit test** (jest: the upstream-mock suite or the unit test of the route / helper), a **technical
+integration test** (a request of `tests/postman/collection.json` that reproduces the bug on the real stack and pins
+the status, the error envelope and the answer's fields) and a **business integration test** (the journey of the
+collection that the bug broke, extended so that it replays the user flow end to end). Run `./integration_test.sh`
+before opening the PR; skip one of the three only when that layer cannot observe the bug, and say why in the PR.
+
 ## Logs (MAIR-531)
 
 Logs are JSON lines on stdout, through `logger` (`src/logger.ts`, `createLogger({ target: 'bff-project' })` of
