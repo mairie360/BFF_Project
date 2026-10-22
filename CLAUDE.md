@@ -297,7 +297,7 @@ commits no secret. The collection is generated for now from a session script; ed
 Every bug fix ships three tests that fail on the old code and pass on the fix, named after the ticket or the bug:
 a **technical unit test** (jest: the upstream-mock suite or the unit test of the route / helper), a **technical
 integration test** (a request of `tests/postman/collection.json` that reproduces the bug on the real stack and pins
-the status, the error envelope and the answer's fields) and a **business integration test** (the journey of the
+the status and the answer's fields, plus the error envelope when the answer is an error) and a **business integration test** (the journey of the
 collection that the bug broke, extended so that it replays the user flow end to end). Run `./integration_test.sh`
 before opening the PR; skip one of the three only when that layer cannot observe the bug, and say why in the PR.
 
