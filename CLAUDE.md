@@ -24,6 +24,7 @@ npm run build              # tsc -> dist/
 npm run lint               # eslint . --ext .ts (src/**/*.ts only); lint:fix to autofix
 npm test                   # pretest runs `tsc --project tsconfig.test.json`, then jest
 npm run mock:project-api   # standalone in-memory Project API for local dev
+./integration_test.sh      # docker-compose-integration.yml: real Project API + Core API, newman replaying tests/postman/ (MAIR-262)
 ```
 
 Single test: `npx jest tests/projects.upstream-mocks.test.ts` or `npx jest -t "never retries a write"`.
@@ -247,6 +248,59 @@ against `contracts/openapi.json` (status documented + schema).
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
 
+## Integration tests on the real stack (MAIR-262)
+
+Jest tests mock Project API and Core API; `integration_test.sh` is the only test of the BFF on a real stack. It
+brings up `docker-compose-integration.yml` (the upstream services of the ZAP / k6 stacks: published Project API and
+Core API images, database + liquibase + `init-test.sql`, Redis) and a `newman` service that replays
+`tests/postman/collection.json` with `tests/postman/environment.json` against the BFF, `--bail` on the first
+failing request; the exit code of newman is the exit code of the script. Like the other stacks it tests the
+image named by `IMAGE_REF` (`bff-project:local` built from `development.Dockerfile` when empty), sources
+`stack_secrets.sh` (random `JWT_SECRET` per run) and drops the volumes before and after. In CI it is the
+`integration_tests` staging gate of `promote-staging.yml` (mairie360/CICD `integration/bffs`) on the
+published `dev-<sha>` image: a failure blocks the promotion; the junit report (`newman-reports/newman.xml`,
+gitignored) is published as job summary and artifact.
+
+The collection is split in two kinds of checks, both on the BFF's own routes:
+
+- **working checks** (folders `Service`, `Session resolution`): the BFF starts, `/health`, `/check_apis` with both
+  APIs `Connected`, `/openapi.json`, a JSON 404, the caller resolved from the Bearer JWT (401 without it, the
+  seeded Admin `sub=1` with `scope: all` and the agent `sub=2` with `scope: assigned` on `/projects-page`);
+- **business journeys** the Projects front relies on, in order: a project template (403 for a plain user, 409 on a
+  duplicate name, rename, 409 on deleting the default one), a project created from it (403 for a plain user, the
+  statuses copied from the template, the search on `/projects-page` with consistent counts, 404 for the agent
+  until a `PATCH` makes them a member, then a read-only detail without the tasks not assigned to them), the task
+  statuses (add, 409 duplicate, rename, 409 on the last status of a category, 409 on a status holding tasks
+  without `moveTo`, deletion with `moveTo`), a task assigned to the agent (edit by the administrator only, moved
+  by the agent by `statusId` and by category), its collaboration (comments signed by both, 403 / 404 on a task
+  not assigned to the agent, paged follow-up with the history Project API writes), archiving (a done task leaves
+  the detail, is counted in the progress and paged by `/archived-tasks`), duplication (active tasks only),
+  suspension and closing (`review` then `done`, the `status` filter of the page), deletion of the duplicate, the
+  project and the template (404 afterwards).
+
+The seeded accounts have no known password: the collection-level pre-request script forges their JWTs
+(HS256 `{ sub, role, exp }`, like `mairie360_api_lib`) with the `jwt_secret` the compose file injects
+(`jwt_admin` with role `admin`, `jwt_agent` with role `user`: the BFF reads the `role` claim and Project API the
+`user_roles` of `init-test.sql`, which agree); the committed `environment.json` holds no secret or token. One
+fresh `run_id` per run names the rows and every row is deleted at the end, so the collection is replayable.
+Isolated endpoint checks (validation errors, token refusals) stay in jest: the collection only holds journeys
+and the refusals only a real Project API shows (404 on an invisible project, 409s).
+
+`tests/integration-collection.test.ts` guards the collection with the unit tests: every operation of
+`contracts/openapi.json` has at least one request (a new route needs its request), every request has a
+`pm.test`, every request targets a declared route (or `/openapi.json` / the 404 check), and the environment
+commits no secret. The collection is generated for now from a session script; edit the JSON directly
+(Postman v2.1), keeping one folder per journey and English names.
+
+### Non-regression tests of a bug fix
+
+Every bug fix ships three tests that fail on the old code and pass on the fix, named after the ticket or the bug:
+a **technical unit test** (jest: the upstream-mock suite or the unit test of the route / helper), a **technical
+integration test** (a request of `tests/postman/collection.json` that reproduces the bug on the real stack and pins
+the status and the answer's fields, plus the error envelope when the answer is an error) and a **business integration test** (the journey of the
+collection that the bug broke, extended so that it replays the user flow end to end). Run `./integration_test.sh`
+before opening the PR; skip one of the three only when that layer cannot observe the bug, and say why in the PR.
+
 ## Logs (MAIR-531)
 
 Logs are JSON lines on stdout, through `logger` (`src/logger.ts`, `createLogger({ target: 'bff-project' })` of
@@ -265,5 +319,5 @@ Every PR requests a review from the whole team, minus its author: `CarolinHugo`,
 A push to `main` only releases dev (`cicd.yml` stops at `release-dev`). Staging and prod are manual:
 `gh workflow run promote-staging.yml -R mairie360/BFF_Project` (main's newest commit) or `gh workflow run promote-staging.yml -R mairie360/BFF_Project -f sha=SHA` (a given commit), then the same with `promote-prod.yml`
 (environments `Staging` / `Prod`). Staging refuses a commit without `dev-<sha>` and a green main run, and runs
-the ZAP and k6 stacks on that image; prod refuses one without `staging-<sha>` and tags the version semantic-release computes
+the integration (newman, MAIR-262), ZAP and k6 stacks on that image; prod refuses one without `staging-<sha>` and tags the version semantic-release computes
 for that commit. `cicd.yml`, `promote-staging.yml` and `promote-prod.yml` pin the same mairie360/CICD release.
