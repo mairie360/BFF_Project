@@ -18,7 +18,7 @@ jobs:
     uses: mairie360/CICD/.github/workflows/BFFs-cicd.yml@v4.5.0
     with:
       package_name: bff-project
-      node_version: "24"
+      node_version: "24.22.1"
       cicd_version: v4.5.0
       openapi_spec_path: contracts/openapi.json
     secrets:
