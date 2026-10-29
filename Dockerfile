@@ -1,5 +1,5 @@
 # --- Étape 1 : Build ---
-FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
+FROM node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS builder
 WORKDIR /app
 COPY package*.json ./
 
@@ -16,7 +16,7 @@ RUN --mount=type=secret,id=npmrc,target=/app/.npmrc \
     npm ci --omit=dev --ignore-scripts
 
 # --- Stage 2: Runtime ---
-FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
+FROM node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
 ENV NODE_ENV=production
 # The runtime only runs `node dist/index.js`: drop the package managers bundled with the base image
 # (their own dependencies carry CVEs that fail the Trivy scan).
