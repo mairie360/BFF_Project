@@ -7,7 +7,7 @@
       "customType": "regex",
       "description": "Garde cicd_version aligné avec le tag mairie360/CICD utilisé par le workflow réutilisable",
       "fileMatch": [
-        "^\\.github/workflows/(cicd|promote-staging|promote-prod)\\.yml$"
+        "^\\.github/workflows/(cicd|promote-staging|promote-prod|gdpr-pr)\\.yml$"
       ],
       "matchStrings": [
         "cicd_version:\\s*[\"']?(?<currentValue>v?\\d+\\.\\d+\\.\\d+)[\"']?"
