@@ -18,7 +18,7 @@ Domaine fonctionnel: Projets et tâches.
 
 ## Parcours type
 
-1. Résoudre la session avec BFF User et charger `/projects-page`.
+1. Lire les rôles de l’appelant (jeton, ou Core API) et charger `/projects-page`.
 2. Ouvrir un projet pour consulter ses tâches et les actions autorisées.
 3. Effectuer une mutation puis utiliser les données renvoyées et recharger le contexte concerné.
 
@@ -30,11 +30,11 @@ Ce dépôt contient le serveur BFF et son contrat. Les web services associés po
 
 ## Données et état actuel
 
-Le module lit et écrit tout via des APIs : Project API pour les projets, tâches, membres et la collaboration (commentaires et historique), Core API pour l’annuaire des personnes assignables, BFF User pour la session de l’appelant. Le BFF ne possède aucune base de données.
+Le module lit et écrit tout via des APIs : Project API pour les projets, tâches, membres et la collaboration (commentaires et historique), Core API pour l’annuaire des personnes assignables et le profil de l’appelant ; jamais un autre BFF (MAIR-525). Le BFF ne possède aucune base de données.
 
 ## Périmètre et limites
 
-Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches : la priorité, les étiquettes et l’échéance d’un projet ne sont pas persistées par Project API, et les réponses d’écriture ne renvoient que l’état persisté.
+Désactiver l’accès SQL change les capacités et la persistance; ce mode ne constitue pas une validation d’un déploiement complet. Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches : les étiquettes et l’échéance d’un projet ne sont pas persistées par Project API (son statut et sa priorité le sont, MAIR-558), et les réponses d’écriture ne renvoient que l’état persisté.
 
 ## Pour développer ou exploiter ce module
 

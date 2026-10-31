@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Checks that Core API, Project API and BFF User are reachable */
+        /** Checks that Core API and Project API are reachable */
         get: {
             parameters: {
                 query?: never;
@@ -184,7 +184,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -226,18 +226,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -369,6 +379,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -416,6 +436,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -425,7 +454,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -434,7 +463,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -458,7 +487,7 @@ export interface paths {
         put?: never;
         /**
          * Create a project
-         * @description Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.
+         * @description Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.
          */
         post: {
             parameters: {
@@ -490,7 +519,10 @@ export interface paths {
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate: string;
                         taskItems?: {
                             /** @example Scan task */
@@ -509,9 +541,17 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
-                            /** @example 2030-12-31T00:00:00Z */
+                            /**
+                             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                             * @example 2030-12-31
+                             */
                             dueDate: string;
                         }[];
+                        /**
+                         * @description Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template
+                         * @example template-1
+                         */
+                        templateId?: string;
                     };
                 };
             };
@@ -581,7 +621,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -623,18 +663,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -766,6 +816,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -804,6 +864,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -813,7 +882,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -822,7 +891,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -880,8 +949,16 @@ export interface paths {
                         responsibleId: string;
                         assigneeIds: string[];
                         labels: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate: string;
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -991,6 +1068,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -1037,6 +1124,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1046,7 +1142,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1055,7 +1151,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1157,7 +1253,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -1199,18 +1295,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -1342,6 +1448,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -1380,6 +1496,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1389,7 +1514,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1398,7 +1523,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1467,6 +1592,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1476,7 +1610,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1485,7 +1619,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1500,7 +1634,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a project
-         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `priority`, `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.
          */
         patch: {
             parameters: {
@@ -1535,7 +1669,10 @@ export interface paths {
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate?: string;
                         taskItems?: {
                             /** @example Scan task */
@@ -1554,7 +1691,10 @@ export interface paths {
                             priority: "high" | "medium" | "low";
                             assigneeIds: string[];
                             labels: string[];
-                            /** @example 2030-12-31T00:00:00Z */
+                            /**
+                             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                             * @example 2030-12-31
+                             */
                             dueDate: string;
                         }[];
                     };
@@ -1626,7 +1766,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -1668,18 +1808,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -1811,6 +1961,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -1858,6 +2018,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1867,7 +2036,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1876,7 +2045,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -1957,6 +2126,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -1966,7 +2144,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -1975,7 +2153,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2022,8 +2200,16 @@ export interface paths {
                         responsibleId?: string;
                         assigneeIds?: string[];
                         labels?: string[];
-                        /** @example 2030-12-31T00:00:00Z */
+                        /**
+                         * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                         * @example 2030-12-31
+                         */
                         dueDate?: string;
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -2133,6 +2319,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -2179,6 +2375,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -2188,7 +2393,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2197,7 +2402,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2300,7 +2505,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -2342,18 +2547,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -2485,6 +2700,16 @@ export interface paths {
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
+                                /**
+                                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                                 * @example status-1
+                                 */
+                                statusId?: string;
+                                /**
+                                 * @description Name of that status, as the Kanban column shows it
+                                 * @example À valider
+                                 */
+                                statusName?: string;
                                 permissions: {
                                     canView: boolean;
                                     canEdit: boolean;
@@ -2532,6 +2757,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -2541,7 +2775,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2550,7 +2784,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2601,7 +2835,12 @@ export interface paths {
                          * @example todo
                          * @enum {string}
                          */
-                        status: "todo" | "in-progress" | "review" | "done";
+                        status?: "todo" | "in-progress" | "review" | "done";
+                        /**
+                         * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+                         * @example status-1
+                         */
+                        statusId?: string;
                     };
                 };
             };
@@ -2711,6 +2950,16 @@ export interface paths {
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
+                            /**
+                             * @description The status of the project the task is in (MAIR-566); `status` is its category
+                             * @example status-1
+                             */
+                            statusId?: string;
+                            /**
+                             * @description Name of that status, as the Kanban column shows it
+                             * @example À valider
+                             */
+                            statusName?: string;
                             permissions: {
                                 canView: boolean;
                                 canEdit: boolean;
@@ -2757,6 +3006,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -2766,7 +3024,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -2775,7 +3033,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -2802,6 +3060,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Case-insensitive text searched in the name and the description */
                     q?: string;
                     status?: "all" | "todo" | "in-progress" | "review" | "done";
                     priority?: "all" | "high" | "medium" | "low";
@@ -2898,7 +3157,9 @@ export interface paths {
                                      */
                                     status: "todo" | "in-progress" | "review" | "done";
                                     label: string;
+                                    /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                                     projectIds: string[];
+                                    /** @description Number of matching projects in this column, every page included */
                                     count: number;
                                 }[];
                             };
@@ -2959,7 +3220,7 @@ export interface paths {
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées au projet */
+                                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
                                      * @description L'identifiant unique de la personne
@@ -3001,18 +3262,28 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
-                                /** @description Les statistiques des tâches du projet */
+                                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
-                                     * @description Le nombre total de tâches dans le projet
+                                     * @description Number of tasks of the project, the archived (done) ones included
                                      * @example 10
                                      */
                                     total: number;
                                     /**
-                                     * @description Le nombre de tâches complétées dans le projet
+                                     * @description Number of done tasks of the project, the archived ones included
                                      * @example 7
                                      */
                                     completed: number;
+                                    /**
+                                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                                     * @example 3
+                                     */
+                                    active: number;
+                                    /**
+                                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                                     * @example 7
+                                     */
+                                    archived: number;
                                 };
                                 /** @description Les permissions de l'utilisateur sur le projet */
                                 permissions: {
@@ -3072,6 +3343,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Server error */
                 500: {
                     headers: {
@@ -3081,7 +3361,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3090,7 +3370,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3116,10 +3396,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consulte les commentaires et l’historique d’une tâche */
+        /**
+         * Consulte les commentaires et l’historique d’une tâche
+         * @description Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     /** @description Identifiant du projet */
@@ -3138,6 +3424,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** @description The most recent comments of the page, in reading order (oldest first) */
                             comments: {
                                 id: string;
                                 message: string;
@@ -3147,6 +3434,7 @@ export interface paths {
                                 };
                                 createdAt: string;
                             }[];
+                            /** @description The most recent history entries of the page, newest first */
                             history: {
                                 id: string;
                                 action: string;
@@ -3160,6 +3448,16 @@ export interface paths {
                                     [key: string]: unknown;
                                 };
                             }[];
+                            pagination: {
+                                page: number;
+                                limit: number;
+                                /** @description Number of comments of the task */
+                                commentsTotal: number;
+                                /** @description Number of history entries of the task */
+                                historyTotal: number;
+                                /** @description Older comments or history entries remain */
+                                hasNextPage: boolean;
+                            };
                         };
                     };
                 };
@@ -3199,6 +3497,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3208,7 +3515,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3217,7 +3524,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3320,6 +3627,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Unexpected server error */
                 500: {
                     headers: {
@@ -3329,7 +3645,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is unreachable or failed */
+                /** @description Project API or Core API is unreachable or failed */
                 502: {
                     headers: {
                         [name: string]: unknown;
@@ -3338,7 +3654,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User, Project API or Core API is not configured (USER_BFF_URL, PROJECT_API_URL, CORE_API_URL) */
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -3353,6 +3669,1081 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/archived-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the archived tasks of a project
+         * @description A task is archived as soon as it is done (MAIR-502): `GET /projects/{projectId}` only returns the active tasks and counts the archived ones in its progress; this route pages the archived ones, the most recently archived first. Like the project detail, a member without manager role only sees the tasks assigned to them.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description One page of the archived tasks */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArchivedTasksResponse"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/statuses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the task statuses of a project
+         * @description The Kanban columns of the project, by position (MAIR-566). They were copied from its template at its creation and are then the project's own. Each belongs to a category (`todo`, `in-progress`, `done`) that drives the archiving, the progress and the pending tasks.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Adds a task status to a project
+         * @description Reserved to the project managers. Without `position` the status goes last; with it, the statuses from that position move one place down. `409` when another status of the project has the name.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan status */
+                        name: string;
+                        /** @example #D97706 */
+                        color?: string;
+                        /**
+                         * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                         * @example in-progress
+                         * @enum {string}
+                         */
+                        category: "todo" | "in-progress" | "done";
+                        /**
+                         * @description Position among the statuses, from 0
+                         * @example 2
+                         */
+                        position?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/statuses/{statusId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Deletes a task status
+         * @description Reserved to the project managers. The tasks of the status (archived ones included) move to `moveTo`, another status of the project, which is required as soon as the status holds tasks (`409` otherwise). The last status of a category cannot be deleted (`409`).
+         */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description Status to move the tasks of the deleted one to; required when it holds tasks (409 otherwise) */
+                    moveTo?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                    /** @description Identifiant du statut */
+                    statusId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Renames, recolours, moves or recategorizes a task status
+         * @description Reserved to the project managers; an absent field is left unchanged. A new `category` moves the tasks of the status to it (a `done` status archives them), and is refused (`409`) when it would leave the former category without any status.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du projet */
+                    projectId: string;
+                    /** @description Identifiant du statut */
+                    statusId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan status renamed */
+                        name?: string;
+                        /** @example #D97706 */
+                        color?: string;
+                        /**
+                         * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                         * @example in-progress
+                         * @enum {string}
+                         */
+                        category?: "todo" | "in-progress" | "done";
+                        /**
+                         * @description Position among the statuses, from 0
+                         * @example 2
+                         */
+                        position?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Statuses of the project, by position, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTaskStatuses"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/project-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the project templates
+         * @description Templates a project can be created from (`templateId` of `POST /projects`), the default one included.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The templates */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplates"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Creates a project template
+         * @description Reserved to the Responsable and Admin roles. `statuses` are in order and hold at least one status per category (`todo`, `in-progress`, `done`). `409` when another template has the name.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan template */
+                        name: string;
+                        /** @example Template created by the ZAP scan */
+                        description?: string;
+                        /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+                        statuses: {
+                            /** @example Scan status */
+                            name: string;
+                            /** @example #D97706 */
+                            color?: string;
+                            /**
+                             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                             * @example in-progress
+                             * @enum {string}
+                             */
+                            category: "todo" | "in-progress" | "done";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Template created, as re-read from Project API */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplate"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/project-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Deletes a project template
+         * @description Reserved to the Responsable and Admin roles. The projects created from it keep their statuses; the default template cannot be deleted (`409`).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du modèle */
+                    templateId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Template deleted. Empty body. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Updates a project template
+         * @description Reserved to the Responsable and Admin roles; an absent field is left unchanged and `statuses` replaces the whole list. The projects already created from the template keep their statuses.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Identifiant du modèle */
+                    templateId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan template */
+                        name?: string;
+                        /** @example Template created by the ZAP scan */
+                        description?: string;
+                        /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+                        statuses?: {
+                            /** @example Scan status */
+                            name: string;
+                            /** @example #D97706 */
+                            color?: string;
+                            /**
+                             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                             * @example in-progress
+                             * @enum {string}
+                             */
+                            category: "todo" | "in-progress" | "done";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Template updated, as re-read from Project API */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectTemplate"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
 }
@@ -3454,7 +4845,7 @@ export interface components {
                  */
                 avatarUrl: string | null;
             };
-            /** @description La liste des personnes assignées au projet */
+            /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
             assignees: {
                 /**
                  * @description L'identifiant unique de la personne
@@ -3496,18 +4887,28 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
-            /** @description Les statistiques des tâches du projet */
+            /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
             tasks: {
                 /**
-                 * @description Le nombre total de tâches dans le projet
+                 * @description Number of tasks of the project, the archived (done) ones included
                  * @example 10
                  */
                 total: number;
                 /**
-                 * @description Le nombre de tâches complétées dans le projet
+                 * @description Number of done tasks of the project, the archived ones included
                  * @example 7
                  */
                 completed: number;
+                /**
+                 * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                 * @example 3
+                 */
+                active: number;
+                /**
+                 * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                 * @example 7
+                 */
+                archived: number;
             };
             /** @description Les permissions de l'utilisateur sur le projet */
             permissions: {
@@ -3640,6 +5041,16 @@ export interface components {
              * @example 2024-01-15T15:30:00Z
              */
             updatedAt?: string;
+            /**
+             * @description The status of the project the task is in (MAIR-566); `status` is its category
+             * @example status-1
+             */
+            statusId?: string;
+            /**
+             * @description Name of that status, as the Kanban column shows it
+             * @example À valider
+             */
+            statusName?: string;
             permissions: {
                 canView: boolean;
                 canEdit: boolean;
@@ -3668,7 +5079,10 @@ export interface components {
             taskId: string;
         };
         ProjectsPageQuery: {
-            /** @example scan */
+            /**
+             * @description Case-insensitive text searched in the name and the description
+             * @example scan
+             */
             q?: string;
             /** @enum {string} */
             status?: "all" | "todo" | "in-progress" | "review" | "done";
@@ -3710,7 +5124,10 @@ export interface components {
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate: string;
             taskItems?: {
                 /** @example Scan task */
@@ -3729,9 +5146,17 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
-                /** @example 2030-12-31T00:00:00Z */
+                /**
+                 * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                 * @example 2030-12-31
+                 */
                 dueDate: string;
             }[];
+            /**
+             * @description Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template
+             * @example template-1
+             */
+            templateId?: string;
         };
         UpdateProjectBody: {
             /** @example Scan project */
@@ -3754,7 +5179,10 @@ export interface components {
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate?: string;
             taskItems?: {
                 /** @example Scan task */
@@ -3773,7 +5201,10 @@ export interface components {
                 priority: "high" | "medium" | "low";
                 assigneeIds: string[];
                 labels: string[];
-                /** @example 2030-12-31T00:00:00Z */
+                /**
+                 * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+                 * @example 2030-12-31
+                 */
                 dueDate: string;
             }[];
         };
@@ -3796,8 +5227,16 @@ export interface components {
             responsibleId: string;
             assigneeIds: string[];
             labels: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate: string;
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         UpdateTaskBody: {
             /** @example Scan task */
@@ -3818,8 +5257,16 @@ export interface components {
             responsibleId?: string;
             assigneeIds?: string[];
             labels?: string[];
-            /** @example 2030-12-31T00:00:00Z */
+            /**
+             * @description Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none
+             * @example 2030-12-31
+             */
             dueDate?: string;
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         UpdateTaskStatusBody: {
             /**
@@ -3827,7 +5274,12 @@ export interface components {
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status?: "todo" | "in-progress" | "review" | "done";
+            /**
+             * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
+             * @example status-1
+             */
+            statusId?: string;
         };
         CloseProjectBody: {
             /**
@@ -3863,6 +5315,7 @@ export interface components {
             };
         };
         TaskCollaborationResponse: {
+            /** @description The most recent comments of the page, in reading order (oldest first) */
             comments: {
                 id: string;
                 message: string;
@@ -3872,6 +5325,7 @@ export interface components {
                 };
                 createdAt: string;
             }[];
+            /** @description The most recent history entries of the page, newest first */
             history: {
                 id: string;
                 action: string;
@@ -3885,6 +5339,16 @@ export interface components {
                     [key: string]: unknown;
                 };
             }[];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of comments of the task */
+                commentsTotal: number;
+                /** @description Number of history entries of the task */
+                historyTotal: number;
+                /** @description Older comments or history entries remain */
+                hasNextPage: boolean;
+            };
         };
         ProjectDetailsResponse: {
             /** @description Un projet pour les vues de type carte, table ou kanban */
@@ -3945,7 +5409,7 @@ export interface components {
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées au projet */
+                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
                      * @description L'identifiant unique de la personne
@@ -3987,18 +5451,28 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
-                /** @description Les statistiques des tâches du projet */
+                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**
-                     * @description Le nombre total de tâches dans le projet
+                     * @description Number of tasks of the project, the archived (done) ones included
                      * @example 10
                      */
                     total: number;
                     /**
-                     * @description Le nombre de tâches complétées dans le projet
+                     * @description Number of done tasks of the project, the archived ones included
                      * @example 7
                      */
                     completed: number;
+                    /**
+                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                     * @example 3
+                     */
+                    active: number;
+                    /**
+                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                     * @example 7
+                     */
+                    archived: number;
                 };
                 /** @description Les permissions de l'utilisateur sur le projet */
                 permissions: {
@@ -4130,6 +5604,16 @@ export interface components {
                  * @example 2024-01-15T15:30:00Z
                  */
                 updatedAt?: string;
+                /**
+                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                 * @example status-1
+                 */
+                statusId?: string;
+                /**
+                 * @description Name of that status, as the Kanban column shows it
+                 * @example À valider
+                 */
+                statusName?: string;
                 permissions: {
                     canView: boolean;
                     canEdit: boolean;
@@ -4213,7 +5697,9 @@ export interface components {
                      */
                     status: "todo" | "in-progress" | "review" | "done";
                     label: string;
+                    /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                     projectIds: string[];
+                    /** @description Number of matching projects in this column, every page included */
                     count: number;
                 }[];
             };
@@ -4274,7 +5760,7 @@ export interface components {
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées au projet */
+                /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
                      * @description L'identifiant unique de la personne
@@ -4316,18 +5802,28 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
-                /** @description Les statistiques des tâches du projet */
+                /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**
-                     * @description Le nombre total de tâches dans le projet
+                     * @description Number of tasks of the project, the archived (done) ones included
                      * @example 10
                      */
                     total: number;
                     /**
-                     * @description Le nombre de tâches complétées dans le projet
+                     * @description Number of done tasks of the project, the archived ones included
                      * @example 7
                      */
                     completed: number;
+                    /**
+                     * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                     * @example 3
+                     */
+                    active: number;
+                    /**
+                     * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                     * @example 7
+                     */
+                    archived: number;
                 };
                 /** @description Les permissions de l'utilisateur sur le projet */
                 permissions: {
@@ -4367,6 +5863,78 @@ export interface components {
                 hasNextPage: boolean;
             };
         };
+        CreateProjectTaskStatusBody: {
+            /** @example Scan status */
+            name: string;
+            /** @example #D97706 */
+            color?: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category: "todo" | "in-progress" | "done";
+            /**
+             * @description Position among the statuses, from 0
+             * @example 2
+             */
+            position?: number;
+        };
+        UpdateProjectTaskStatusBody: {
+            /** @example Scan status renamed */
+            name?: string;
+            /** @example #D97706 */
+            color?: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category?: "todo" | "in-progress" | "done";
+            /**
+             * @description Position among the statuses, from 0
+             * @example 2
+             */
+            position?: number;
+        };
+        CreateProjectTemplateBody: {
+            /** @example Scan template */
+            name: string;
+            /** @example Template created by the ZAP scan */
+            description?: string;
+            /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+            statuses: {
+                /** @example Scan status */
+                name: string;
+                /** @example #D97706 */
+                color?: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+            }[];
+        };
+        UpdateProjectTemplateBody: {
+            /** @example Scan template */
+            name?: string;
+            /** @example Template created by the ZAP scan */
+            description?: string;
+            /** @description Statuses in order; at least one per category (todo, in-progress, done) */
+            statuses?: {
+                /** @example Scan status */
+                name: string;
+                /** @example #D97706 */
+                color?: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+            }[];
+        };
         ErrorResponse: {
             error: {
                 /** @enum {string} */
@@ -4385,8 +5953,207 @@ export interface components {
             core_api: "Connected" | "Unreachable";
             /** @enum {string} */
             project_api: "Connected" | "Unreachable";
-            /** @enum {string} */
-            user_bff: "Connected" | "Unreachable";
+        };
+        ArchivedTasksQuery: {
+            /** @example 1 */
+            page?: number;
+            /** @example 20 */
+            limit?: number;
+        };
+        ArchivedTasksResponse: {
+            /** @description Archived tasks of the page the caller may see, the most recently archived first */
+            tasks: {
+                /**
+                 * @description L'identifiant unique de la tâche
+                 * @example 123e4567-e89b-12d3-a456-426614174000
+                 */
+                id: string;
+                /**
+                 * @description Le titre de la tâche
+                 * @example Nouvelle tâche
+                 */
+                title: string;
+                /**
+                 * @description Le statut du projet
+                 * @example todo
+                 * @enum {string}
+                 */
+                status: "todo" | "in-progress" | "review" | "done";
+                /**
+                 * @description Le libellé du statut de la tâche
+                 * @example À faire
+                 */
+                statusLabel: string;
+                /** @description Une personne assignable à un projet */
+                responsible: {
+                    /**
+                     * @description L'identifiant unique de la personne
+                     * @example 123e4567-e89b-12d3-a456-426614174000
+                     */
+                    id: string;
+                    /**
+                     * @description Le nom de la personne
+                     * @example John Doe
+                     */
+                    name: string;
+                    /**
+                     * Format: uri
+                     * @description L'URL de l'avatar de la personne
+                     * @example https://example.com/avatar.jpg
+                     */
+                    avatarUrl: string | null;
+                };
+                /** @description La liste des personnes assignées à la tâche */
+                assignees: {
+                    /**
+                     * @description L'identifiant unique de la personne
+                     * @example 123e4567-e89b-12d3-a456-426614174000
+                     */
+                    id: string;
+                    /**
+                     * @description Le nom de la personne
+                     * @example John Doe
+                     */
+                    name: string;
+                    /**
+                     * Format: uri
+                     * @description L'URL de l'avatar de la personne
+                     * @example https://example.com/avatar.jpg
+                     */
+                    avatarUrl: string | null;
+                }[];
+                /**
+                 * @description La priorité du projet
+                 * @example high
+                 * @enum {string}
+                 */
+                priority: "high" | "medium" | "low";
+                /**
+                 * @description Le libellé de la priorité de la tâche
+                 * @example Moyenne
+                 */
+                priorityLabel: string;
+                /**
+                 * @description La liste des étiquettes associées à la  tâche
+                 * @example [
+                 *       "backend",
+                 *       "important"
+                 *     ]
+                 */
+                labels: string[];
+                /**
+                 * @description La date d'échéance de la tâche au format ISO 8601
+                 * @example 2024-12-31T23:59:59Z
+                 */
+                dueDate: string;
+                /**
+                 * @description Indique si la tâche est complétée
+                 * @example false
+                 */
+                completed: boolean;
+                /**
+                 * @description La date de création de la tâche au format ISO 8601
+                 * @example 2024-01-01T12:00:00Z
+                 */
+                createdAt: string;
+                /**
+                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                 * @example 2024-01-15T15:30:00Z
+                 */
+                updatedAt?: string;
+                /**
+                 * @description The status of the project the task is in (MAIR-566); `status` is its category
+                 * @example status-1
+                 */
+                statusId?: string;
+                /**
+                 * @description Name of that status, as the Kanban column shows it
+                 * @example À valider
+                 */
+                statusName?: string;
+                permissions: {
+                    canView: boolean;
+                    canEdit: boolean;
+                    canDelete: boolean;
+                    canUpdateStatus: boolean;
+                    canComment: boolean;
+                };
+            }[];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of archived tasks of the project */
+                total: number;
+                hasNextPage: boolean;
+            };
+        };
+        ProjectTaskStatuses: {
+            /** @description Statuses of the project, by position */
+            statuses: components["schemas"]["ProjectTaskStatus"][];
+        };
+        /** @description A task status of a project: a Kanban column */
+        ProjectTaskStatus: {
+            /** @example status-1 */
+            id: string;
+            /** @example À valider */
+            name: string;
+            /** @example #D97706 */
+            color: string;
+            /**
+             * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+             * @example in-progress
+             * @enum {string}
+             */
+            category: "todo" | "in-progress" | "done";
+            /** @example 2 */
+            position: number;
+            /**
+             * @description Tasks in this status, archived ones included
+             * @example 3
+             */
+            taskCount: number;
+        };
+        ProjectTemplates: {
+            templates: components["schemas"]["ProjectTemplate"][];
+        };
+        /** @description A project template (MAIR-566) */
+        ProjectTemplate: {
+            /** @example template-1 */
+            id: string;
+            /** @example Avec validation */
+            name: string;
+            /** @example Tâches relues avant validation */
+            description: string | null;
+            /**
+             * @description Template of a project created without templateId; cannot be deleted
+             * @example false
+             */
+            isDefault: boolean;
+            /** @description Statuses copied into a project created from it, by position */
+            statuses: {
+                /** @example À valider */
+                name: string;
+                /** @example #D97706 */
+                color: string;
+                /**
+                 * @description Category of a status: `todo`, `in-progress` or `done` (a `done` task is archived)
+                 * @example in-progress
+                 * @enum {string}
+                 */
+                category: "todo" | "in-progress" | "done";
+                /** @example 2 */
+                position: number;
+            }[];
+            /** @description Custom task fields copied into the project */
+            customFields: {
+                /** @example Budget */
+                label: string;
+                /**
+                 * @description Field type, as Project API names it
+                 * @example Number
+                 */
+                type: string;
+            }[];
         };
     };
     responses: never;

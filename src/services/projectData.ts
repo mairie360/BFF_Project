@@ -1,5 +1,9 @@
-import type { ProjetView, TaskCollaborationView, TaskView, User } from '@mairie360/project-api-openapi/model';
-import { asCaller, callUpstream, type UpstreamRequestOptions } from '@mairie360/bffs-lib';
+import type {
+  GetProjectsParams, GetProjectsResultView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
+} from '@mairie360/project-api-openapi/model';
+import {
+  asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
+} from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
 import { projectApi } from '../clients/projectClient';
@@ -8,6 +12,7 @@ import {
   canManageProjects,
   isGlobalProjectRole,
   type ProjectUserContext,
+  type ProjectUserProfile,
 } from '../auth/project-user';
 
 // Every project datum comes from Project API (contract @mairie360/project-api-openapi) and the directory of
@@ -69,32 +74,17 @@ export type TaskPermissions = {
 
 export type ProjectBundle = {
   project: ProjetView;
+  /** Its active tasks: a completed task is archived (MAIR-502) and only counted in `archivedTasks`. */
   tasks: TaskView[];
   users: User[];
+  /** Number of its archived (completed) tasks, listed by `listArchivedTasks`. */
+  archivedTasks: number;
 };
 
 /** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
 const PAGE_SIZE = 500;
 
 type PageParams = { limit: number; offset: number };
-type PageCount = { read: number; total: number };
-
-/**
- * Every page of a Project API list, from offset 0 until each of its lists (`count`) reached its `total`. A page
- * that brings no item ends the loop, so a `total` that shrinks while paging cannot make it spin.
- */
-async function readAllPages<P>(fetchPage: (params: PageParams) => Promise<P>, count: (page: P) => PageCount[]): Promise<P[]> {
-  const pages: P[] = [];
-  let offset = 0;
-  for (;;) {
-    const page = await fetchPage({ limit: PAGE_SIZE, offset });
-    pages.push(page);
-    const counts = count(page);
-    const read = Math.max(0, ...counts.map((c) => c.read));
-    offset += read;
-    if (read === 0 || counts.every((c) => offset >= c.total)) return pages;
-  }
-}
 
 /** Project visible to the caller, or `null` when it does not exist or is not visible to them (404). */
 export async function getProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle | null> {
@@ -111,32 +101,93 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
   if (!first) return null;
 
   // GET /projects/{id} pages the tasks only; it embeds the first 100 members, the others come from GET …/users/.
+  // Once the first page gives the totals, the other task pages and the members are read in parallel (MAIR-474: the
+  // 2 000 tasks of a large project took four sequential calls).
+  // The pages step by the size Project API actually served, whatever limit it applied.
+  const served = first.tasks.length;
+  const offsets: number[] = [];
+  if (served > 0) {
+    for (let offset = served; offset < first.tasks_total; offset += served) offsets.push(offset);
+  }
+  const [pages, users] = await Promise.all([
+    mapWithConcurrency(offsets, DEFAULT_CONCURRENCY, (offset) => fetchPage({ limit: PAGE_SIZE, offset })),
+    first.users.length < first.users_total ? listProjectUsers(caller, projectId) : Promise.resolve(first.users),
+  ]);
+  // A project deleted between two pages ends the list where it stopped.
   const tasks = [...first.tasks];
-  while (first.tasks.length > 0 && tasks.length < first.tasks_total) {
-    const page = await fetchPage({ limit: PAGE_SIZE, offset: tasks.length });
+  for (const page of pages) {
     if (!page || page.tasks.length === 0) break;
     tasks.push(...page.tasks);
   }
-  const users = first.users.length < first.users_total ? await listProjectUsers(caller, projectId) : first.users;
 
-  return { project: first.project, tasks, users };
+  return { project: first.project, tasks, users, archivedTasks: first.tasks_archived };
 }
 
-/** Projects visible to the caller (Project API applies the visibility rules). */
-export async function listVisibleProjects(caller: Caller): Promise<ProjetView[]> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data,
-    (page) => [{ read: page.projects.length, total: page.total }],
-  );
-  return pages.flatMap((page) => page.projects);
+/**
+ * One page of the projects visible to the caller that match `params`, with the aggregates of their tasks, their
+ * first members and the counts per status and priority of every match (MAIR-474): Project API applies the
+ * visibility rules, the filters and the paging, so a page costs one call whatever the number of projects.
+ */
+export async function listProjectsPage(caller: Caller, params: GetProjectsParams): Promise<GetProjectsResultView> {
+  return (await projectCall(caller, (options) => projectApi.getProjects(params, options), true)).data;
 }
 
-/** Every member of a project. */
+/**
+ * One task of a project visible to the caller, or `null` when the project is not visible or the task is not one of
+ * its tasks (404). One call, whatever the number of tasks of the project (MAIR-474).
+ */
+export async function getProjectTask(caller: Caller, projectId: number, taskId: number): Promise<TaskView | null> {
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getTask(projectId, taskId, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
+}
+
+/** A task of a project and every member of the project (to name its assignee), read in parallel. */
+export async function getTaskWithMembers(
+  caller: Caller,
+  projectId: number,
+  taskId: number,
+): Promise<{ task: TaskView; users: User[] } | null> {
+  const [task, users] = await Promise.all([getProjectTask(caller, projectId, taskId), listProjectUsers(caller, projectId)]);
+  return task ? { task, users } : null;
+}
+
+/**
+ * One page of the archived tasks of a project (MAIR-502), the most recently archived first, or `null` when the
+ * project is unknown or not visible to the caller (404).
+ */
+export async function listArchivedTasks(
+  caller: Caller,
+  projectId: number,
+  page: { limit: number; offset: number },
+): Promise<{ tasks: TaskView[]; total: number } | null> {
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getArchivedTasks(projectId, page, options)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }, true);
+}
+
+/**
+ * Every member of a project: the first page gives the total, the other pages are then read in parallel (MAIR-525),
+ * stepping by the size Project API actually served.
+ */
 export async function listProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, params, options), true)).data,
-    (page) => [{ read: page.users.length, total: page.total }],
-  );
+  const pages = await readOffsetPages({
+    fetchPage: async (offset) => (
+      await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, { limit: PAGE_SIZE, offset }, options), true)
+    ).data,
+    served: (page) => page.users.length,
+    total: (page) => page.total,
+  });
   return pages.flatMap((page) => page.users);
 }
 
@@ -187,16 +238,18 @@ export async function listAssignableUsers(caller: Caller, user: ProjectUserConte
     return toApiUsers(await listDirectoryUsers(caller));
   }
 
+  // Only these roles need the caller's Core profile (groups, name): read once, and only here (MAIR-525).
+  const profile = await user.profile();
   if (user.role === 'Responsable') {
-    const groupIds = user.groups.map((group) => group.id).filter((id): id is number => id !== undefined);
-    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers(caller, groupIds)) : selfOnly(user);
+    const groupIds = profile.groups.map((group) => group.id).filter((id): id is number => id !== undefined);
+    return groupIds.length > 0 ? toApiUsers(await listDirectoryUsers(caller, groupIds)) : selfOnly(user, profile);
   }
 
-  return selfOnly(user);
+  return selfOnly(user, profile);
 }
 
-function selfOnly(user: ProjectUserContext): User[] {
-  return [{ id: user.id, name: user.name }];
+function selfOnly(user: ProjectUserContext, profile: ProjectUserProfile): User[] {
+  return [{ id: user.id, name: profile.name }];
 }
 
 function toApiUsers(users: Array<{ id: number; first_name: string; last_name: string }>): User[] {
@@ -206,16 +259,17 @@ function toApiUsers(users: Array<{ id: number; first_name: string; last_name: st
   }));
 }
 
-/** Updates the title, the description and/or the status of a project. */
+/** Updates the title, the description, the status and/or the priority of a project (both stored, MAIR-558). */
 export async function updateProjectRecord(
   caller: Caller,
   projectId: number,
-  input: { title?: string; description?: string; status?: string },
+  input: { title?: string; description?: string; status?: ProjectStatus; priority?: TaskPriority },
 ): Promise<void> {
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     ...(input.title !== undefined ? { name: input.title } : {}),
     ...(input.description !== undefined ? { description: input.description } : {}),
-    ...(input.status !== undefined ? { status: toApiProjectStatus(input.status) } : {}),
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.priority !== undefined ? { priority: input.priority } : {}),
   }, options));
 }
 
@@ -230,32 +284,30 @@ export async function setProjectClosed(
   }, options));
 }
 
-function toApiProjectStatus(status: string): 'Active' | 'Suspended' | 'Completed' {
-  if (status === 'done') return 'Completed';
-  if (status === 'review') return 'Suspended';
-  return 'Active';
-}
-
 /** Comments and history of a task, as Project API assembles them (every page of both lists). */
-export async function getTaskCollaboration(caller: Caller, projectId: number, taskId: number): Promise<TaskCollaborationView> {
-  const pages = await readAllPages(
-    async (params) => (await projectCall(
-      caller,
-      (options) => projectApi.getTaskCollaboration(projectId, taskId, params, options),
-      true,
+/**
+ * Page `page` (from 1) of the follow-up of a task (MAIR-502): its `limit` most recent comments, put back in reading
+ * order (oldest first), and its `limit` most recent history entries (newest first), with both totals. One Project API
+ * call: `comments_order=latest` pages the comments from the most recent one, like the history.
+ */
+export async function getTaskCollaboration(
+  caller: Caller,
+  projectId: number,
+  taskId: number,
+  page = 1,
+  limit = 50,
+): Promise<TaskCollaborationView> {
+  const data = await projectCall(
+    caller,
+    async (options) => (await projectApi.getTaskCollaboration(
+      projectId,
+      taskId,
+      { limit, offset: (page - 1) * limit, comments_order: 'latest' },
+      options,
     )).data,
-    (page) => [
-      { read: page.comments.length, total: page.comments_total },
-      { read: page.history.length, total: page.history_total },
-    ],
+    true,
   );
-  const last = pages[pages.length - 1];
-  return {
-    comments: pages.flatMap((page) => page.comments),
-    comments_total: last.comments_total,
-    history: pages.flatMap((page) => page.history),
-    history_total: last.history_total,
-  };
+  return { ...data, comments: [...data.comments].reverse() };
 }
 
 /** Adds a comment signed by the caller (Project API reads the author from the forwarded session). */

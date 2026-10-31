@@ -31,6 +31,8 @@ export type MockReply = {
   dropConnection?: boolean;
   /** Autorise volontairement une réponse hors contrat (statut non documenté, corps non conforme). */
   outOfContract?: boolean;
+  /** Answers after this many ms: with it, `maxInFlight` shows whether the BFF sent its calls together (MAIR-525). */
+  delayMs?: number;
 };
 
 type Handler = (request: RecordedRequest) => MockReply;
@@ -44,6 +46,9 @@ export type ContractMockOptions = {
 
 export class ContractMockServer {
   readonly requests: RecordedRequest[] = [];
+  /** Requests received and not answered yet, and the most there ever were since `reset` (MAIR-525). */
+  private inFlight = 0;
+  maxInFlight = 0;
   readonly violations: string[] = [];
   private readonly handlers = new Map<string, Handler>();
   private readonly deviations: Array<{ pattern: RegExp; reason: string }> = [];
@@ -98,6 +103,7 @@ export class ContractMockServer {
   reset(): void {
     this.requests.length = 0;
     this.violations.length = 0;
+    this.maxInFlight = this.inFlight;
     this.handlers.clear();
   }
 
@@ -116,6 +122,16 @@ export class ContractMockServer {
   }
 
   private async handle(req: http.IncomingMessage, res: http.ServerResponse) {
+    this.inFlight += 1;
+    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+    try {
+      await this.answer(req, res);
+    } finally {
+      this.inFlight -= 1;
+    }
+  }
+
+  private async answer(req: http.IncomingMessage, res: http.ServerResponse) {
     const method = req.method ?? 'GET';
     const url = new URL(req.url ?? '/', this.url);
     const rawBody = await readBody(req);
@@ -146,6 +162,7 @@ export class ContractMockServer {
     }
 
     const reply = handler(request);
+    if (reply.delayMs) await new Promise((resolve) => setTimeout(resolve, reply.delayMs));
     if (reply.dropConnection) return void req.socket.destroy();
     const status = reply.status ?? 200;
     if (!reply.outOfContract) {

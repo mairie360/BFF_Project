@@ -3,6 +3,7 @@ import {
   apiErrorResponses,
   type ApiErrorStatus,
   ProjectTaskParams,
+  TaskCollaborationQuery,
   TaskCollaborationResponse,
   TaskComment,
   TaskCommentBody,
@@ -26,7 +27,9 @@ registry.registerPath({
   path: '/projects/{projectId}/tasks/{taskId}/collaboration',
   tags: ['Projects'],
   summary: 'Consulte les commentaires et l’historique d’une tâche',
-  request: { params: ProjectTaskParams },
+  description: 'Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, '
+    + 'with their totals; `page` goes back in time.',
+  request: { params: ProjectTaskParams, query: TaskCollaborationQuery },
   responses: {
     ...apiErrorResponses(...COLLABORATION_ERROR_STATUSES),
     200: { description: 'Suivi collaboratif', content: { 'application/json': { schema: TaskCollaborationResponse } } },
@@ -52,8 +55,23 @@ router.get('/:projectId/tasks/:taskId/collaboration', async (req: Request, res: 
   const { projectId, taskId } = requireTaskParams(parseRequest(ProjectTaskParams, req.params, 'params'));
   const caller = callerOf(req, COLLABORATION_ERROR_STATUSES);
 
+  const query = parseRequest(TaskCollaborationQuery, req.query, 'query');
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 50;
+
   await requireTaskView(caller, getProjectUserContext(res), projectId, taskId);
-  res.status(200).json(await getTaskCollaboration(caller, projectId, taskId));
+  const collaboration = await getTaskCollaboration(caller, projectId, taskId, page, limit);
+  res.status(200).json({
+    comments: collaboration.comments,
+    history: collaboration.history,
+    pagination: {
+      page,
+      limit,
+      commentsTotal: collaboration.comments_total,
+      historyTotal: collaboration.history_total,
+      hasNextPage: page * limit < Math.max(collaboration.comments_total, collaboration.history_total),
+    },
+  });
 });
 
 router.post('/:projectId/tasks/:taskId/comments', async (req: Request, res: Response) => {

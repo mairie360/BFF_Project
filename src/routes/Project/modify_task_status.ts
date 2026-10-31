@@ -2,15 +2,16 @@ import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectTaskParams, UpdateTaskStatusBody, ProjectTask, ErrorResponse } from '../../openapi-registry';
 import { HttpError, parseRequest } from '@mairie360/bffs-lib';
 import {
-    fetchProjectBundle,
     buildTaskDtoForUser,
     mapTaskStatusToBackend,
     patchTaskOnApi,
+    type PatchTaskView,
     requireTaskParams,
+    statusIdToBackend,
 } from './project_helpers';
 import { requireTaskStatusUpdate } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { callerOf } from '../../services/projectData';
+import { callerOf, getTaskWithMembers } from '../../services/projectData';
 
 const router = Router();
 
@@ -73,15 +74,17 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
     const caller = callerOf(req, ERROR_STATUSES);
 
     const { user } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
-    await patchTaskOnApi(caller, projectId, taskId, {
-        status: mapTaskStatusToBackend(body.status),
-    });
+    // A status of the project (MAIR-566) wins; a category alone takes the first status of it in the project.
+    const patch: PatchTaskView = body.statusId !== undefined
+        ? statusIdToBackend(body.statusId)
+        : { status: mapTaskStatusToBackend(body.status!) };
+    await patchTaskOnApi(caller, projectId, taskId, patch);
 
-    const updatedBundle = await fetchProjectBundle(caller, projectId);
-    const updatedTask = updatedBundle.tasks.find((entry) => entry.id === taskId);
-    if (!updatedTask) throw new HttpError(404, 'Task not found after update');
+    // The task alone and the members that name its assignee, not every task of the project (MAIR-474).
+    const updated = await getTaskWithMembers(caller, projectId, taskId);
+    if (!updated) throw new HttpError(404, 'Task not found after update');
 
-    res.status(200).json(buildTaskDtoForUser(user, updatedTask, updatedBundle.users));
+    res.status(200).json(buildTaskDtoForUser(user, updated.task, updated.users));
 });
 
 export default router;
