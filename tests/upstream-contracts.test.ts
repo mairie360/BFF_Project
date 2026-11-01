@@ -3,8 +3,8 @@ import path from 'node:path';
 import type { JsonSchema, OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract, resolveOrvalPackage } from './support/orval-contract';
 import {
-  agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectUsersResult, projectsResult,
-  projetView, sessionResponse, taskView, userBffUrls,
+  agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectListItem, projectUsersResult, projectsResult,
+  coreMe, group, projetView, taskView,
 } from './support/project-fixtures';
 
 // Les contrats amont sont reconstruits depuis les paquets @mairie360/*-openapi installés : monter la version
@@ -13,18 +13,15 @@ import {
 const PACKAGES = [
   { name: '@mairie360/project-api-openapi', section: 'dependencies' },
   { name: '@mairie360/core-api-openapi', section: 'dependencies' },
-  // Aligné sur l'image ghcr.io/mairie360/bff-user des stacks de test (docker-compose-*.yml).
-  { name: '@mairie360/bff-user-openapi', section: 'devDependencies' },
 ] as const;
 
 const projectApi = loadOrvalContract('@mairie360/project-api-openapi');
 const coreApi = loadOrvalContract('@mairie360/core-api-openapi');
-const userBff = loadOrvalContract('@mairie360/bff-user-openapi');
 
 /** Chemin d'une opération tel que le client généré le construit (helper `get*Url`), sans sa query string. */
 const pathname = (url: string) => new URL(url, 'http://upstream').pathname;
 
-// Opérations amont réellement appelées (src/clients/{projectClient,coreClient,userBffClient}.ts,
+// Opérations amont réellement appelées (src/clients/{projectClient,coreClient}.ts,
 // src/services/projectData.ts, project_helpers.ts, auth/project-user.ts, routes/check_apis.ts), adressées par les
 // helpers d'URL des clients générés. Le BFF n'a plus d'accès direct à PostgreSQL : tout passe par ces opérations.
 const CONSUMED = [
@@ -40,15 +37,13 @@ const CONSUMED = [
   { contract: projectApi, operationId: 'patchTask', method: 'patch', url: projectApiUrls.getPatchTaskUrl(4, 2) },
   { contract: projectApi, operationId: 'getTaskCollaboration', method: 'get', url: projectApiUrls.getGetTaskCollaborationUrl(4, 2) },
   { contract: projectApi, operationId: 'addTaskComment', method: 'post', url: projectApiUrls.getAddTaskCommentUrl(4, 2) },
-  { contract: projectApi, operationId: 'appendTaskHistory', method: 'post', url: projectApiUrls.getAppendTaskHistoryUrl(4, 2) },
   { contract: projectApi, operationId: 'getProjectUsers', method: 'get', url: projectApiUrls.getGetProjectUsersUrl(4) },
   { contract: projectApi, operationId: 'addUserToProject', method: 'post', url: projectApiUrls.getAddUserToProjectUrl(4) },
   { contract: projectApi, operationId: 'removeUserFromProject', method: 'delete', url: projectApiUrls.getRemoveUserFromProjectUrl(4, 2) },
   { contract: projectApi, operationId: 'health', method: 'get', url: projectApiUrls.getHealthUrl() },
   { contract: coreApi, operationId: 'listDirectoryUsers', method: 'get', url: coreApiUrls.getListDirectoryUsersUrl({ group_ids: '1' }) },
   { contract: coreApi, operationId: 'health', method: 'get', url: coreApiUrls.getHealthUrl() },
-  { contract: userBff, operationId: 'getMe', method: 'get', url: userBffUrls.getGetMeUrl() },
-  { contract: userBff, operationId: 'getHealth', method: 'get', url: userBffUrls.getGetHealthUrl() },
+  { contract: coreApi, operationId: 'getMe', method: 'get', url: coreApiUrls.getGetMeUrl() },
 ] as const;
 
 function responseSchema(contract: OpenApiContract, method: string, url: string, status: number): JsonSchema {
@@ -85,26 +80,29 @@ describe('upstream contracts from the installed @mairie360 OpenAPI packages', ()
   });
 
   test('Project API publishes everything the BFF used to read from PostgreSQL', () => {
-    // Lecture d'un projet, modification d'une tâche, commentaires et historique : plus aucune requête SQL côté BFF.
+    // Reading a project, patching a task, comments and history: no SQL query left on the BFF side. Lists are
+    // paginated (MAIR-425): the BFF reads every page until it reaches the totals.
     const bundle = projectApi.match('GET', projectApiUrls.getGetProjectUrl(1))!;
-    expect(projectApi.schema('GetProjectResultView')).toMatchObject({ required: ['project', 'tasks', 'users'] });
+    expect(projectApi.schema('GetProjectResultView')).toMatchObject({ required: expect.arrayContaining(['project', 'tasks', 'tasks_total', 'users', 'users_total']) });
     expect(projectApi.responseSchema(bundle, 200).schema).toEqual({ $ref: '#/components/schemas/GetProjectResultView' });
     expect(projectApi.requestBodySchema(projectApi.match('PATCH', projectApiUrls.getPatchTaskUrl(1, 2))!))
       .toEqual({ required: true, schema: { $ref: '#/components/schemas/PatchTaskView' } });
-    expect(projectApi.schema('TaskCollaborationView')).toMatchObject({ required: ['comments', 'history'] });
+    expect(projectApi.schema('TaskCollaborationView')).toMatchObject({ required: expect.arrayContaining(['comments', 'comments_total', 'history', 'history_total']) });
   });
 });
 
 describe('fixtures conform to the upstream contracts', () => {
   test.each([
-    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projetView(1), projetView(2, { status: 'Suspended' })])],
+    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
     ['Project API createProject 200', projectApi, 'post', projectApiUrls.getCreateProjectUrl(), createProjectResult(12)],
-    ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })] }],
+    ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })], total: 2 }],
     ['Project API createTask 200', projectApi, 'post', projectApiUrls.getCreateTaskUrl(1), createTaskResult(7, 'Tâche 7')],
     ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1 }, { id: 2 }])],
     ['Project API getProject 200', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1), [taskView(1)], [agents.alice])],
     ['Core API listDirectoryUsers 200', coreApi, 'get', coreApiUrls.getListDirectoryUsersUrl(), coreDirectory([agents.admin, agents.alice])],
-    ['BFF User getMe 200', userBff, 'get', userBffUrls.getGetMeUrl(), sessionResponse(agents.alice)],
+    ['Core API getMe 200', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice)],
+    ['Core API getMe 200 without role nor group', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice, { role: '', roles: [], groups: [] })],
+    ['Core API getMe 200 with several roles and groups', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.marie, { roles: ['User', 'Responsable'], groups: [group(1), group(4)] })],
   ] as const)('%s', (_name, contract, method, url, body) => {
     expect(contract.validate(responseSchema(contract, method, url, 200), body)).toEqual([]);
   });
@@ -135,9 +133,15 @@ describe('contract validator', () => {
       ]));
   });
 
-  test('resolves BFF User session unions', () => {
-    const body = { ...sessionResponse(agents.alice), roles: ['User', { id: 3 }] };
-    expect(userBff.validate(responseSchema(userBff, 'get', userBffUrls.getGetMeUrl(), 200), body))
-      .toEqual([expect.stringContaining('$.roles[1]: aucune alternative anyOf')]);
+  test('refuses a Core profile whose roles are not names', () => {
+    const body = { ...coreMe(agents.alice), roles: ['User', { id: 3 }] };
+    expect(coreApi.validate(responseSchema(coreApi, 'get', coreApiUrls.getGetMeUrl(), 200), body))
+      .toEqual([expect.stringContaining('$.roles[1]')]);
+  });
+
+  test('MAIR-525: the BFF depends on no other BFF contract', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')) as Record<string, Record<string, string>>;
+    const all = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    expect(Object.keys(all).filter((name) => name.startsWith('@mairie360/bff-'))).toEqual([]);
   });
 });

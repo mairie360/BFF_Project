@@ -14,7 +14,7 @@ import {
 import { parseRequest } from '@mairie360/bffs-lib';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { appendTaskHistory, callerOf, updateProjectRecord } from '../../services/projectData';
+import { callerOf } from '../../services/projectData';
 
 const router = Router();
 
@@ -26,7 +26,7 @@ registry.registerPath({
   path: '/projects',
   tags: ['Projects'],
   summary: 'Create a project',
-  description: 'Creates the project, its members, its status and its tasks. `priority`, `labels` and `dueDate` are accepted but not persisted by Project API (they are derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.',
+  description: 'Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.',
 
   request: {
     body: {
@@ -71,16 +71,14 @@ router.post('/', async (req: Request, res: Response) => {
   const createdProject = await createProjectOnApi(caller, mapProjectCreateBodyToBackend(body));
   const projectId = createdProject.project_id;
 
-  // Project API has no atomic creation: the members, the status and the tasks are written one call at a
-  // time, and the project is deleted again if one of them fails.
+  // Project API has no atomic creation: the members and the tasks are written one call at a time, and the
+  // project is deleted again if one of them fails. The status and the priority go with the creation (MAIR-558).
   const bundle = await withCreatedProjectRollback(caller, projectId, async () => {
     const memberIds = [body.responsibleId, ...body.assigneeIds].filter(Boolean);
     if (memberIds.length > 0) await syncProjectUsersOnApi(caller, projectId, memberIds);
-    // A new project is Active ("in-progress"); only a closed or suspended status needs a write.
-    if (body.status === 'done' || body.status === 'review') {
-      await updateProjectRecord(caller, projectId, { status: body.status });
-    }
     for (const task of body.taskItems ?? []) {
+      // Sequential on purpose: Project API numbers the tasks in creation order, which must be the order given.
+      // eslint-disable-next-line no-await-in-loop
       await createTaskOnApi(
         caller,
         projectId,
@@ -95,17 +93,13 @@ router.post('/', async (req: Request, res: Response) => {
       );
     }
 
-    const created = await fetchProjectBundle(caller, projectId);
-    await Promise.all(created.tasks.map((task) =>
-      appendTaskHistory(caller, projectId, task.id, 'task_created', `Tâche « ${task.title} » créée.`),
-    ));
-    return created;
+    return fetchProjectBundle(caller, projectId);
   });
 
-  // Only the state Project API persisted is returned: priority, labels and dueDate are not stored and
-  // are derived from the tasks.
+  // Only the state Project API persisted is returned: labels and dueDate are not stored (dueDate is derived
+  // from the tasks).
   res.status(201).json({
-    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    project: buildProjectDtoForUser(user, bundle),
     taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
   });
 });

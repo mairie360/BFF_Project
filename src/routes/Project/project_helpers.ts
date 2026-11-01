@@ -1,4 +1,4 @@
-import { HttpError, upstreamStatus, validationError } from "@mairie360/bffs-lib";
+import { HttpError, describeError, requestId, validationError } from "@mairie360/bffs-lib";
 import { z } from "zod";
 import { projectApi } from "../../clients/projectClient";
 import type {
@@ -7,7 +7,10 @@ import type {
   CreateTaskResultView,
   CreateTaskView,
   DynamicTaskField,
+  GetProjectsResultView,
+  ProjectListItemView,
   ProjetView,
+  ProjectStatus as ApiProjectStatus,
   TaskPriority as ApiTaskPriority,
   TaskStatus as ApiTaskStatus,
   TaskView,
@@ -21,12 +24,17 @@ import {
   ProjectTask as ProjectTaskSchema,
 } from "../../openapi-registry";
 import type { ProjectUserContext } from "../../auth/project-user";
+import { logger } from "../../logger";
+import { toBackendDueDate } from "./due_date";
+import { parseStatusId, parseTemplateId, statusPublicId } from "./status_helpers";
 import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
+  listProjectUsers,
   projectCall,
   type Caller,
+  type ProjectBundle,
   type ProjectPermissions,
   type TaskPermissions,
 } from "../../services/projectData";
@@ -47,6 +55,8 @@ export interface PatchTaskView {
   priority?: ApiTaskPriority;
   assigned_to?: number | null;
   due_date?: string;
+  /** A status of the task's project (MAIR-566); Project API sets `status` to its category. */
+  status_id?: number;
 }
 
 export interface TaskInputLike {
@@ -57,6 +67,8 @@ export interface TaskInputLike {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
+  /** `status-<id>` of the task's project (MAIR-566): wins over `status`, the task takes its category. */
+  statusId?: string;
 }
 
 export interface BffCreateProjectInput {
@@ -68,6 +80,7 @@ export interface BffCreateProjectInput {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
+  templateId?: string;
   taskItems?: Array<
     Pick<
       TaskInputLike,
@@ -100,10 +113,21 @@ const projectPriorityLabelMap: Record<BffProjectPriority, string> = {
 };
 
 const backendProjectStatusToBffMap: Record<string, BffProjectStatus> = {
+  Todo: "todo",
   Active: "in-progress",
+  Review: "review",
+  // Written by the close route ("suspend") and by the BFF before MAIR-558: still shown as review.
   Suspended: "review",
   Completed: "done",
   Error: "todo",
+};
+
+/** Status Project API stores for a BFF status (MAIR-558: `Todo` and `Review` are stored as such). */
+const bffProjectStatusToBackendMap: Record<BffProjectStatus, ApiProjectStatus> = {
+  todo: "Todo",
+  "in-progress": "Active",
+  review: "Review",
+  done: "Completed",
 };
 
 const backendTaskStatusToBffMap: Record<string, BffProjectStatus> = {
@@ -159,16 +183,10 @@ export function requireTaskParams(params: { projectId: string; taskId: string })
 }
 
 export async function fetchProjectUsers(caller: Caller, projectId: number): Promise<User[]> {
-  const result = (await projectCall(caller, (options) => projectApi.getProjectUsers(projectId, options), true)).data;
-
-  return result.users;
+  return listProjectUsers(caller, projectId);
 }
 
-export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<{
-  project: ProjetView;
-  tasks: TaskView[];
-  users: User[];
-}> {
+export async function fetchProjectBundle(caller: Caller, projectId: number): Promise<ProjectBundle> {
   const bundle = await getProjectBundle(caller, projectId);
   if (!bundle) throw new HttpError(404, 'Project not found.');
 
@@ -246,9 +264,10 @@ export async function withCreatedProjectRollback<T>(caller: Caller, projectId: n
     try {
       await deleteProjectOnApi(caller, projectId);
     } catch (rollbackError) {
-      // The id and the status only: the error of the call holds the caller's token and bodies (MAIR-290).
-      console.error(`[BFF Project] Could not delete the partially created project ${projectId}`, {
-        status: upstreamStatus(rollbackError) ?? "no answer",
+      logger.error("project rollback failed after a partial creation", {
+        request_id: requestId(caller.req),
+        project_id: projectId,
+        error: describeError(rollbackError),
       });
     }
     throw error;
@@ -352,6 +371,14 @@ export function mapProjectStatus(status: string): BffProjectStatus {
   return backendProjectStatusToBffMap[status] ?? "todo";
 }
 
+export function mapProjectStatusToBackend(status: BffProjectStatus): ApiProjectStatus {
+  return bffProjectStatusToBackendMap[status];
+}
+
+export function mapPriorityToBackend(priority: BffProjectPriority): ApiTaskPriority {
+  return bffTaskPriorityToBackendMap[priority];
+}
+
 export function mapTaskStatus(status: string): BffProjectStatus {
   return backendTaskStatusToBffMap[status] ?? "todo";
 }
@@ -382,60 +409,17 @@ export function mapTaskPriorityLabel(priority: BffProjectPriority): string {
   return projectPriorityLabelMap[priority];
 }
 
-function priorityWeight(priority: BffProjectPriority): number {
-  switch (priority) {
-    case "high":
-      return 3;
-    case "medium":
-      return 2;
-    case "low":
-      return 1;
-    default:
-      return 0;
-  }
-}
-
-export function deriveProjectPriority(tasks: TaskView[]): BffProjectPriority {
-  if (tasks.length === 0) {
-    return "medium";
-  }
-
-  const highest = [...tasks]
-    .map((task) => mapTaskPriority(task.priority))
-    .sort((left, right) => priorityWeight(right) - priorityWeight(left))[0];
-
-  return highest ?? "medium";
-}
-
-export function deriveProjectProgress(tasks: TaskView[]): number {
-  if (tasks.length === 0) {
+/** Share of done tasks, the `archivedTasks` (completed, MAIR-502) included. */
+export function deriveProjectProgress(tasks: TaskView[], archivedTasks = 0): number {
+  const total = tasks.length + archivedTasks;
+  if (total === 0) {
     return 0;
   }
 
   const completed = tasks.filter(
     (task) => mapTaskStatus(task.status) === "done",
-  ).length;
-  return Math.round((completed / tasks.length) * 100);
-}
-
-export function deriveProjectStatus(tasks: TaskView[]): BffProjectStatus {
-  if (tasks.length === 0) {
-    return "todo";
-  }
-
-  const completed = tasks.filter(
-    (task) => mapTaskStatus(task.status) === "done",
-  ).length;
-
-  if (completed === tasks.length) {
-    return "done";
-  }
-
-  if (completed > 0) {
-    return "in-progress";
-  }
-
-  return "todo";
+  ).length + archivedTasks;
+  return Math.round((completed / total) * 100);
 }
 
 export function deriveProjectDueDate(tasks: TaskView[]): string {
@@ -454,6 +438,8 @@ export function mapProjectToDto(
   project: ProjetView,
   tasks: TaskView[],
   users: User[],
+  // Archived tasks (MAIR-502) are completed tasks the bundle no longer lists: they count as done.
+  archivedTasks = 0,
   permissions: ProjectPermissions = {
     canView: true,
     canEdit: true,
@@ -465,7 +451,8 @@ export function mapProjectToDto(
   },
 ): BffProjectListItem {
   const status = mapProjectStatus(project.status);
-  const priority = deriveProjectPriority(tasks);
+  // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
+  const priority = mapTaskPriority(project.priority);
   const responsible =
     users.length > 0
       ? mapPerson(users[0])
@@ -484,17 +471,99 @@ export function mapProjectToDto(
     responsible,
     assignees,
     labels: [],
-    progress: deriveProjectProgress(tasks),
+    progress: deriveProjectProgress(tasks, archivedTasks),
     dueDate: deriveProjectDueDate(tasks),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
     tasks: {
-      total: tasks.length,
-      completed: tasks.filter((task) => mapTaskStatus(task.status) === "done")
-        .length,
+      total: tasks.length + archivedTasks,
+      completed: tasks.filter((task) => mapTaskStatus(task.status) === "done").length + archivedTasks,
+      active: tasks.length,
+      archived: archivedTasks,
     },
     permissions,
   };
+}
+
+/**
+ * A project of Project API's list (MAIR-474): its task aggregates (count, completed, highest priority, earliest
+ * due date) and first members come computed, with the same rules as `mapProjectToDto` derives from the tasks.
+ */
+export function mapProjectListItemToDto(
+  project: ProjectListItemView,
+  permissions: ProjectPermissions,
+): BffProjectListItem {
+  const status = mapProjectStatus(project.status);
+  const priority = mapTaskPriority(project.priority);
+  const members = project.members ?? [];
+  const responsible =
+    members.length > 0
+      ? mapPerson(members[0])
+      : mapPerson(null, projectPublicId(project.id), project.name);
+
+  return {
+    id: projectPublicId(project.id),
+    title: project.name,
+    description: project.description,
+    status,
+    statusLabel: mapProjectStatusLabel(status),
+    priority,
+    priorityLabel: mapProjectPriorityLabel(priority),
+    responsible,
+    // The first members only: the project detail lists them all.
+    assignees: members.length > 0 ? members.map((member) => mapPerson(member)) : [responsible],
+    labels: [],
+    progress: project.tasks_total > 0 ? Math.round((project.tasks_completed / project.tasks_total) * 100) : 0,
+    dueDate: project.due_date ?? nowIso(),
+    // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
+    createdAt: nowIso(),
+    // A task is archived exactly when it is completed (MAIR-502): the completed ones are the archived ones.
+    tasks: {
+      total: project.tasks_total,
+      completed: project.tasks_completed,
+      active: project.tasks_total - project.tasks_completed,
+      archived: project.tasks_completed,
+    },
+    permissions,
+  };
+}
+
+/** Summary of the projects page from Project API's counts over every matching project. */
+export function summaryFromCounts(result: GetProjectsResultView): {
+  totalProjects: number;
+  projectsByStatus: Record<BffProjectStatus, number>;
+  projectsByPriority: Record<BffProjectPriority, number>;
+} {
+  const { by_status: status, by_priority: priority } = result.summary;
+  return {
+    totalProjects: result.total,
+    // Same mapping as `mapProjectStatus`: a status Project API does not interpret (`other`) is `todo`, a
+    // suspended project is in review.
+    projectsByStatus: {
+      todo: status.todo + status.other,
+      "in-progress": status.active,
+      review: status.review + status.suspended,
+      done: status.completed,
+    },
+    projectsByPriority: { high: priority.high, medium: priority.medium, low: priority.low },
+  };
+}
+
+/**
+ * Kanban columns of the page: every column counts all the matching projects of its status (`count`), and lists
+ * the ids of the projects of the current page in it (`projectIds`), the only ones the front holds.
+ */
+export function kanbanColumnsOfPage(
+  projects: BffProjectListItem[],
+  counts: Record<BffProjectStatus, number>,
+): Array<{ status: BffProjectStatus; label: string; projectIds: string[]; count: number }> {
+  const statuses: BffProjectStatus[] = ["todo", "in-progress", "review", "done"];
+  return statuses.map((status) => ({
+    status,
+    label: projectStatusLabelMap[status],
+    projectIds: projects.filter((project) => project.status === status).map((project) => project.id),
+    count: counts[status],
+  }));
 }
 
 export function mapTaskToDto(
@@ -532,27 +601,43 @@ export function mapTaskToDto(
     completed: status === "done",
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
+    // The status of the project the task is in (MAIR-566); `status` is its category.
+    ...(task.status_id != null ? { statusId: statusPublicId(task.status_id) } : {}),
+    ...(task.status_name != null ? { statusName: task.status_name } : {}),
     permissions,
   };
+}
+
+/**
+ * `status_id` of a `statusId` (MAIR-566). The id is only checked for its shape here: Project API refuses a status of
+ * another project with a 400 the route relays.
+ */
+export function statusIdToBackend(statusId: string | undefined): { status_id?: number } {
+  if (statusId === undefined) return {};
+  const parsed = parseStatusId(statusId);
+  if (parsed === null) throw validationError("body", [{ path: ["statusId"], message: "Expected a status-<id> identifier" }]);
+  return { status_id: parsed };
 }
 
 export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   const assignedTo = task.responsibleId
     ? parseUserId(task.responsibleId)
     : null;
+  const dueDate = toBackendDueDate(task.dueDate);
 
   return {
     name: task.title,
     status: bffTaskStatusToBackendMap[task.status],
+    ...statusIdToBackend(task.statusId),
     priority: bffTaskPriorityToBackendMap[task.priority],
     assigned_to: assignedTo,
     description: null,
-    due_date: task.dueDate,
+    due_date: dueDate,
     fields: [
       {
         label: "Date",
         task_type: "date",
-        fields_options: [{ option: task.dueDate, is_selected: true }],
+        fields_options: [{ option: dueDate ?? "", is_selected: true }],
       },
       ...task.labels.map(
         (label): DynamicTaskField => ({
@@ -570,9 +655,13 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
 
   if (typeof task.title === "string") body.name = task.title;
   if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
+  const { status_id: statusId } = statusIdToBackend(task.statusId);
+  if (statusId !== undefined) body.status_id = statusId;
   if (typeof task.priority === "string") body.priority = bffTaskPriorityToBackendMap[task.priority];
   if (typeof task.responsibleId === "string") body.assigned_to = parseUserId(task.responsibleId);
-  if (typeof task.dueDate === "string") body.due_date = task.dueDate;
+  // An empty due date changes nothing: Project API reads `null` as "unchanged" and cannot clear it.
+  const dueDate = typeof task.dueDate === "string" ? toBackendDueDate(task.dueDate) : null;
+  if (dueDate) body.due_date = dueDate;
 
   return body;
 }
@@ -583,7 +672,19 @@ export function mapProjectCreateBodyToBackend(
   return {
     name: body.title,
     description: body.description,
+    // Stored as chosen (MAIR-558); absent, Project API defaults to Active / Medium.
+    ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
+    ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
+    ...templateIdToBackend(body.templateId),
   };
+}
+
+/** `template_id` of a `templateId` (MAIR-566); absent, Project API uses the default template. */
+function templateIdToBackend(templateId: string | undefined): { template_id?: number } {
+  if (templateId === undefined) return {};
+  const parsed = parseTemplateId(templateId);
+  if (parsed === null) throw validationError("body", [{ path: ["templateId"], message: "Expected a template-<id> identifier" }]);
+  return { template_id: parsed };
 }
 
 export function collectMembers(usersByProject: User[][]): Array<{
@@ -620,76 +721,6 @@ export function collectMembers(usersByProject: User[][]): Array<{
   return members;
 }
 
-export function defaultProjectSummary(projects: BffProjectListItem[]): {
-  totalProjects: number;
-  projectsByStatus: Record<string, number>;
-  projectsByPriority: Record<string, number>;
-} {
-  const projectsByStatus: Record<string, number> = {
-    todo: 0,
-    "in-progress": 0,
-    review: 0,
-    done: 0,
-  };
-
-  const projectsByPriority: Record<string, number> = {
-    high: 0,
-    medium: 0,
-    low: 0,
-  };
-
-  for (const project of projects) {
-    projectsByStatus[project.status] =
-      (projectsByStatus[project.status] ?? 0) + 1;
-    projectsByPriority[project.priority] =
-      (projectsByPriority[project.priority] ?? 0) + 1;
-  }
-
-  return {
-    totalProjects: projects.length,
-    projectsByStatus,
-    projectsByPriority,
-  };
-}
-
-export function buildKanbanColumns(projects: BffProjectListItem[]): Array<{
-  status: BffProjectStatus;
-  label: string;
-  projectIds: string[];
-  count: number;
-}> {
-  const statuses: BffProjectStatus[] = [
-    "todo",
-    "in-progress",
-    "review",
-    "done",
-  ];
-
-  return statuses.map((status) => {
-    const projectsForStatus = projects.filter(
-      (project) => project.status === status,
-    );
-
-    return {
-      status,
-      label: projectStatusLabelMap[status],
-      projectIds: projectsForStatus.map((project) => project.id),
-      count: projectsForStatus.length,
-    };
-  });
-}
-
-export function paginateProjects(
-  projects: BffProjectListItem[],
-  page: number,
-  limit: number,
-): BffProjectListItem[] {
-  const currentPage = Math.max(page, 1);
-  const currentLimit = Math.max(limit, 1);
-  const start = (currentPage - 1) * currentLimit;
-  return projects.slice(start, start + currentLimit);
-}
-
 export function buildPagination(
   total: number,
   page: number,
@@ -710,14 +741,9 @@ export function buildPagination(
   };
 }
 
-export function buildProjectDtoForUser(
-  user: ProjectUserContext,
-  project: ProjetView,
-  tasks: TaskView[],
-  users: User[],
-): BffProjectListItem {
+export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectListItem {
   // The project comes from a bundle already read: it is visible to the caller.
-  return mapProjectToDto(project, tasks, users, getProjectPermissions(user, true));
+  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, getProjectPermissions(user, true));
 }
 
 export function buildTaskDtoForUser(

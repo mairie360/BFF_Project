@@ -40,7 +40,7 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   const bundle = await fetchProjectBundle(caller, projectId);
   // The re-read status (Completed → done, Suspended → review) is returned, not the submitted one.
   res.status(200).json({
-    project: buildProjectDtoForUser(user, bundle.project, bundle.tasks, bundle.users),
+    project: buildProjectDtoForUser(user, bundle),
     taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
   });
 });

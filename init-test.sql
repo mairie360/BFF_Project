@@ -5,7 +5,11 @@
 --   * sub = "2": User role only. load-test.js signs a token for it on the fly.
 -- The other rows are scan fixtures: ZAP fills path parameters with the contract examples, so
 -- project-1 (with task-1) is read and updated, and project-2 and task-2 are the examples of the
--- DELETE routes. User 1 owns them and is their responsible / assignee (`user-1` in the examples).
+-- DELETE routes. project-3 is the example of POST /projects/{projectId}/statuses (MAIR-566): the statuses the scan
+-- creates take their names there. project-4 is the example of PATCH /projects/{projectId}/statuses/{statusId}: no
+-- other scanned operation writes to it, so the statuses (and task counts) that PATCH answers with stay the same from
+-- one probe to the next; its statuses are 10..12 (copied from the Simple template, project order), status-11 being
+-- `in-progress`. User 1 owns them and is their responsible / assignee (`user-1` in the examples).
 
 -- Passwords must be argon2id hashes (chk_users_password_hashed, MAIR-169): this is the
 -- Database template hash, nobody signs in with it (the tests use forged JWTs).
@@ -32,11 +36,13 @@ ON CONFLICT DO NOTHING;
 INSERT INTO projects (id, title, description, owner_id, responsible_id)
 VALUES
     (1, 'Scan project', 'Project read and updated by the ZAP scan', 1, 1),
-    (2, 'Scan deleted project', 'Project deleted by the ZAP scan', 1, 1)
+    (2, 'Scan deleted project', 'Project deleted by the ZAP scan', 1, 1),
+    (3, 'Scan statuses project', 'Project receiving the task statuses created by the ZAP scan', 1, 1),
+    (4, 'Scan renamed statuses project', 'Project whose task status the ZAP scan renames', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO project_members (project_id, user_id)
-VALUES (1, 1), (1, 2), (2, 1)
+VALUES (1, 1), (1, 2), (2, 1), (3, 1), (4, 1)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tasks (id, project_id, title, assigned_to)

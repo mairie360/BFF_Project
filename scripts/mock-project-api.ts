@@ -189,6 +189,8 @@ app.get('/v1/projects/', (_req: Request, res: Response) => {
       description: project.description,
       status: deriveProjectStatus(project.tasks),
     })),
+    // Project API lists are paginated (limit / offset): this mock answers a single complete page.
+    total: projects.size,
   });
 });
 
@@ -219,9 +221,16 @@ app.get('/v1/projects/:projectId/', (req: Request, res: Response) => {
   }
 
   res.json({
-    name: project.name,
-    description: project.description,
+    project: {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      status: deriveProjectStatus(project.tasks),
+    },
     tasks: project.tasks,
+    tasks_total: project.tasks.length,
+    users: project.users,
+    users_total: project.users.length,
   });
 });
 
@@ -280,7 +289,7 @@ app.get('/v1/projects/:projectId/tasks/', (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ tasks: project.tasks });
+  res.json({ tasks: project.tasks, total: project.tasks.length });
 });
 
 app.post('/v1/projects/:projectId/tasks/', (req: Request, res: Response) => {
@@ -410,7 +419,7 @@ app.get('/v1/projects/:projectId/users/', (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ users: project.users });
+  res.json({ users: project.users, total: project.users.length });
 });
 
 function addUserToProject(req: Request, res: Response): Response | void {

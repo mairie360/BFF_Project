@@ -1,4 +1,4 @@
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
 
 # Installation de curl pour le healthcheck Docker
 RUN apk add --no-cache curl
@@ -16,5 +16,8 @@ RUN --mount=type=secret,id=npmrc,target=/app/.npmrc,required=true \
 
 # On copie le reste du code source
 COPY . .
+
+RUN chown -R node:node /app
+USER node
 
 CMD ["npm", "run", "start"]

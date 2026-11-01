@@ -14,7 +14,7 @@ secrets:
   npm_token:
     environment: NODE_AUTH_TOKEN
 
-# Le BFF ne lit ni PostgreSQL ni Redis : tout passe par Project API, Core API et BFF User.
+# The BFF reads neither PostgreSQL nor Redis: everything goes through Project API and Core API (never another BFF, MAIR-525).
 x-common-env: &common-env
   HOST: "0.0.0.0"
   PORT: 4001
@@ -59,7 +59,7 @@ services:
 
   # core:
   #   container_name: core-project-bff-developpement
-  #   image: ghcr.io/mairie360/core-api:1.2.0
+  #   image: ghcr.io/mairie360/core-api:2.2.0
   #   ports:
   #     - "3000:3000"
   #   networks:
@@ -80,6 +80,7 @@ services:
   #     PUBLIC_URL: http://core.development.mairie360.fr
   #     JWT_SECRET: b"secret"
   #     JWT_TIMEOUT: 3600
+  #     JWT_ALLOW_WEAK_SECRET: "true"
   #   depends_on:
   #     liquibase:
   #       condition: service_completed_successfully
@@ -88,7 +89,7 @@ services:
 
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:0.5.1
+    image: ghcr.io/mairie360/project-api:1.2.0
     ports:
       - "3001:3001"
     networks:
@@ -110,6 +111,8 @@ services:
       PUBLIC_URL: http://project.development.mairie360.fr
       JWT_SECRET: b"secret"
       JWT_TIMEOUT: 3600
+      # mairie360_api_lib >= 2.0 refuses the well-known b"secret" without this flag (MAIR-428): local dev only.
+      JWT_ALLOW_WEAK_SECRET: "true"
     depends_on:
       redis:
         condition: service_healthy
@@ -144,7 +147,9 @@ services:
       CORE_API_PORT: 3000
       PROJECT_API_URL: "project-api"
       PROJECT_API_PORT: 3001
-      USER_BFF_URL: "http://bff-user-developpement:4000"
+      # Same development secret as the APIs and BFF User of the local stacks: the BFF verifies the session
+      # tokens with it (bffs-lib requireSession, MAIR-474) and refuses to start without it.
+      JWT_SECRET: b"secret"
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
     healthcheck:
