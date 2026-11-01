@@ -1307,7 +1307,17 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('POST /projects/:id/duplicate deletes the duplicate when a later step fails', async () => {
       signIn(admin);
-      captureLogs();
+      const logs = captureLogs();
+      const stderr: string[] = [];
+      jest.spyOn(process.stderr, 'write').mockImplementation(((chunk: string | Uint8Array) => {
+        stderr.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write);
+      for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+        jest.spyOn(console, level).mockImplementation((...args: unknown[]) => {
+          stderr.push(args.map((arg) => (arg instanceof Error ? `${arg.stack} ${JSON.stringify(arg)}` : typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '));
+        });
+      }
       mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
       projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
@@ -1316,6 +1326,16 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(502);
       expect(projectApi.calls(PROJECT.project, 'DELETE').map((call) => call.url.pathname)).toEqual([projectApiUrls.getDeleteProjectUrl(12)]);
+      // The failed rollback is logged by the project id and a description of the error, never with the axios
+      // error, which holds the caller's token and the request and response bodies (MAIR-290). Every line the BFF
+      // writes is checked, the error handler's included.
+      expect(logs).toEqual(expect.arrayContaining([
+        expect.objectContaining({ level: 'ERROR', message: 'project rollback failed after a partial creation', project_id: 12 }),
+      ]));
+      const output = [JSON.stringify(logs), ...stderr].join('\n');
+      expect(output).not.toContain(bearer(admin.id).slice('Bearer '.length));
+      expect(output).not.toContain('still down');
+      expect(output).not.toContain('database is down');
     });
 
     test('the access guards read the project bundle once per request, and a task guard only the task', async () => {
