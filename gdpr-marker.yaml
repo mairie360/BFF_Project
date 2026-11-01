@@ -3,13 +3,13 @@
 # Projects, tasks, labels and comments are free text: they carry personal data ("call <name> at
 # <phone>"), and so does the project search. The marker's values go there, into query strings
 # and into deliberate errors; the logs of every container of docker-compose-gdpr-marker.yml (the
-# BFF, Project API, Core API, BFF User, Postgres, Redis) are then searched for them (see
+# BFF, Project API, Core API, Postgres, Redis) are then searched for them (see
 # gdpr_marker_test.sh). A log describes an error by its type and context, never by the value it
 # received.
 version: 1
 target: http://bff-project:4001
 wait: /health
-# The admin JWT of the stack (sub=1, the seeded Admin), the same one the ZAP scan uses.
+# The admin JWT of the run (sub=1, the seeded Admin), signed by stack_secrets.sh with its random secret.
 env: [ADMIN_JWT]
 steps:
   - name: create a project naming the marker
