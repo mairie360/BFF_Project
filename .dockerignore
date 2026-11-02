@@ -24,4 +24,7 @@ cicd-repo
 
 # GDPR log marker test (MAIR-290)
 gdpr-report
+gdpr-simulation
 gdpr-marker.yaml
+gdpr-simulation.yaml
+gdpr-accepted-risks.yaml
