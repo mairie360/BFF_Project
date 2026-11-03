@@ -43,7 +43,7 @@ CPUSET_FILE="$(mktemp --suffix=.yml)"
 # `Responsable` (the BFF trusts the role claim, MAIR-529). Mounted read-only at /tokens.json.
 # In a private directory (mode 700): the file stays readable by the k6 container user through its bind
 # mount, never by the other users of the host (MAIR-680).
-JWT_TOKENS_DIR="$(mktemp -d)"
+JWT_TOKENS_DIR="$(mktemp -d)" || { rm -f "$CPUSET_FILE"; exit 1; }
 JWT_TOKENS_FILE="$JWT_TOKENS_DIR/tokens.json"
 MANAGER_TOKENS_FILE="$JWT_TOKENS_DIR/managers.json"
 trap 'rm -f "$CPUSET_FILE"; rm -rf "$JWT_TOKENS_DIR"' EXIT
