@@ -18,6 +18,13 @@ if [ -z "${JWT_PRIVATE_KEY:-}" ] || [ -z "${JWT_PUBLIC_KEY:-}" ]; then
     JWT_PRIVATE_KEY="$(openssl genpkey -algorithm ed25519 2>/dev/null)" || return 1
     JWT_PUBLIC_KEY="$(printf '%s\n' "$JWT_PRIVATE_KEY" | openssl pkey -pubout)" || return 1
 fi
+# A pre-exported pair must match: a token signed with another key than the one the services verify
+# with would get a 401 that does not name the cause.
+if [ "$(printf '%s\n' "$JWT_PRIVATE_KEY" | openssl pkey -pubout 2>/dev/null)" \
+    != "$(printf '%s\n' "$JWT_PUBLIC_KEY" | openssl pkey -pubin -pubout 2>/dev/null)" ]; then
+    echo "stack_secrets.sh: JWT_PUBLIC_KEY is not the public key of JWT_PRIVATE_KEY" >&2
+    return 1
+fi
 export JWT_PRIVATE_KEY JWT_PUBLIC_KEY
 
 b64url() {
