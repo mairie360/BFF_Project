@@ -22,9 +22,18 @@ erase:
   - name: delete the project
     request: {method: DELETE, path: "/projects/{{project_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
     expect: [204]
+  - name: delete the copy of the project
+    request: {method: DELETE, path: "/projects/{{copy_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [204]
   - name: the persona's project is gone after its deletion
     request:
       method: GET
       path: "/projects/{{project_id}}"
+      headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
+    expect: [404]
+  - name: the copy of the project is gone after its deletion
+    request:
+      method: GET
+      path: "/projects/{{copy_id}}"
       headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}
     expect: [404]

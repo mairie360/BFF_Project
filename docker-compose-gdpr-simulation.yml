@@ -19,6 +19,9 @@ x-db-env: &db-env
   DB_HOST: postgres
   DB_PORT: 5432
 
+# Own project name: the default one (the folder) is shared with the repo's other compose files,
+# whose postgres-data / redis-data volumes `down -v` would otherwise delete.
+name: bff-project-gdpr-sim
 services:
   postgres:
     image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-c5b8e22}

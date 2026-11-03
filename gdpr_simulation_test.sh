@@ -53,7 +53,7 @@ source ./stack_secrets.sh || exit 1
 GDPR_ENGINE_MIN_CICD="v4.12.0"
 CICD_DIR="cicd-repo"
 engine_complete() {
-    for f in simulation/simulate.mjs simulation/sql.mjs schema.sql package-lock.json; do
+    for f in simulation/simulate.mjs marker/journey.mjs simulation/sql.mjs schema.sql package.json package-lock.json; do
         [ -f "$CICD_DIR/tests/gdpr/$f" ] || return 1
     done
 }
@@ -72,6 +72,9 @@ if [ -n "${CICD_VERSION:-}" ] || ! engine_complete; then
     engine_complete || { echo "mairie360/CICD $CICD_VERSION has no complete GDPR simulation engine."; exit 1; }
 fi
 
+# The runner writes gdpr-simulation/ through a bind mount: as the host user, not root.
+export GDPR_UID="${GDPR_UID:-$(id -u)}" GDPR_GID="${GDPR_GID:-$(id -g)}"
+
 rm -rf "$RUN_DIR" && mkdir -p "$RUN_DIR/db" "$RUN_DIR/redis"
 curl -fsSL "https://raw.githubusercontent.com/mairie360/Database/$INVENTORY_REF/gdpr/inventory.yaml" -o "$RUN_DIR/inventory.yaml" \
     || { echo "No gdpr/inventory.yaml at mairie360/Database@$INVENTORY_REF (GDPR_INVENTORY_REF)."; exit 2; }
@@ -79,8 +82,20 @@ curl -fsSL "https://raw.githubusercontent.com/mairie360/Database/$INVENTORY_REF/
 # The stack is always removed, even when the script is interrupted (CI bounds it with `timeout`).
 # The logs are saved first when the run stops before step 4, so a failure can still be read.
 cleanup() {
-    [ -s "$RUN_DIR/containers.log" ] || docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" 2>/dev/null
-    docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1
+    local status=$?
+    if [ ! -s "$RUN_DIR/containers.log" ]; then
+        docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" 2>/dev/null
+        # The run stopped before step 4: the JWT check of step 4 has not run on these logs yet.
+        if [ -n "${ADMIN_JWT:-}" ] && grep -qF -- "${ADMIN_JWT##*.}" "$RUN_DIR/containers.log"; then
+            echo "The JWT of the run appears in the container logs."
+            status=1
+        fi
+    fi
+    if ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans >/dev/null 2>&1; then
+        echo "Could not remove the stack and its volumes."
+        status=1
+    fi
+    exit "$status"
 }
 trap cleanup EXIT
 psql_stack() {
@@ -89,7 +104,10 @@ psql_stack() {
 
 echo "==> [1/5] Starting the stack and the personas' journeys..."
 # Fresh volumes on every run: a volume left by a previous run would hand the stack its rows.
-docker compose -f "$COMPOSE_FILE" down -v --remove-orphans > /dev/null 2>&1
+if ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans > /dev/null 2>&1; then
+    echo "Could not remove the previous stack and its volumes: its rows would reach this run."
+    exit 1
+fi
 # A failed dependency (seeder, migration, upstream readiness) leaves the runner created but never
 # started, and `docker compose wait` would then report 0: fail here instead.
 if ! docker compose -f "$COMPOSE_FILE" up -d; then
@@ -145,7 +163,7 @@ echo "==> [4/5] Saving the Redis keys and the logs of every container..."
 # Key and TTL of every Redis key (MAIR-499: a key without TTL or outside the inventory's prefixes fails).
 # A failed scan or TTL read stops the run: an empty or partial keys.tsv would pass as clean.
 docker compose -f "$COMPOSE_FILE" exec -T redis sh -c \
-    'set -e; keys="$(redis-cli --scan)"; for k in $keys; do ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ]; printf "%s\t%s\n" "$k" "$ttl"; done' \
+    'set -e; keys="$(redis-cli --scan)"; printf "%s\n" "$keys" | while IFS= read -r k; do [ -n "$k" ] || continue; ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ] || exit 1; printf "%s\t%s\n" "$k" "$ttl"; done' \
     > "$RUN_DIR/redis/keys.tsv" || { echo "Could not read the Redis keys: the analysis would not be reliable."; exit 1; }
 # Missing or truncated logs would let the analysis pass as clean: stop instead.
 if ! docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" \
@@ -162,7 +180,10 @@ if [ -n "${ADMIN_JWT:-}" ] && grep -qF -- "${ADMIN_JWT##*.}" "$RUN_DIR/container
 fi
 
 echo "==> [5/5] Removing the stack..."
-docker compose -f "$COMPOSE_FILE" down -v
+if ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans; then
+    echo "Could not remove the stack and its volumes."
+    exit 1
+fi
 
 echo "Runner exit code: $RUNNER_EXIT"
 [ "$RUNNER_EXIT" -eq 0 ] || exit 1

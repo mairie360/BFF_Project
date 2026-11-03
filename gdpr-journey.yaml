@@ -99,6 +99,9 @@ steps:
   - name: duplicate the project
     request: {method: POST, path: "/projects/{{project_id}}/duplicate", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
     expect: [201]
+    # The copy keeps the persona's values: the erase steps delete it too.
+    capture:
+      copy_id: body.project.id
   - name: read the projects with an invalid token (deliberate error)
     request: {method: GET, path: "/projects-page?view=table", headers: {Authorization: "Bearer {{marker.password}}"}}
     expect: [401]
