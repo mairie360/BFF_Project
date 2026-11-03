@@ -52,7 +52,13 @@ source ./stack_secrets.sh || exit 1
 # (GDPR_ENGINE_MIN_CICD) while that pin is older (override with CICD_VERSION, e.g. a branch).
 GDPR_ENGINE_MIN_CICD="v4.12.0"
 CICD_DIR="cicd-repo"
-if [ ! -f "$CICD_DIR/tests/gdpr/simulation/simulate.mjs" ]; then
+engine_complete() {
+    for f in simulation/simulate.mjs simulation/sql.mjs schema.sql package-lock.json; do
+        [ -f "$CICD_DIR/tests/gdpr/$f" ] || return 1
+    done
+}
+# An explicit CICD_VERSION always re-clones, and so does an incomplete checkout.
+if [ -n "${CICD_VERSION:-}" ] || ! engine_complete; then
     if [ -z "${CICD_VERSION:-}" ]; then
         CICD_VERSION="$(sed -n 's/^[[:space:]]*cicd_version:[[:space:]]*\([^[:space:]#]*\).*/\1/p' .github/workflows/cicd.yml | head -n 1)"
         case "$CICD_VERSION" in
@@ -63,6 +69,7 @@ if [ ! -f "$CICD_DIR/tests/gdpr/simulation/simulate.mjs" ]; then
     echo "==> Fetching mairie360/CICD $CICD_VERSION into $CICD_DIR/..."
     rm -rf "$CICD_DIR"
     git clone --quiet --depth 1 --branch "$CICD_VERSION" https://github.com/mairie360/CICD "$CICD_DIR" || exit 1
+    engine_complete || { echo "mairie360/CICD $CICD_VERSION has no complete GDPR simulation engine."; exit 1; }
 fi
 
 rm -rf "$RUN_DIR" && mkdir -p "$RUN_DIR/db" "$RUN_DIR/redis"
@@ -70,7 +77,12 @@ curl -fsSL "https://raw.githubusercontent.com/mairie360/Database/$INVENTORY_REF/
     || { echo "No gdpr/inventory.yaml at mairie360/Database@$INVENTORY_REF (GDPR_INVENTORY_REF)."; exit 2; }
 
 # The stack is always removed, even when the script is interrupted (CI bounds it with `timeout`).
-trap 'docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1' EXIT
+# The logs are saved first when the run stops before step 4, so a failure can still be read.
+cleanup() {
+    [ -s "$RUN_DIR/containers.log" ] || docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" 2>/dev/null
+    docker compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1
+}
+trap cleanup EXIT
 psql_stack() {
     docker compose -f "$COMPOSE_FILE" exec -T postgres psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -At "$@"
 }
@@ -92,7 +104,9 @@ docker compose -f "$COMPOSE_FILE" logs --no-color --tail 60 gdpr-simulation
 echo "==> [2/5] Back-dating the rows of the run past their retention, then the purge..."
 # Sessions and connection logs are the tables a retention policy purges today; the rows the
 # journey wrote elsewhere are checked as they are.
-psql_stack <<'SQL'
+# ON_ERROR_STOP: a failed statement stops psql, and the run with it (the checks would read a
+# database that was never purged).
+psql_stack <<'SQL' || { echo "The back-dating or the purge failed."; exit 1; }
 UPDATE sessions SET created_at = created_at - interval '7 months', expires_at = expires_at - interval '7 months'
  WHERE created_at > now() - interval '1 day';
 UPDATE connection_logs SET timestamp = timestamp - interval '13 months'
@@ -111,12 +125,21 @@ done
 
 echo "==> [4/5] Saving the Redis keys and the logs of every container..."
 # Key and TTL of every Redis key (MAIR-499: a key without TTL or outside the inventory's prefixes fails).
+# A failed scan or TTL read stops the run: an empty or partial keys.tsv would pass as clean.
 docker compose -f "$COMPOSE_FILE" exec -T redis sh -c \
-    'redis-cli --scan | while read -r k; do printf "%s\t%s\n" "$k" "$(redis-cli TTL "$k")"; done' > "$RUN_DIR/redis/keys.tsv" || exit 1
+    'set -e; keys="$(redis-cli --scan)"; for k in $keys; do ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ]; printf "%s\t%s\n" "$k" "$ttl"; done' \
+    > "$RUN_DIR/redis/keys.tsv" || { echo "Could not read the Redis keys: the analysis would not be reliable."; exit 1; }
 # Missing or truncated logs would let the analysis pass as clean: stop instead.
 if ! docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" \
     || [ ! -s "$RUN_DIR/containers.log" ]; then
     echo "Could not save the container logs: the analysis would not be reliable."
+    exit 1
+fi
+
+# The admin JWT of the run is a credential: its signature must not appear in any log (the marker
+# test of MAIR-290 checks the same; the analysis only searches the personas' values).
+if [ -n "${ADMIN_JWT:-}" ] && grep -qF -- "${ADMIN_JWT##*.}" "$RUN_DIR/containers.log"; then
+    echo "The admin JWT of the run appears in the container logs."
     exit 1
 fi
 
