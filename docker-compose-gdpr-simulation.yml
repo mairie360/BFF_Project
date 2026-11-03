@@ -226,6 +226,7 @@ services:
     volumes:
       - ./cicd-repo/tests/gdpr:/engine:ro
       - ./gdpr-marker.yaml:/journey/gdpr-marker.yaml:ro
+      - ./gdpr-journey.yaml:/journey/gdpr-journey.yaml:ro
       - ./gdpr-simulation.yaml:/journey/gdpr-simulation.yaml:ro
       - ./gdpr-simulation:/run
     # The engine is copied out of the read-only mount before `npm ci` (no root-owned node_modules

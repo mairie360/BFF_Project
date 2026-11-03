@@ -3,18 +3,25 @@
 #
 # Fictitious personas with unique values go through the marker journey of MAIR-290 through the BFF:
 # their names, e-mails and phone numbers are written in projects, tasks, labels and comments, in
-# query strings and in deliberate errors, then the task and the project are deleted. The logs of
-# every container (BFF, Project API, Core API, Postgres, Redis), the Redis keys, the database after
-# the purge and a sample of its free-text columns are then checked and reviewed (CICD analyze.mjs).
+# query strings and in deliberate errors, then the erased persona's task and project are
+# deleted. The logs of every container (BFF, Project API, Core API, Postgres, Redis), the Redis
+# keys, the database after the purge and a sample of its free-text columns are then checked and
+# reviewed (CICD analyze.mjs).
 version: 1
-journey: gdpr-marker.yaml
+journey: gdpr-journey.yaml
 personas: 4
 erased: 1
-# A persona only lives in the free text of the project it was written in. The journey already
-# deletes the task and the project, the only deletion the BFF offers; the erase step checks that the
-# project is gone. Until the erasure of MAIR-289 reaches this content, the erasure findings of the
-# analysis are expected failures.
+# The journey (gdpr-journey.yaml) leaves the task and the project in place for every persona; the
+# erase steps delete them for the erased persona only, then check that the deletion took, so the
+# database checks compare the erased persona with the kept ones. Until the erasure of MAIR-289
+# reaches this content, the erasure findings of the analysis are expected failures.
 erase:
+  - name: delete the task
+    request: {method: DELETE, path: "/projects/{{project_id}}/tasks/{{task_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [204]
+  - name: delete the project
+    request: {method: DELETE, path: "/projects/{{project_id}}", headers: {Authorization: "Bearer {{env.ADMIN_JWT}}"}}
+    expect: [204]
   - name: the persona's project is gone after its deletion
     request:
       method: GET

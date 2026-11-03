@@ -102,16 +102,34 @@ RUNNER_EXIT=$?
 docker compose -f "$COMPOSE_FILE" logs --no-color --tail 60 gdpr-simulation
 
 echo "==> [2/5] Back-dating the rows of the run past their retention, then the purge..."
-# Sessions and connection logs are the tables a retention policy purges today; the rows the
-# journey wrote elsewhere are checked as they are.
+# Sessions and connection logs are the tables with a retention policy today; the rows the
+# journey wrote elsewhere are checked as they are. The journey may write no sessions row, so a
+# probe session is written first: the purge must remove it once back-dated, otherwise the
+# back-dating touched nothing and the retention check would pass on an empty table. The probe also
+# writes a LOGIN connection log (trigger_log_login): connection logs are kept by the purge today
+# (COLD_STORAGE, reported by the retention check until MAIR-289), so the run checks that this log
+# was back-dated past its one-year retention, which the retention check then reports.
 # ON_ERROR_STOP: a failed statement stops psql, and the run with it (the checks would read a
 # database that was never purged).
 psql_stack <<'SQL' || { echo "The back-dating or the purge failed."; exit 1; }
+INSERT INTO sessions (user_id, token_hash, device_info, created_at, expires_at)
+SELECT min(id), 'gdpr-simulation-retention-probe', 'gdpr simulation', now(), now() + interval '1 hour' FROM users;
 UPDATE sessions SET created_at = created_at - interval '7 months', expires_at = expires_at - interval '7 months'
  WHERE created_at > now() - interval '1 day';
 UPDATE connection_logs SET timestamp = timestamp - interval '13 months'
  WHERE timestamp > now() - interval '1 day';
 SELECT * FROM fn_apply_retention_policies();
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM sessions WHERE token_hash = 'gdpr-simulation-retention-probe') THEN
+        RAISE EXCEPTION 'the purge kept the back-dated probe session';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM connection_logs WHERE device_info = 'gdpr simulation'
+                    AND timestamp < now() - interval '1 year') THEN
+        RAISE EXCEPTION 'no connection log was back-dated past its retention';
+    END IF;
+END
+$$;
 SQL
 
 echo "==> [3/5] Database checks..."
