@@ -23,10 +23,16 @@ if [ -z "${IMAGE_REF:-}" ]; then
 fi
 echo "==> BFF under test: $IMAGE_REF"
 
-# Random JWT_SECRET for this run (MAIR-428): shared by Core API, the BFF and the collection, which
-# forges the JWTs of the seeded accounts with it. Nothing is signed with a committed secret.
+# Fresh Ed25519 session key pair for this run (MAIR-428, MAIR-680): Core API holds it, the BFF and
+# Project API only its public key. The seeded accounts have no known password and the Postman sandbox
+# cannot sign EdDSA, so their JWTs are signed here like Core signs them and injected into newman, with
+# a forgery (Core's kid, another key) the BFF must refuse. Nothing is signed with a committed key.
 # shellcheck source=stack_secrets.sh
 source ./stack_secrets.sh || exit 1
+JWT_ADMIN="$ADMIN_JWT"
+JWT_AGENT="$(sign_jwt 2 user 3600)" || exit 1
+JWT_FORGED="$(sign_jwt 1 admin 3600 "$(openssl genpkey -algorithm ed25519 2>/dev/null)")" || exit 1
+export JWT_ADMIN JWT_AGENT JWT_FORGED
 
 # The newman container (non-root) writes its junit report here; the CI job publishes it.
 rm -rf "$REPORT_DIR" && mkdir -p "$REPORT_DIR" && chmod a+rwx "$REPORT_DIR"

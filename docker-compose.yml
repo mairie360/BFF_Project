@@ -59,7 +59,7 @@ services:
 
   # core:
   #   container_name: core-project-bff-developpement
-  #   image: ghcr.io/mairie360/core-api:2.2.0
+  #   image: ghcr.io/mairie360/core-api:dev-3b40c2a
   #   ports:
   #     - "3000:3000"
   #   networks:
@@ -89,7 +89,7 @@ services:
 
   project-api:
     container_name: project-api-bff-project-developpement
-    image: ghcr.io/mairie360/project-api:1.2.0
+    image: ghcr.io/mairie360/project-api:dev-4e63d9b
     ports:
       - "3001:3001"
     networks:
@@ -110,6 +110,10 @@ services:
       DB_PORT: 5432
       PUBLIC_URL: http://project.development.mairie360.fr
       JWT_SECRET: b"secret"
+      # MAIR-680: the public key of the Core that signs this stack's sessions (local or remote), from the
+      # shell (`source ./stack_secrets.sh` gives a pair only for a Core started here with it); JWT_SECRET
+      # is the HS256 transition of the dev stack only.
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       JWT_TIMEOUT: 3600
       # mairie360_api_lib >= 2.0 refuses the well-known b"secret" without this flag (MAIR-428): local dev only.
       JWT_ALLOW_WEAK_SECRET: "true"
@@ -150,6 +154,10 @@ services:
       # Same development secret as the APIs and BFF User of the local stacks: the BFF verifies the session
       # tokens with it (bffs-lib requireSession, MAIR-474) and refuses to start without it.
       JWT_SECRET: b"secret"
+      # MAIR-680: the public key of the Core that signs this stack's sessions (local or remote), from the
+      # shell (`source ./stack_secrets.sh` gives a pair only for a Core started here with it); JWT_SECRET
+      # is the HS256 transition of the dev stack only.
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
     volumes:
       - /app/node_modules # Isolation des modules pour éviter les conflits OS (Mac/Windows vs Linux)
     healthcheck:
