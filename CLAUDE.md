@@ -71,7 +71,9 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
-   verified with `JWT_SECRET` (HS256, `exp`, positive `sub`); `src/index.ts` refuses to start without it.
+   verified with Core's public key `JWT_PUBLIC_KEY` (EdDSA under Core's `kid`, `iss`, `aud`, `exp`, positive `sub`;
+   MAIR-680, bffs-lib >= 2.7.0); HS256 is accepted only while `JWT_SECRET` is still set (transition).
+   `assertStartupConfiguration()` (`src/index.ts`) refuses to start without a key or with a malformed one.
 2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — reads the role from the verified token (lib
    `sessionRole`, the `role` claim of MAIR-529) without any call, or, for a token without it, from Core
    `GET /api/v1/user/me/` (`callUpstream('CORE_API', …, { declared: [401], retry: true })`); normalizes them via
@@ -204,14 +206,15 @@ init. Three scenarios: `crud` runs every handler through `coverage.run()` and ca
 stack's seeder also runs `init-perf.sql` (Project_API's volume seed: 5 000 projects, 50 000 tasks, agents
 `100001`-`102000`, Responsables `103001`-`103100` in 100 teams, hot project `project-12` with 2 000 tasks,
 `task-87` with 1 000 comments and history entries); the reads run as the Admin, a seeded Responsable or
-agent (tokens signed in k6 with the role `init-perf.sql` gives them: the BFF trusts the `role` claim since
+agent (EdDSA tokens signed by `performance_test.sh` into the file k6 reads at `/tokens.json`, k6 cannot sign
+Ed25519, MAIR-680, with the role `init-perf.sql` gives them: the BFF trusts the `role` claim since
 MAIR-529, so a Responsable signed as `user` loses the hot project's tasks), and every read checks that it got the seeded
 rows. Core ≥ MAIR-522 refuses to start without `RESEND_API_KEY` / `RESEND_BASE_URL` / `EMAIL_DOMAIN`: the stacks give it a
 fake key and an unreachable URL, since no route of this BFF sends an e-mail. Thresholds are strict:
 `checks == 100%`, `http_req_failed == 0`, `dropped_iterations == 0`. `K6_PROFILE` (passed by the compose
 file) sizes the load: `ci` (default, 30 readers, rush at 30/s) for the 4 vCPU CI runner, `stress` (100
-readers, 100/s) by hand. Both scripts source `stack_secrets.sh` (a random `JWT_SECRET` per run, `ADMIN_JWT`
-for the ZAP replacer), drop the volumes before and after a run, and `performance_test.sh` pins the stack
+readers, 100/s) by hand. Both scripts source `stack_secrets.sh` (a fresh Ed25519 key pair per run, held by Core, the
+public key alone by the BFF and Project API; `ADMIN_JWT` for the ZAP replacer and k6; MAIR-680), drop the volumes before and after a run, and `performance_test.sh` pins the stack
 to `min(PERF_CPUS, nproc)` CPUs (4 by default). `.zap/rules.tsv` no longer ignores `100000` (server
 errors). In `crud`, handlers run
 path by path in contract order and, per path, get → put → post → delete → patch, so
@@ -243,7 +246,10 @@ against `contracts/openapi.json` (status documented + schema).
 - `tests/token-refusals.test.ts` — walks `contracts/openapi.json`: every operation that inherits `bearerAuth` answers
   401 to a missing or forged token (other scheme, garbage, other secret, expired, `alg: none`, swapped payload,
   RS256, non-numeric `sub`) without any upstream call, and gets past the check with a genuine one. The tests sign
-  their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with the secret `tests/support/env.ts` sets.
+  their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with EdDSA like Core (`tests/support/session-keys.ts`,
+  whose public key `tests/support/env.ts` sets); HS256, another key and a token without `aud` are refused (MAIR-680).
+- `tests/mair-680-eddsa-session.test.ts` — startup checks (no key, malformed key), EdDSA accepted, HS256 refused
+  without any upstream call, and accepted only while `JWT_SECRET` is set (transition).
 - `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 60 % on branches, functions, lines and statements.
@@ -256,7 +262,7 @@ Core API images, database + liquibase + `init-test.sql`, Redis) and a `newman` s
 `tests/postman/collection.json` with `tests/postman/environment.json` against the BFF, `--bail` on the first
 failing request; the exit code of newman is the exit code of the script. Like the other stacks it tests the
 image named by `IMAGE_REF` (`bff-project:local` built from `development.Dockerfile` when empty), sources
-`stack_secrets.sh` (random `JWT_SECRET` per run) and drops the volumes before and after. In CI it is the
+`stack_secrets.sh` (fresh Ed25519 key pair per run, MAIR-680) and drops the volumes before and after. In CI it is the
 `integration_tests` staging gate of `promote-staging.yml` (mairie360/CICD `integration/bffs`) on the
 published `dev-<sha>` image: a failure blocks the promotion; the junit report (`newman-reports/newman.xml`,
 gitignored) is published as job summary and artifact.
@@ -278,9 +284,10 @@ The collection is split in two kinds of checks, both on the BFF's own routes:
   suspension and closing (`review` then `done`, the `status` filter of the page), deletion of the duplicate, the
   project and the template (404 afterwards).
 
-The seeded accounts have no known password: the collection-level pre-request script forges their JWTs
-(HS256 `{ sub, role, exp }`, like `mairie360_api_lib`) with the `jwt_secret` the compose file injects
-(`jwt_admin` with role `admin`, `jwt_agent` with role `user`: the BFF reads the `role` claim and Project API the
+The seeded accounts have no known password and the Postman sandbox cannot sign EdDSA: `integration_test.sh` signs
+their JWTs with the run's key like Core (MAIR-680) and the compose file injects them (`jwt_admin` with role `admin`,
+`jwt_agent` with role `user`, and `jwt_forged`, Core's `kid` with another key; the pre-request script only forges
+`jwt_hs256`, an HS256 Admin token; both are refused by `Session resolution` and the project journey; the BFF reads the `role` claim and Project API the
 `user_roles` of `init-test.sql`, which agree); the committed `environment.json` holds no secret or token. One
 fresh `run_id` per run names the rows and every row is deleted at the end, so the collection is replayable.
 Isolated endpoint checks (validation errors, token refusals) stay in jest: the collection only holds journeys

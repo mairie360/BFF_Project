@@ -23,8 +23,8 @@ fi
 export IMAGE_REF
 echo "==> BFF under test: $IMAGE_REF"
 
-# Random JWT_SECRET for this run and the admin JWT signed with it (MAIR-428, MAIR-474): nothing is
-# signed with a committed secret.
+# Fresh Ed25519 session key pair for this run and the admin JWT signed with it like Core signs it
+# (MAIR-428, MAIR-474, MAIR-680): nothing is signed with a committed key.
 # shellcheck source=stack_secrets.sh
 source ./stack_secrets.sh || exit 1
 

@@ -1,4 +1,5 @@
-import { JWT_SECRET } from './project-fixtures';
+import { useSessionPublicKey } from './session-keys';
 
-// Every test app verifies the session tokens with the secret the fixtures sign them with (bffs-lib requireSession).
-process.env.JWT_SECRET = JWT_SECRET;
+// MAIR-680: every test app verifies the session tokens with Core's public key, like a deployment once the HS256
+// transition is over (no JWT_SECRET); the fixtures sign them with Core's test key (bffs-lib requireSession).
+useSessionPublicKey();

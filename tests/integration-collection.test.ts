@@ -59,16 +59,25 @@ describe('newman integration collection (MAIR-262)', () => {
     for (const { folder } of requests) expect(folder).not.toBe('');
   });
 
-  it('forges the session tokens of the seeded accounts from the JWT_SECRET of the stack', () => {
+  it('MAIR-680: takes the EdDSA tokens of the seeded accounts from the run and only forges an HS256 token to refuse', () => {
     const prerequest = (collection.event ?? []).filter((e) => e.listen === 'prerequest').flatMap((e) => e.script?.exec ?? []).join('\n');
-    expect(prerequest).toContain("pm.environment.get('jwt_secret')");
-    expect(prerequest).toContain("pm.environment.set('jwt_admin'");
+    // No shared secret any more: the tokens are signed by integration_test.sh with the run's key.
+    expect(JSON.stringify(collection)).not.toContain('jwt_secret');
+    expect(prerequest).not.toContain("pm.environment.set('jwt_admin'");
+    expect(prerequest).toContain("pm.environment.set('jwt_hs256'");
+    const names = requests.map(({ name }) => name);
+    expect(names).toEqual(expect.arrayContaining([
+      'MAIR-680 HS256 JWT of the administrator is rejected',
+      "MAIR-680 EdDSA JWT signed with another key under Core's kid is rejected",
+      "MAIR-680 The administrator's HS256 JWT cannot create a project",
+    ]));
   });
 
   it('commits no secret: the JWT secret and the tokens of the environment are empty', () => {
     const byKey = Object.fromEntries(environment.values.map(({ key, value }) => [key, value]));
     expect(byKey.baseUrl).toMatch(/^http:\/\/localhost:\d+$/);
-    for (const key of ['jwt_secret', 'jwt_admin', 'jwt_agent']) {
+    expect(byKey).not.toHaveProperty('jwt_secret');
+    for (const key of ['jwt_admin', 'jwt_agent']) {
       expect(byKey[key]).toBe('');
     }
   });

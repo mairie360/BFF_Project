@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "BFF Project integration tests",
-    "description": "MAIR-262: working checks (the BFF starts, reaches Project API and Core API, resolves the caller from the Bearer JWT) and the project journey the Projects front relies on (templates, project creation and reading, task statuses, tasks, collaboration, archiving, duplication, closing, deletion), replayed by newman on docker-compose-integration.yml (./integration_test.sh). The seeded Admin (user 1) and agent (user 2) are impersonated with JWTs forged from the JWT_SECRET of the stack; every row the collection creates is deleted at the end so it stays replayable.",
+    "description": "MAIR-262: working checks (the BFF starts, reaches Project API and Core API, resolves the caller from the Bearer JWT) and the project journey the Projects front relies on (templates, project creation and reading, task statuses, tasks, collaboration, archiving, duplication, closing, deletion), replayed by newman on docker-compose-integration.yml (./integration_test.sh). The seeded Admin (user 1) and agent (user 2) are impersonated with EdDSA JWTs signed by integration_test.sh with the run's key, like Core signs them (MAIR-680); every row the collection creates is deleted at the end so it stays replayable.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -17,18 +17,16 @@
           "if (!pm.environment.get('test_user_email')) {",
           "    pm.environment.set('test_user_email', `newman.${pm.environment.get('run_id')}@mairie360.test`);",
           "}",
-          "// The seeded accounts have no known password: forge their JWT exactly like mairie360_api_lib::jwt_manager",
-          "// does (HS256, claims { sub, role, exp }), signed with the JWT_SECRET of the stack, injected by",
-          "// docker-compose-integration.yml (random per run, MAIR-428). `role` is the claim the BFFs read (MAIR-529).",
+          "// MAIR-680: Core alone signs the session JWTs (EdDSA) and the BFF only holds its public key. The",
+          "// seeded accounts have no known password and the Postman sandbox cannot sign EdDSA, so their JWTs",
+          "// (jwt_admin, jwt_agent, and jwt_forged: Core's kid, another key) are signed by integration_test.sh",
+          "// with the run's key and injected by docker-compose-integration.yml. This script only forges",
+          "// jwt_hs256: an HS256 token for the Admin signed with a random secret, which must be refused.",
           "const cryptoJs = require('crypto-js');",
           "const b64url = (words) => cryptoJs.enc.Base64.stringify(words).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
-          "const signJwt = (sub, role) => {",
-          "    const header = b64url(cryptoJs.enc.Utf8.parse(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));",
-          "    const payload = b64url(cryptoJs.enc.Utf8.parse(JSON.stringify({ sub: String(sub), role, exp: Math.floor(Date.now() / 1000) + 3600 })));",
-          "    return `${header}.${payload}.${b64url(cryptoJs.HmacSHA256(`${header}.${payload}`, pm.environment.get('jwt_secret')))}`;",
-          "};",
-          "pm.environment.set('jwt_admin', signJwt(pm.environment.get('admin_user_id'), 'admin'));",
-          "pm.environment.set('jwt_agent', signJwt(pm.environment.get('agent_user_id'), 'user'));"
+          "const hsHeader = b64url(cryptoJs.enc.Utf8.parse(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));",
+          "const hsPayload = b64url(cryptoJs.enc.Utf8.parse(JSON.stringify({ sub: String(pm.environment.get('admin_user_id')), role: 'admin', exp: Math.floor(Date.now() / 1000) + 3600 })));",
+          "pm.environment.set('jwt_hs256', `${hsHeader}.${hsPayload}.${b64url(cryptoJs.HmacSHA256(`${hsHeader}.${hsPayload}`, cryptoJs.lib.WordArray.random(32)))}`);"
         ]
       }
     }
@@ -226,7 +224,7 @@
           "response": []
         },
         {
-          "name": "Projects page of the seeded administrator",
+          "name": "MAIR-680 Projects page of the seeded administrator (EdDSA, Core's key)",
           "request": {
             "method": "GET",
             "header": [
@@ -267,6 +265,91 @@
                   "    pm.expect(body.page.defaultView).to.eql('kanban');",
                   "    pm.expect(body.projects).to.be.an('array');",
                   "    pm.expect(body.kanban.columns.map((c) => c.status)).to.eql(['todo', 'in-progress', 'review', 'done']);",
+                  "});",
+                  "pm.test(\"The token is an EdDSA token under Core's kid (MAIR-680)\", function () {",
+                  "    const header = JSON.parse(atob(pm.environment.get('jwt_admin').split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));",
+                  "    pm.expect(header.alg).to.eql('EdDSA');",
+                  "    pm.expect(header.kid).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-680 EdDSA JWT signed with another key under Core's kid is rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_forged}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error envelope, the token is not echoed\", function () {",
+                  "    pm.expect(pm.response.json().error).to.be.an('object');",
+                  "    pm.expect(pm.response.text()).to.not.include(pm.environment.get('jwt_forged'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-680 HS256 JWT of the administrator is rejected",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_hs256}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error envelope, the token is not echoed\", function () {",
+                  "    pm.expect(pm.response.json().error).to.be.an('object');",
+                  "    pm.expect(pm.response.text()).to.not.include(pm.environment.get('jwt_hs256'));",
                   "});"
                 ]
               }
@@ -783,6 +866,62 @@
                   "    pm.expect(body.error, 'error').to.be.an('object');",
                   "    pm.expect(body.error.code).to.be.a('string');",
                   "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-680 The administrator's HS256 JWT cannot create a project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_hs256}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// MAIR-680 business journey: what the administrator does next with Core's EdDSA token is refused to",
+                  "// an HS256 token for the same administrator, whatever secret signed it.",
+                  "pm.test(\"Status is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Error envelope, the token is not echoed\", function () {",
+                  "    pm.expect(pm.response.json().error).to.be.an('object');",
+                  "    pm.expect(pm.response.text()).to.not.include(pm.environment.get('jwt_hs256'));",
                   "});"
                 ]
               }

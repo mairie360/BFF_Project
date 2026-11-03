@@ -15,8 +15,8 @@ if [ -z "${IMAGE_REF:-}" ]; then
 fi
 echo "==> BFF under test: $IMAGE_REF"
 
-# Random JWT_SECRET for this run and the JWTs signed with it (MAIR-474): nothing is signed with
-# a committed secret.
+# Fresh Ed25519 session key pair for this run and the JWTs signed with it like Core signs them
+# (MAIR-474, MAIR-680): nothing is signed with a committed key.
 # shellcheck source=stack_secrets.sh
 source ./stack_secrets.sh || exit 1
 
@@ -38,7 +38,19 @@ PERF_CPUS="${PERF_CPUS:-4}"
 CPUS=$(nproc)
 [ "$CPUS" -gt "$PERF_CPUS" ] && CPUS="$PERF_CPUS"
 CPUSET_FILE="$(mktemp --suffix=.yml)"
-trap 'rm -f "$CPUSET_FILE"' EXIT
+# EdDSA tokens of the seeded callers for k6, whose WebCrypto cannot sign Ed25519 (MAIR-680): the
+# `user` of init-test.sql and the agents of init-perf.sql as `User`, its Responsables as
+# `Responsable` (the BFF trusts the role claim, MAIR-529). Mounted read-only at /tokens.json.
+JWT_TOKENS_FILE="$(mktemp --suffix=.json)"
+MANAGER_TOKENS_FILE="$(mktemp --suffix=.json)"
+trap 'rm -f "$CPUSET_FILE" "$JWT_TOKENS_FILE" "$MANAGER_TOKENS_FILE"' EXIT
+sign_jwt_file "$JWT_TOKENS_FILE" User 14400 2 $(seq 100001 102000) || exit 1
+sign_jwt_file "$MANAGER_TOKENS_FILE" Responsable 14400 $(seq 103001 103100) || exit 1
+node -e 'const fs = require("node:fs"); const [all, managers] = process.argv.slice(1);
+fs.writeFileSync(all, `${JSON.stringify({ ...JSON.parse(fs.readFileSync(all)), ...JSON.parse(fs.readFileSync(managers)) })}\n`);' \
+    "$JWT_TOKENS_FILE" "$MANAGER_TOKENS_FILE" || exit 1
+chmod 644 "$JWT_TOKENS_FILE"
+export JWT_TOKENS_FILE
 {
     echo "services:"
     for service in $(docker compose -f "$COMPOSE_FILE" config --services); do
