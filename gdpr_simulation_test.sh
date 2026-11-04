@@ -21,6 +21,9 @@
 # follow-up: its load scenarios are too heavy for this stack.
 
 COMPOSE_FILE="docker-compose-gdpr-simulation.yml"
+# COMPOSE_PROJECT_NAME wins over the file's `name:`: a value inherited from the caller could point the
+# `down -v` of this script at another stack and delete its volumes.
+export COMPOSE_PROJECT_NAME="bff-project-gdpr-sim"
 RUN_DIR="gdpr-simulation"
 DB="mairie_360_database"
 INVENTORY_REF="${GDPR_INVENTORY_REF:-main}"
@@ -42,34 +45,41 @@ fi
 export IMAGE_REF
 echo "==> BFF under test: $IMAGE_REF"
 
-# Random JWT_SECRET for this run and the admin JWT signed with it (MAIR-428, MAIR-474): nothing is
-# signed with a committed secret.
+# Fresh Ed25519 session key pair for this run, and ADMIN_JWT signed with it like Core signs it
+# (MAIR-428, MAIR-474, MAIR-680, stack_secrets.sh): no key or token is committed.
 # shellcheck source=stack_secrets.sh
 source ./stack_secrets.sh || exit 1
 
 # Engine. CI checks mairie360/CICD out as cicd-repo/; locally it is cloned once at the cicd_version
-# pinned in .github/workflows/cicd.yml, or at the first release that ships the engine
+# pinned in .github/workflows/cicd.yml, or at the oldest engine this script supports
 # (GDPR_ENGINE_MIN_CICD) while that pin is older (override with CICD_VERSION, e.g. a branch).
-GDPR_ENGINE_MIN_CICD="v4.12.0"
+GDPR_ENGINE_MIN_CICD="v5.3.1"
 CICD_DIR="cicd-repo"
 engine_complete() {
-    for f in simulation/simulate.mjs marker/journey.mjs simulation/sql.mjs schema.sql package.json package-lock.json; do
+    for f in simulation/simulate.mjs marker/journey.mjs simulation/sql.mjs simulation/guard.mjs simulation/personas.mjs simulation/db.mjs marker/marker.mjs inventory.mjs schema.sql package.json package-lock.json; do
         [ -f "$CICD_DIR/tests/gdpr/$f" ] || return 1
     done
 }
-# An explicit CICD_VERSION always re-clones, and so does an incomplete checkout.
-if [ -n "${CICD_VERSION:-}" ] || ! engine_complete; then
-    if [ -z "${CICD_VERSION:-}" ]; then
-        CICD_VERSION="$(sed -n 's/^[[:space:]]*cicd_version:[[:space:]]*\([^[:space:]#]*\).*/\1/p' .github/workflows/cicd.yml | head -n 1)"
-        case "$CICD_VERSION" in
-            v[0-9]*) CICD_VERSION="$(printf '%s\n%s\n' "$CICD_VERSION" "$GDPR_ENGINE_MIN_CICD" | sort -V | tail -n 1)" ;;
-            *) CICD_VERSION="$GDPR_ENGINE_MIN_CICD" ;;
-        esac
-    fi
+pinned_cicd() {
+    local pin
+    pin="$(sed -n 's/^[[:space:]]*cicd_version:[[:space:]]*\([^[:space:]#]*\).*/\1/p' .github/workflows/cicd.yml | head -n 1)"
+    case "$pin" in
+        v[0-9]*) printf '%s\n%s\n' "$pin" "$GDPR_ENGINE_MIN_CICD" | sort -V | tail -n 1 ;;
+        *) printf '%s\n' "$GDPR_ENGINE_MIN_CICD" ;;
+    esac
+}
+# A copy fetched here records its ref in .gdpr-ref and is reused only at that ref: an older engine would
+# skip checks. CI checks the engine out itself (no .gdpr-ref) at the pinned version. An explicit
+# CICD_VERSION, an incomplete copy or a copy at another ref is fetched again.
+if [ -n "${CICD_VERSION:-}" ] || ! engine_complete || {
+    [ "${GITHUB_ACTIONS:-}" != "true" ] && [ "$(cat "$CICD_DIR/.gdpr-ref" 2>/dev/null)" != "$(pinned_cicd)" ]
+}; then
+    CICD_VERSION="${CICD_VERSION:-$(pinned_cicd)}"
     echo "==> Fetching mairie360/CICD $CICD_VERSION into $CICD_DIR/..."
     rm -rf "$CICD_DIR"
     git clone --quiet --depth 1 --branch "$CICD_VERSION" https://github.com/mairie360/CICD "$CICD_DIR" || exit 1
     engine_complete || { echo "mairie360/CICD $CICD_VERSION has no complete GDPR simulation engine."; exit 1; }
+    printf '%s\n' "$CICD_VERSION" > "$CICD_DIR/.gdpr-ref"
 fi
 
 # The runner writes gdpr-simulation/ through a bind mount: as the host user, not root.
@@ -102,6 +112,7 @@ cleanup() {
     fi
     exit "$status"
 }
+STACK_REMOVED=
 trap cleanup EXIT
 psql_stack() {
     docker compose -f "$COMPOSE_FILE" exec -T postgres psql -U postgres -d "$DB" -v ON_ERROR_STOP=1 -At "$@"
@@ -166,11 +177,12 @@ done
 
 echo "==> [4/5] Saving the Redis keys and the logs of every container..."
 # Key and TTL of every Redis key (MAIR-499: a key without TTL or outside the inventory's prefixes fails).
-# A failed scan or TTL read stops the run: an empty or partial keys.tsv would pass as clean. A key
+# A failed scan or TTL read (an error reply, or a TTL that is not an integer) stops the run: an empty,
+# partial or malformed keys.tsv would pass as clean. A key
 # that expired between the scan and its TTL read (TTL -2) is skipped; a key without expiry (-1) is
 # kept for the analysis, which fails on it. An empty scan is valid: some stacks write no key.
 docker compose -f "$COMPOSE_FILE" exec -T redis sh -c \
-    'set -e; keys="$(redis-cli --scan)"; printf "%s\n" "$keys" | while IFS= read -r k; do [ -n "$k" ] || continue; ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ] || exit 1; [ "$ttl" != -2 ] || continue; printf "%s\t%s\n" "$k" "$ttl"; done' \
+    'set -e; keys="$(redis-cli --scan)"; printf "%s\n" "$keys" | while IFS= read -r k; do [ -n "$k" ] || continue; ttl="$(redis-cli -e TTL "$k")"; [ "$ttl" -ge -2 ] 2>/dev/null || exit 1; [ "$ttl" != -2 ] || continue; printf "%s\t%s\n" "$k" "$ttl"; done' \
     > "$RUN_DIR/redis/keys.tsv" || { echo "Could not read the Redis keys: the analysis would not be reliable."; exit 1; }
 # Missing or truncated logs would let the analysis pass as clean: stop instead.
 if ! docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" \
