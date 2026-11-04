@@ -24,11 +24,11 @@ jobs:
       contents: write
       packages: write
       actions: read
-    uses: mairie360/CICD/.github/workflows/promote-prod.yml@v5.2.2
+    uses: mairie360/CICD/.github/workflows/promote-prod.yml@v5.3.1
     with:
       stack: bffs
       package_name: bff-project
-      cicd_version: v5.2.2
+      cicd_version: v5.3.1
       sha: ${{ inputs.sha }}
       openapi_spec_path: contracts/openapi.json
     secrets:
