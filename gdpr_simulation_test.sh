@@ -84,14 +84,19 @@ curl -fsSL "https://raw.githubusercontent.com/mairie360/Database/$INVENTORY_REF/
 cleanup() {
     local status=$?
     if [ ! -s "$RUN_DIR/containers.log" ]; then
+        # The services are stopped first, so that the file holds every line they wrote.
+        docker compose -f "$COMPOSE_FILE" stop >/dev/null 2>&1
         docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" 2>/dev/null
-        # The run stopped before step 4: the JWT check of step 4 has not run on these logs yet.
-        if [ -n "${ADMIN_JWT:-}" ] && grep -qF -- "${ADMIN_JWT##*.}" "$RUN_DIR/containers.log"; then
-            echo "The JWT of the run appears in the container logs."
-            status=1
-        fi
     fi
-    if ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans >/dev/null 2>&1; then
+    # Whichever path saved the logs (this trap, or step 4 stopping before its own check), the JWT
+    # of the run must not be in them.
+    if [ -n "${ADMIN_JWT:-}" ] && [ -s "$RUN_DIR/containers.log" ] \
+        && grep -qF -- "${ADMIN_JWT##*.}" "$RUN_DIR/containers.log"; then
+        echo "The JWT of the run appears in the container logs."
+        status=1
+    fi
+    # Step 5 already removed the stack on a complete run: a second teardown must not fail it.
+    if [ -z "${STACK_REMOVED:-}" ] && ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans >/dev/null 2>&1; then
         echo "Could not remove the stack and its volumes."
         status=1
     fi
@@ -161,9 +166,11 @@ done
 
 echo "==> [4/5] Saving the Redis keys and the logs of every container..."
 # Key and TTL of every Redis key (MAIR-499: a key without TTL or outside the inventory's prefixes fails).
-# A failed scan or TTL read stops the run: an empty or partial keys.tsv would pass as clean.
+# A failed scan or TTL read stops the run: an empty or partial keys.tsv would pass as clean. A key
+# that expired between the scan and its TTL read (TTL -2) is skipped; a key without expiry (-1) is
+# kept for the analysis, which fails on it. An empty scan is valid: some stacks write no key.
 docker compose -f "$COMPOSE_FILE" exec -T redis sh -c \
-    'set -e; keys="$(redis-cli --scan)"; printf "%s\n" "$keys" | while IFS= read -r k; do [ -n "$k" ] || continue; ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ] || exit 1; printf "%s\t%s\n" "$k" "$ttl"; done' \
+    'set -e; keys="$(redis-cli --scan)"; printf "%s\n" "$keys" | while IFS= read -r k; do [ -n "$k" ] || continue; ttl="$(redis-cli TTL "$k")"; [ -n "$ttl" ] || exit 1; [ "$ttl" != -2 ] || continue; printf "%s\t%s\n" "$k" "$ttl"; done' \
     > "$RUN_DIR/redis/keys.tsv" || { echo "Could not read the Redis keys: the analysis would not be reliable."; exit 1; }
 # Missing or truncated logs would let the analysis pass as clean: stop instead.
 if ! docker compose -f "$COMPOSE_FILE" logs --no-color > "$RUN_DIR/containers.log" \
@@ -184,6 +191,7 @@ if ! docker compose -f "$COMPOSE_FILE" down -v --remove-orphans; then
     echo "Could not remove the stack and its volumes."
     exit 1
 fi
+STACK_REMOVED=1
 
 echo "Runner exit code: $RUNNER_EXIT"
 [ "$RUNNER_EXIT" -eq 0 ] || exit 1
