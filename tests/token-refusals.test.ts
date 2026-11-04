@@ -1,4 +1,3 @@
-import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -6,6 +5,7 @@ import { join } from 'node:path';
 import request from 'supertest';
 import app from '../src/app';
 import { JWT_SECRET, sessionToken } from './support/project-fixtures';
+import { eddsaToken, foreignKeyPair, useSessionPublicKey } from './support/session-keys';
 import { captureLogs } from './support/logs';
 
 // Token refusals on every secured operation of the published contract (MAIR-474): an operation is covered as
@@ -33,10 +33,6 @@ const operations = Object.entries(contract.paths).flatMap(([path, methods]) =>
 const secured = operations.filter((operation) => operation.secured);
 
 const base64url = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
-function signed(payload: object): string {
-    const unsigned = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${base64url(payload)}`;
-    return `${unsigned}.${createHmac('sha256', JWT_SECRET).update(unsigned).digest('base64url')}`;
-}
 const genuine = sessionToken(1);
 const [genuineHeader, , genuineSignature] = genuine.split('.');
 const forgedHeaders: Array<[string, string]> = [
@@ -45,11 +41,16 @@ const forgedHeaders: Array<[string, string]> = [
     ['an empty bearer', 'Bearer '],
     ['garbage', 'Bearer not.a.jwt'],
     ['another secret', `Bearer ${sessionToken(1, 'not-the-secret-of-this-deployment-0123')}`],
-    ['an expired token', `Bearer ${sessionToken(1, JWT_SECRET, -60)}`],
+    // MAIR-680: no JWT_SECRET any more, so an HS256 token is refused whatever secret signed it, the historical
+    // shared one included; and a token claiming Core's kid but signed with another key is refused too.
+    ['an HS256 token signed with the historical shared secret', `Bearer ${sessionToken(1, JWT_SECRET)}`],
+    ["an EdDSA token signed with another key under Core's kid", `Bearer ${eddsaToken(1, { privateKey: foreignKeyPair.privateKey })}`],
+    ['an EdDSA token without Core\'s audience', `Bearer ${eddsaToken(1, { claims: { aud: undefined } })}`],
+    ['an expired token', `Bearer ${sessionToken(1, undefined, -60)}`],
     ['alg none', `Bearer ${base64url({ alg: 'none', typ: 'JWT' })}.${base64url({ sub: '1', exp: 4_102_444_800 })}.`],
     ['a payload swapped under a valid signature', `Bearer ${genuineHeader}.${base64url({ sub: '2', exp: 4_102_444_800 })}.${genuineSignature}`],
     ['an asymmetric algorithm', `Bearer ${base64url({ alg: 'RS256', typ: 'JWT' })}.${genuine.split('.')[1]}.${genuineSignature}`],
-    ['a well-signed token with a non-numeric subject', `Bearer ${signed({ sub: 'admin', exp: 4_102_444_800 })}`],
+    ['a well-signed token with a non-numeric subject', `Bearer ${eddsaToken('admin')}`],
 ];
 
 // Stands for BFF User, Project API and Core API: counts the calls and fails them all, so a genuine token ends
@@ -68,7 +69,7 @@ beforeAll(async () => {
       process.env[`${service}_URL`] = upstream;
       delete process.env[`${service}_PORT`];
     }
-    process.env.JWT_SECRET = JWT_SECRET;
+    useSessionPublicKey();
 });
 
 afterAll(async () => {

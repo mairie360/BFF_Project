@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { eddsaToken } from './session-keys';
 // Upstream bodies typed by the models of the installed @mairie360/project-api-openapi and core-api-openapi packages:
 // a field added, removed or renamed by a contract breaks the compilation of the tests. They are also validated at run
 // time against the rebuilt contracts (upstream-contracts.test.ts, HTTP mocks). Session tokens of the tests.
@@ -58,14 +59,19 @@ export function coreMe(agent: Agent, fields: Partial<GetMeResponseView> = {}): G
   };
 }
 
-/** Secret of the tests (tests/support/env.ts): the BFF verifies the session tokens with it (bffs-lib requireSession). */
+/**
+ * The historical shared HS256 secret of the tests. Since MAIR-680 the BFF has no `JWT_SECRET` (tests/support/env.ts):
+ * a token signed with it, or with any other secret, must be refused.
+ */
 export const JWT_SECRET = 'project-contract-test-secret';
 
 /**
- * HS256 session token of `sub` signed with `secret` (fixed expiry, so a token is the same in every call). `claims`
- * adds claims, such as the `role` Core signs (MAIR-529); without it the token predates that claim.
+ * Session token of `sub` (fixed expiry, so a token is the same in every call). Signed like Core signs it (EdDSA with
+ * Core's test key, MAIR-680) unless another `secret` is given, which makes an HS256 token the BFF must refuse.
+ * `claims` adds claims, such as the `role` Core signs (MAIR-529); without it the token predates that claim.
  */
-export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_102_444_800, claims: object = {}): string {
+export function sessionToken(sub: string | number, secret?: string, exp = 4_102_444_800, claims: object = {}): string {
+  if (secret === undefined) return eddsaToken(sub, { claims: { exp, ...claims } });
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
   const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: String(sub), exp, ...claims })}`;
   return `${unsigned}.${createHmac('sha256', secret).update(unsigned).digest('base64url')}`;
@@ -73,7 +79,7 @@ export function sessionToken(sub: string | number, secret = JWT_SECRET, exp = 4_
 
 /** `Authorization` header of the session of `sub`: verified by the BFF, then forwarded to the APIs (mocked). */
 export function bearer(sub: string | number, claims: object = {}): string {
-  return `Bearer ${sessionToken(sub, JWT_SECRET, 4_102_444_800, claims)}`;
+  return `Bearer ${sessionToken(sub, undefined, 4_102_444_800, claims)}`;
 }
 
 // --- Project API (@mairie360/project-api-openapi) ---

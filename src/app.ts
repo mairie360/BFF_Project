@@ -56,7 +56,7 @@ app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
 // Session-bound routes: never cached, 401 before any upstream call without a Bearer token verified with
-// JWT_SECRET (HS256, expiry; bffs-lib requireSession, MAIR-474), then the caller's roles are read from the token
+// Core's public key JWT_PUBLIC_KEY (EdDSA, expiry; bffs-lib requireSession, MAIR-474, MAIR-680), then the caller's roles are read from the token
 // (Core API for an older token, never BFF User: MAIR-525). Project API checks that the session was not revoked.
 app.use(['/projects-page', '/projects', '/project-templates'], noStore, requireSession, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);

@@ -9,12 +9,6 @@
       "enabled": true
     },
     {
-      "key": "jwt_secret",
-      "value": "",
-      "type": "default",
-      "enabled": true
-    },
-    {
       "key": "admin_user_id",
       "value": "1",
       "type": "default",
@@ -40,6 +34,18 @@
     },
     {
       "key": "jwt_agent",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_forged",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_hs256",
       "value": "",
       "type": "default",
       "enabled": true
