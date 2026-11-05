@@ -219,7 +219,7 @@ services:
       start_period: 40s
 
   gdpr-simulation:
-    image: node:24-bookworm-slim
+    image: node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
     container_name: bff-project-sim-marker
     user: "${GDPR_UID:-0}:${GDPR_GID:-0}"
     depends_on:
