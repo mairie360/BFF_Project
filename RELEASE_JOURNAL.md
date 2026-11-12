@@ -1,12 +1,12 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "599b001e242b489d3079c1f2ab3f0c1e745c50f6", "prod": "7a1180347136345128f6e55101ee5a9d8d56ec2e", "prod_tag": "v1.1.0", "staging": "7a1180347136345128f6e55101ee5a9d8d56ec2e", "updated": {"dev": "2026-11-12 13:18 UTC", "prod": "2026-10-21 10:10 UTC", "staging": "2026-10-21 09:40 UTC"}} -->
+<!-- release-journal-state {"dev": "599b001e242b489d3079c1f2ab3f0c1e745c50f6", "prod": "7a1180347136345128f6e55101ee5a9d8d56ec2e", "prod_tag": "v1.1.0", "staging": "599b001e242b489d3079c1f2ab3f0c1e745c50f6", "updated": {"dev": "2026-11-12 13:18 UTC", "prod": "2026-10-21 10:10 UTC", "staging": "2026-11-12 18:58 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v1.1.0 | `7a11803` | 2026-10-21 10:10 UTC |
-| staging | — | `7a11803` | 2026-10-21 09:40 UTC |
+| staging | — | `599b001` | 2026-11-12 18:58 UTC |
 | dev | — | `599b001` | 2026-11-12 13:18 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v1.1.0)
@@ -26,6 +26,10 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+_Rien._
+
+## Différence staging → prod (en staging, pas encore en prod)
+
 - fix(deps): MAIR-816 Release dev: align internal versions and deploy (#253) ([#253](https://github.com/mairie360/BFF_Project/pull/253))
 - chore(deps): pin node.js to c86ecea (#249) ([#249](https://github.com/mairie360/BFF_Project/pull/249))
 - feat: MAIR-497 GDPR - Usage simulation and AI review of logs and database before prod ([#245](https://github.com/mairie360/BFF_Project/pull/245))
@@ -39,10 +43,6 @@
 - feat: MAIR-262 Tests d'intégration - Tests de fonctionnement des APIs, tests métier des BFFs et tests de régression (#234) ([#234](https://github.com/mairie360/BFF_Project/pull/234))
 - docs: MAIR-612 Release prod: align internal versions and deploy (#232) ([#232](https://github.com/mairie360/BFF_Project/pull/232))
 
-## Différence staging → prod (en staging, pas encore en prod)
-
-_Rien._
-
 > Résumé Claude indisponible pour ce passage : listes brutes des commits.
 
 ## Historique des passages
@@ -50,6 +50,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-12 18:58 UTC | staging | — | `599b001` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43284378796) |
 | 2026-11-12 13:18 UTC | dev | — | `599b001` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43225199790) |
 | 2026-11-05 03:14 UTC | dev | — | `dda8c7b` | [run](https://github.com/mairie360/BFF_Project/actions/runs/41959913610) |
 | 2026-11-04 18:26 UTC | dev | — | `6ef2738` | [run](https://github.com/mairie360/BFF_Project/actions/runs/41883056590) |
