@@ -1,29 +1,17 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod": "7a1180347136345128f6e55101ee5a9d8d56ec2e", "prod_tag": "v1.1.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-13 00:19 UTC", "prod": "2026-10-21 10:10 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
+<!-- release-journal-state {"dev": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-13 00:19 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
-| prod | v1.1.0 | `7a11803` | 2026-10-21 10:10 UTC |
+| prod | v1.2.0 | `26cf27d` | 2026-11-13 00:45 UTC |
 | staging | — | `26cf27d` | 2026-11-13 00:28 UTC |
 | dev | — | `26cf27d` | 2026-11-13 00:19 UTC |
 
-## Ajouté sur main depuis la dernière release prod (v1.1.0)
+## Ajouté sur main depuis la dernière release prod (v1.2.0)
 
-- fix(deps): MAIR-1003 Release prod: align internal versions and deploy ([#258](https://github.com/mairie360/BFF_Project/pull/258))
-- fix(deps): MAIR-816 Release dev: align internal versions and deploy (#253) ([#253](https://github.com/mairie360/BFF_Project/pull/253))
-- chore(deps): pin node.js to c86ecea (#249) ([#249](https://github.com/mairie360/BFF_Project/pull/249))
-- feat: MAIR-497 GDPR - Usage simulation and AI review of logs and database before prod ([#245](https://github.com/mairie360/BFF_Project/pull/245))
-- fix: MAIR-680 [Audit 23/10] Toutes les APIs et BFFs : remplacer le secret JWT HS256 partagé par 12 services (A1) ([#247](https://github.com/mairie360/BFF_Project/pull/247))
-- fix: MAIR-680 [Audit 23/10] Toutes les APIs et BFFs : remplacer le secret JWT HS256 partagé par 12 services (A1) ([#246](https://github.com/mairie360/BFF_Project/pull/246))
-- chore(deps): pin dependencies (#242) ([#242](https://github.com/mairie360/BFF_Project/pull/242))
-- ci: MAIR-771 APIs, BFFs, Database : monter CICD en v5.2.2 pour activer les contrôles RGPD (#241) ([#241](https://github.com/mairie360/BFF_Project/pull/241))
-- fix: MAIR-290 Détecter les données personnelles dans les journaux avec un test du marqueur (#172) ([#172](https://github.com/mairie360/BFF_Project/pull/172))
-- ci: MAIR-295 Ajouter une checklist RGPD aux PR et des rappels d'échéances automatiques (#177) ([#177](https://github.com/mairie360/BFF_Project/pull/177))
-- fix(security): patch Node.js runtime and toolchain (#235) ([#235](https://github.com/mairie360/BFF_Project/pull/235))
-- feat: MAIR-262 Tests d'intégration - Tests de fonctionnement des APIs, tests métier des BFFs et tests de régression (#234) ([#234](https://github.com/mairie360/BFF_Project/pull/234))
-- docs: MAIR-612 Release prod: align internal versions and deploy (#232) ([#232](https://github.com/mairie360/BFF_Project/pull/232))
+_Rien._
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
@@ -31,27 +19,14 @@ _Rien._
 
 ## Différence staging → prod (en staging, pas encore en prod)
 
-- fix(deps): MAIR-1003 Release prod: align internal versions and deploy ([#258](https://github.com/mairie360/BFF_Project/pull/258))
-- fix(deps): MAIR-816 Release dev: align internal versions and deploy (#253) ([#253](https://github.com/mairie360/BFF_Project/pull/253))
-- chore(deps): pin node.js to c86ecea (#249) ([#249](https://github.com/mairie360/BFF_Project/pull/249))
-- feat: MAIR-497 GDPR - Usage simulation and AI review of logs and database before prod ([#245](https://github.com/mairie360/BFF_Project/pull/245))
-- fix: MAIR-680 [Audit 23/10] Toutes les APIs et BFFs : remplacer le secret JWT HS256 partagé par 12 services (A1) ([#247](https://github.com/mairie360/BFF_Project/pull/247))
-- fix: MAIR-680 [Audit 23/10] Toutes les APIs et BFFs : remplacer le secret JWT HS256 partagé par 12 services (A1) ([#246](https://github.com/mairie360/BFF_Project/pull/246))
-- chore(deps): pin dependencies (#242) ([#242](https://github.com/mairie360/BFF_Project/pull/242))
-- ci: MAIR-771 APIs, BFFs, Database : monter CICD en v5.2.2 pour activer les contrôles RGPD (#241) ([#241](https://github.com/mairie360/BFF_Project/pull/241))
-- fix: MAIR-290 Détecter les données personnelles dans les journaux avec un test du marqueur (#172) ([#172](https://github.com/mairie360/BFF_Project/pull/172))
-- ci: MAIR-295 Ajouter une checklist RGPD aux PR et des rappels d'échéances automatiques (#177) ([#177](https://github.com/mairie360/BFF_Project/pull/177))
-- fix(security): patch Node.js runtime and toolchain (#235) ([#235](https://github.com/mairie360/BFF_Project/pull/235))
-- feat: MAIR-262 Tests d'intégration - Tests de fonctionnement des APIs, tests métier des BFFs et tests de régression (#234) ([#234](https://github.com/mairie360/BFF_Project/pull/234))
-- docs: MAIR-612 Release prod: align internal versions and deploy (#232) ([#232](https://github.com/mairie360/BFF_Project/pull/232))
-
-> Résumé Claude indisponible pour ce passage : listes brutes des commits.
+_Rien._
 
 ## Historique des passages
 
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-13 00:45 UTC | prod | v1.2.0 | `26cf27d` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43337395894) |
 | 2026-11-13 00:28 UTC | staging | — | `26cf27d` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43336262989) |
 | 2026-11-13 00:19 UTC | dev | — | `26cf27d` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43334763889) |
 | 2026-11-12 18:58 UTC | staging | — | `599b001` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43284378796) |
