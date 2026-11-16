@@ -1,0 +1,90 @@
+name: Nightly gates
+
+# MAIR-1008: rehearses every gate of promote-staging and promote-prod in dry run (no tag, no
+# package, no release) on main's newest commit, so a broken gate is found the night it breaks,
+# not on release day. Skipped when that commit was already rehearsed; the Claude-backed reviews
+# only run on the weekly pass (Monday) or with `-f ai=true`.
+on:
+  schedule:
+    - cron: "24 2 * * *"   # staggered per repo (UTC)
+  workflow_dispatch:
+    inputs:
+      ai:
+        description: "Also run the Claude-backed reviews"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-gates-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+      sha: ${{ steps.check.outputs.sha }}
+      ai: ${{ steps.check.outputs.ai }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v7
+        with:
+          repository: mairie360/CICD
+          ref: v5.10.0
+          path: cicd-repo
+          sparse-checkout: actions
+      - id: check
+        uses: ./cicd-repo/actions/promote/nightly-check
+        with:
+          ai: ${{ inputs.ai || false }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  staging:
+    needs: check
+    if: needs.check.outputs.run == 'true'
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    uses: mairie360/CICD/.github/workflows/promote-staging.yml@v5.10.0
+    with:
+      stack: bffs
+      package_name: bff-project
+      cicd_version: v5.10.0
+      sha: ${{ needs.check.outputs.sha }}
+      openapi_spec_path: contracts/openapi.json
+      dry_run: true
+    secrets:
+      N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
+      ANTHROPIC_API_KEY: ${{ needs.check.outputs.ai == 'true' && secrets.ANTHROPIC_API_KEY || '' }}
+      RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+      RELEASE_APP_PK: ${{ secrets.RELEASE_APP_PK }}
+
+  prod:
+    needs: [check, staging]
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+    uses: mairie360/CICD/.github/workflows/promote-prod.yml@v5.10.0
+    with:
+      stack: bffs
+      package_name: bff-project
+      cicd_version: v5.10.0
+      sha: ${{ needs.check.outputs.sha }}
+      openapi_spec_path: contracts/openapi.json
+      dry_run: true
+    secrets:
+      N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
+      ANTHROPIC_API_KEY: ${{ needs.check.outputs.ai == 'true' && secrets.ANTHROPIC_API_KEY || '' }}
+      ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+      RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+      RELEASE_APP_PK: ${{ secrets.RELEASE_APP_PK }}
