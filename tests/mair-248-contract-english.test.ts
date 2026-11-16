@@ -15,6 +15,7 @@ const FRENCH_WORDS = new Set([
   // "Charge la page projets" went through with the list above alone).
   'de', 'du', 'le', 'la', 'au', 'aux', 'nom', 'fin', 'suivi', 'contenu', 'adresse',
   'initiales', 'dernier', 'heure', 'complet', 'affichable', 'supprime', 'personne',
+  'identifiants', 'invalide', 'invalides',
 ]);
 
 /**
@@ -56,7 +57,7 @@ describe('MAIR-248 contract language', () => {
     [
       'Nom du contact', 'Contenu du message', 'Description de la mention', 'Nom complet affichable',
       'Date de fin au format YYYY-MM-DD', 'Charge la page projets', 'Suivi collaboratif',
-      'Force le changement de mot de passe', 'Configuration du footer',
+      'Force le changement de mot de passe', 'Configuration du footer', 'Identifiants invalides',
     ].forEach((text) => expect(isFrench(text)).toBe(true));
     expect(isFrench('End date (YYYY-MM-DD)')).toBe(false);
     expect(isFrench('Load the projects page')).toBe(false);
