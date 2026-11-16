@@ -15,7 +15,7 @@ registry.registerPath({
   method: 'get',
   path: '/projects/{projectId}',
   tags: ['Projects'],
-  summary: 'Récupère le détail d’un projet',
+  summary: 'Get the detail of a project',
 
   request: {
     params: ProjectIdParams,
@@ -24,7 +24,7 @@ registry.registerPath({
   responses: {
     ...apiErrorResponses(...ERROR_STATUSES),
     200: {
-      description: 'Projet trouvé',
+      description: 'Project found',
       content: {
         'application/json': {
           schema: ProjectDetailsResponse,

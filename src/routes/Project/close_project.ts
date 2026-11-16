@@ -15,14 +15,14 @@ registry.registerPath({
   method: 'patch',
   path: '/projects/{projectId}/close',
   tags: ['Projects'],
-  summary: 'Clôture ou suspend un projet',
+  summary: 'Close or suspend a project',
   request: {
     params: ProjectIdParams,
     body: { required: true, content: { 'application/json': { schema: CloseProjectBody } } },
   },
   responses: {
     ...apiErrorResponses(...ERROR_STATUSES),
-    200: { description: 'Projet clôturé ou suspendu', content: { 'application/json': { schema: ProjectDetailsResponse } } },
+    200: { description: 'Project closed or suspended', content: { 'application/json': { schema: ProjectDetailsResponse } } },
     403: { description: 'Insufficient rights', content: { 'application/json': { schema: ErrorResponse } } },
   },
 });

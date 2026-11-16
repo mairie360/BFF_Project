@@ -24,7 +24,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         204: {
-            description: 'Projet supprimé avec succès',
+            description: 'Project deleted',
         },
 
         404: {

@@ -26,7 +26,7 @@
           "review",
           "done"
         ],
-        "description": "Le statut du projet",
+        "description": "Status of the project",
         "example": "todo"
       },
       "ProjectPriority": {
@@ -36,7 +36,7 @@
           "medium",
           "low"
         ],
-        "description": "La priorité du projet",
+        "description": "Priority of the project",
         "example": "high"
       },
       "ViewMode": {
@@ -46,7 +46,7 @@
           "grid",
           "table"
         ],
-        "description": "Le mode de vue pour les projets",
+        "description": "View mode of the projects",
         "example": "kanban"
       },
       "Person": {
@@ -54,12 +54,12 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "L'identifiant unique de la personne",
+            "description": "Unique id of the person",
             "example": "123e4567-e89b-12d3-a456-426614174000"
           },
           "name": {
             "type": "string",
-            "description": "Le nom de la personne",
+            "description": "Name of the person",
             "example": "John Doe"
           },
           "avatarUrl": {
@@ -77,25 +77,25 @@
           "name",
           "avatarUrl"
         ],
-        "description": "Une personne assignable à un projet"
+        "description": "A person who can be assigned to a project"
       },
       "ProjectListItem": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "L'identifiant unique du projet",
+            "description": "Unique id of the project",
             "example": "123e4567-e89b-12d3-a456-426614174000"
           },
           "title": {
             "type": "string",
-            "description": "Le titre du projet",
-            "example": "Nouveau projet"
+            "description": "Title of the project",
+            "example": "New project"
           },
           "description": {
             "type": "string",
-            "description": "La description du projet",
-            "example": "Description détaillée du projet"
+            "description": "Description of the project",
+            "example": "Detailed description of the project"
           },
           "status": {
             "type": "string",
@@ -105,12 +105,12 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "statusLabel": {
             "type": "string",
-            "description": "Le libellé du statut du projet",
+            "description": "Label of the project status",
             "example": "À faire"
           },
           "priority": {
@@ -120,12 +120,12 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "priorityLabel": {
             "type": "string",
-            "description": "Le libellé de la priorité du projet",
+            "description": "Label of the project priority",
             "example": "Haute"
           },
           "responsible": {
@@ -133,12 +133,12 @@
             "properties": {
               "id": {
                 "type": "string",
-                "description": "L'identifiant unique de la personne",
+                "description": "Unique id of the person",
                 "example": "123e4567-e89b-12d3-a456-426614174000"
               },
               "name": {
                 "type": "string",
-                "description": "Le nom de la personne",
+                "description": "Name of the person",
                 "example": "John Doe"
               },
               "avatarUrl": {
@@ -156,7 +156,7 @@
               "name",
               "avatarUrl"
             ],
-            "description": "Une personne assignable à un projet"
+            "description": "A person who can be assigned to a project"
           },
           "assignees": {
             "type": "array",
@@ -165,12 +165,12 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "L'identifiant unique de la personne",
+                  "description": "Unique id of the person",
                   "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "name": {
                   "type": "string",
-                  "description": "Le nom de la personne",
+                  "description": "Name of the person",
                   "example": "John Doe"
                 },
                 "avatarUrl": {
@@ -188,7 +188,7 @@
                 "name",
                 "avatarUrl"
               ],
-              "description": "Une personne assignable à un projet"
+              "description": "A person who can be assigned to a project"
             },
             "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
           },
@@ -197,7 +197,7 @@
             "items": {
               "type": "string"
             },
-            "description": "La liste des étiquettes associées au projet",
+            "description": "Labels of the project",
             "example": [
               "frontend",
               "urgent"
@@ -207,17 +207,17 @@
             "type": "number",
             "minimum": 0,
             "maximum": 100,
-            "description": "Le pourcentage d'avancement du projet",
+            "description": "Progress of the project, in percent",
             "example": 75
           },
           "dueDate": {
             "type": "string",
-            "description": "La date d'échéance du projet au format ISO 8601",
+            "description": "Due date of the project, ISO 8601",
             "example": "2024-12-31T23:59:59Z"
           },
           "createdAt": {
             "type": "string",
-            "description": "La date de création du projet au format ISO 8601",
+            "description": "Creation date of the project, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
           "tasks": {
@@ -257,27 +257,27 @@
             "properties": {
               "canView": {
                 "type": "boolean",
-                "description": "Indique si l'utilisateur peut voir le projet",
+                "description": "Whether the user can see the project",
                 "example": true
               },
               "canEdit": {
                 "type": "boolean",
-                "description": "Indique si l'utilisateur peut éditer le projet",
+                "description": "Whether the user can edit the project",
                 "example": true
               },
               "canDuplicate": {
                 "type": "boolean",
-                "description": "Indique si l'utilisateur peut dupliquer le projet",
+                "description": "Whether the user can duplicate the project",
                 "example": false
               },
               "canDelete": {
                 "type": "boolean",
-                "description": "Indique si l'utilisateur peut supprimer le projet",
+                "description": "Whether the user can delete the project",
                 "example": false
               },
               "canCreateTask": {
                 "type": "boolean",
-                "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                "description": "Whether the user can create tasks in the project",
                 "example": true
               },
               "canAssignMembers": {
@@ -296,7 +296,7 @@
               "canAssignMembers",
               "canClose"
             ],
-            "description": "Les permissions de l'utilisateur sur le projet"
+            "description": "Permissions of the user on the project"
           }
         },
         "required": [
@@ -316,20 +316,20 @@
           "tasks",
           "permissions"
         ],
-        "description": "Un projet pour les vues de type carte, table ou kanban"
+        "description": "A project for the card, table or kanban views"
       },
       "ProjectTask": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "L'identifiant unique de la tâche",
+            "description": "Unique id of the task",
             "example": "123e4567-e89b-12d3-a456-426614174000"
           },
           "title": {
             "type": "string",
-            "description": "Le titre de la tâche",
-            "example": "Nouvelle tâche"
+            "description": "Title of the task",
+            "example": "New task"
           },
           "status": {
             "type": "string",
@@ -339,12 +339,12 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "statusLabel": {
             "type": "string",
-            "description": "Le libellé du statut de la tâche",
+            "description": "Label of the task status",
             "example": "À faire"
           },
           "responsible": {
@@ -352,12 +352,12 @@
             "properties": {
               "id": {
                 "type": "string",
-                "description": "L'identifiant unique de la personne",
+                "description": "Unique id of the person",
                 "example": "123e4567-e89b-12d3-a456-426614174000"
               },
               "name": {
                 "type": "string",
-                "description": "Le nom de la personne",
+                "description": "Name of the person",
                 "example": "John Doe"
               },
               "avatarUrl": {
@@ -375,7 +375,7 @@
               "name",
               "avatarUrl"
             ],
-            "description": "Une personne assignable à un projet"
+            "description": "A person who can be assigned to a project"
           },
           "assignees": {
             "type": "array",
@@ -384,12 +384,12 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "L'identifiant unique de la personne",
+                  "description": "Unique id of the person",
                   "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "name": {
                   "type": "string",
-                  "description": "Le nom de la personne",
+                  "description": "Name of the person",
                   "example": "John Doe"
                 },
                 "avatarUrl": {
@@ -407,9 +407,9 @@
                 "name",
                 "avatarUrl"
               ],
-              "description": "Une personne assignable à un projet"
+              "description": "A person who can be assigned to a project"
             },
-            "description": "La liste des personnes assignées à la tâche"
+            "description": "People assigned to the task"
           },
           "priority": {
             "type": "string",
@@ -418,12 +418,12 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "priorityLabel": {
             "type": "string",
-            "description": "Le libellé de la priorité de la tâche",
+            "description": "Label of the task priority",
             "example": "Moyenne"
           },
           "labels": {
@@ -431,7 +431,7 @@
             "items": {
               "type": "string"
             },
-            "description": "La liste des étiquettes associées à la  tâche",
+            "description": "Labels of the task",
             "example": [
               "backend",
               "important"
@@ -439,22 +439,22 @@
           },
           "dueDate": {
             "type": "string",
-            "description": "La date d'échéance de la tâche au format ISO 8601",
+            "description": "Due date of the task, ISO 8601",
             "example": "2024-12-31T23:59:59Z"
           },
           "completed": {
             "type": "boolean",
-            "description": "Indique si la tâche est complétée",
+            "description": "Whether the task is completed",
             "example": false
           },
           "createdAt": {
             "type": "string",
-            "description": "La date de création de la tâche au format ISO 8601",
+            "description": "Creation date of the task, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
           "updatedAt": {
             "type": "string",
-            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+            "description": "Date of the last update of the task, ISO 8601",
             "example": "2024-01-15T15:30:00Z"
           },
           "statusId": {
@@ -510,14 +510,14 @@
           "createdAt",
           "permissions"
         ],
-        "description": "Une tâche associée à un projet"
+        "description": "A task of a project"
       },
       "ProjectIdParams": {
         "type": "object",
         "properties": {
           "projectId": {
             "type": "string",
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "example": "project-1"
           }
         },
@@ -530,12 +530,12 @@
         "properties": {
           "projectId": {
             "type": "string",
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "example": "project-1"
           },
           "taskId": {
             "type": "string",
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "example": "task-1"
           }
         },
@@ -587,7 +587,7 @@
               "grid",
               "table"
             ],
-            "description": "Le mode de vue pour les projets",
+            "description": "View mode of the projects",
             "example": "kanban"
           },
           "page": {
@@ -627,7 +627,7 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "priority": {
@@ -637,7 +637,7 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "responsibleId": {
@@ -684,7 +684,7 @@
                     "review",
                     "done"
                   ],
-                  "description": "Le statut du projet",
+                  "description": "Status of the project",
                   "example": "todo"
                 },
                 "priority": {
@@ -694,7 +694,7 @@
                     "medium",
                     "low"
                   ],
-                  "description": "La priorité du projet",
+                  "description": "Priority of the project",
                   "example": "high"
                 },
                 "assigneeIds": {
@@ -768,7 +768,7 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "priority": {
@@ -778,7 +778,7 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "responsibleId": {
@@ -825,7 +825,7 @@
                     "review",
                     "done"
                   ],
-                  "description": "Le statut du projet",
+                  "description": "Status of the project",
                   "example": "todo"
                 },
                 "priority": {
@@ -835,7 +835,7 @@
                     "medium",
                     "low"
                   ],
-                  "description": "La priorité du projet",
+                  "description": "Priority of the project",
                   "example": "high"
                 },
                 "assigneeIds": {
@@ -888,7 +888,7 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "priority": {
@@ -898,7 +898,7 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "responsibleId": {
@@ -960,7 +960,7 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "priority": {
@@ -970,7 +970,7 @@
               "medium",
               "low"
             ],
-            "description": "La priorité du projet",
+            "description": "Priority of the project",
             "example": "high"
           },
           "responsibleId": {
@@ -1018,7 +1018,7 @@
               "review",
               "done"
             ],
-            "description": "Le statut du projet",
+            "description": "Status of the project",
             "example": "todo"
           },
           "statusId": {
@@ -1269,18 +1269,18 @@
             "properties": {
               "id": {
                 "type": "string",
-                "description": "L'identifiant unique du projet",
+                "description": "Unique id of the project",
                 "example": "123e4567-e89b-12d3-a456-426614174000"
               },
               "title": {
                 "type": "string",
-                "description": "Le titre du projet",
-                "example": "Nouveau projet"
+                "description": "Title of the project",
+                "example": "New project"
               },
               "description": {
                 "type": "string",
-                "description": "La description du projet",
-                "example": "Description détaillée du projet"
+                "description": "Description of the project",
+                "example": "Detailed description of the project"
               },
               "status": {
                 "type": "string",
@@ -1290,12 +1290,12 @@
                   "review",
                   "done"
                 ],
-                "description": "Le statut du projet",
+                "description": "Status of the project",
                 "example": "todo"
               },
               "statusLabel": {
                 "type": "string",
-                "description": "Le libellé du statut du projet",
+                "description": "Label of the project status",
                 "example": "À faire"
               },
               "priority": {
@@ -1305,12 +1305,12 @@
                   "medium",
                   "low"
                 ],
-                "description": "La priorité du projet",
+                "description": "Priority of the project",
                 "example": "high"
               },
               "priorityLabel": {
                 "type": "string",
-                "description": "Le libellé de la priorité du projet",
+                "description": "Label of the project priority",
                 "example": "Haute"
               },
               "responsible": {
@@ -1318,12 +1318,12 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "description": "L'identifiant unique de la personne",
+                    "description": "Unique id of the person",
                     "example": "123e4567-e89b-12d3-a456-426614174000"
                   },
                   "name": {
                     "type": "string",
-                    "description": "Le nom de la personne",
+                    "description": "Name of the person",
                     "example": "John Doe"
                   },
                   "avatarUrl": {
@@ -1341,7 +1341,7 @@
                   "name",
                   "avatarUrl"
                 ],
-                "description": "Une personne assignable à un projet"
+                "description": "A person who can be assigned to a project"
               },
               "assignees": {
                 "type": "array",
@@ -1350,12 +1350,12 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la personne",
+                      "description": "Unique id of the person",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "name": {
                       "type": "string",
-                      "description": "Le nom de la personne",
+                      "description": "Name of the person",
                       "example": "John Doe"
                     },
                     "avatarUrl": {
@@ -1373,7 +1373,7 @@
                     "name",
                     "avatarUrl"
                   ],
-                  "description": "Une personne assignable à un projet"
+                  "description": "A person who can be assigned to a project"
                 },
                 "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
               },
@@ -1382,7 +1382,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "La liste des étiquettes associées au projet",
+                "description": "Labels of the project",
                 "example": [
                   "frontend",
                   "urgent"
@@ -1392,17 +1392,17 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 100,
-                "description": "Le pourcentage d'avancement du projet",
+                "description": "Progress of the project, in percent",
                 "example": 75
               },
               "dueDate": {
                 "type": "string",
-                "description": "La date d'échéance du projet au format ISO 8601",
+                "description": "Due date of the project, ISO 8601",
                 "example": "2024-12-31T23:59:59Z"
               },
               "createdAt": {
                 "type": "string",
-                "description": "La date de création du projet au format ISO 8601",
+                "description": "Creation date of the project, ISO 8601",
                 "example": "2024-01-01T12:00:00Z"
               },
               "tasks": {
@@ -1442,27 +1442,27 @@
                 "properties": {
                   "canView": {
                     "type": "boolean",
-                    "description": "Indique si l'utilisateur peut voir le projet",
+                    "description": "Whether the user can see the project",
                     "example": true
                   },
                   "canEdit": {
                     "type": "boolean",
-                    "description": "Indique si l'utilisateur peut éditer le projet",
+                    "description": "Whether the user can edit the project",
                     "example": true
                   },
                   "canDuplicate": {
                     "type": "boolean",
-                    "description": "Indique si l'utilisateur peut dupliquer le projet",
+                    "description": "Whether the user can duplicate the project",
                     "example": false
                   },
                   "canDelete": {
                     "type": "boolean",
-                    "description": "Indique si l'utilisateur peut supprimer le projet",
+                    "description": "Whether the user can delete the project",
                     "example": false
                   },
                   "canCreateTask": {
                     "type": "boolean",
-                    "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                    "description": "Whether the user can create tasks in the project",
                     "example": true
                   },
                   "canAssignMembers": {
@@ -1481,7 +1481,7 @@
                   "canAssignMembers",
                   "canClose"
                 ],
-                "description": "Les permissions de l'utilisateur sur le projet"
+                "description": "Permissions of the user on the project"
               }
             },
             "required": [
@@ -1501,7 +1501,7 @@
               "tasks",
               "permissions"
             ],
-            "description": "Un projet pour les vues de type carte, table ou kanban"
+            "description": "A project for the card, table or kanban views"
           },
           "taskItems": {
             "type": "array",
@@ -1510,13 +1510,13 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "L'identifiant unique de la tâche",
+                  "description": "Unique id of the task",
                   "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "title": {
                   "type": "string",
-                  "description": "Le titre de la tâche",
-                  "example": "Nouvelle tâche"
+                  "description": "Title of the task",
+                  "example": "New task"
                 },
                 "status": {
                   "type": "string",
@@ -1526,12 +1526,12 @@
                     "review",
                     "done"
                   ],
-                  "description": "Le statut du projet",
+                  "description": "Status of the project",
                   "example": "todo"
                 },
                 "statusLabel": {
                   "type": "string",
-                  "description": "Le libellé du statut de la tâche",
+                  "description": "Label of the task status",
                   "example": "À faire"
                 },
                 "responsible": {
@@ -1539,12 +1539,12 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la personne",
+                      "description": "Unique id of the person",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "name": {
                       "type": "string",
-                      "description": "Le nom de la personne",
+                      "description": "Name of the person",
                       "example": "John Doe"
                     },
                     "avatarUrl": {
@@ -1562,7 +1562,7 @@
                     "name",
                     "avatarUrl"
                   ],
-                  "description": "Une personne assignable à un projet"
+                  "description": "A person who can be assigned to a project"
                 },
                 "assignees": {
                   "type": "array",
@@ -1571,12 +1571,12 @@
                     "properties": {
                       "id": {
                         "type": "string",
-                        "description": "L'identifiant unique de la personne",
+                        "description": "Unique id of the person",
                         "example": "123e4567-e89b-12d3-a456-426614174000"
                       },
                       "name": {
                         "type": "string",
-                        "description": "Le nom de la personne",
+                        "description": "Name of the person",
                         "example": "John Doe"
                       },
                       "avatarUrl": {
@@ -1594,9 +1594,9 @@
                       "name",
                       "avatarUrl"
                     ],
-                    "description": "Une personne assignable à un projet"
+                    "description": "A person who can be assigned to a project"
                   },
-                  "description": "La liste des personnes assignées à la tâche"
+                  "description": "People assigned to the task"
                 },
                 "priority": {
                   "type": "string",
@@ -1605,12 +1605,12 @@
                     "medium",
                     "low"
                   ],
-                  "description": "La priorité du projet",
+                  "description": "Priority of the project",
                   "example": "high"
                 },
                 "priorityLabel": {
                   "type": "string",
-                  "description": "Le libellé de la priorité de la tâche",
+                  "description": "Label of the task priority",
                   "example": "Moyenne"
                 },
                 "labels": {
@@ -1618,7 +1618,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "La liste des étiquettes associées à la  tâche",
+                  "description": "Labels of the task",
                   "example": [
                     "backend",
                     "important"
@@ -1626,22 +1626,22 @@
                 },
                 "dueDate": {
                   "type": "string",
-                  "description": "La date d'échéance de la tâche au format ISO 8601",
+                  "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
                 "completed": {
                   "type": "boolean",
-                  "description": "Indique si la tâche est complétée",
+                  "description": "Whether the task is completed",
                   "example": false
                 },
                 "createdAt": {
                   "type": "string",
-                  "description": "La date de création de la tâche au format ISO 8601",
+                  "description": "Creation date of the task, ISO 8601",
                   "example": "2024-01-01T12:00:00Z"
                 },
                 "updatedAt": {
                   "type": "string",
-                  "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                  "description": "Date of the last update of the task, ISO 8601",
                   "example": "2024-01-15T15:30:00Z"
                 },
                 "statusId": {
@@ -1697,7 +1697,7 @@
                 "createdAt",
                 "permissions"
               ],
-              "description": "Une tâche associée à un projet"
+              "description": "A task of a project"
             }
           }
         },
@@ -1772,7 +1772,7 @@
                   "grid",
                   "table"
                 ],
-                "description": "Le mode de vue pour les projets",
+                "description": "View mode of the projects",
                 "example": "kanban"
               },
               "views": {
@@ -1787,7 +1787,7 @@
                         "grid",
                         "table"
                       ],
-                      "description": "Le mode de vue pour les projets",
+                      "description": "View mode of the projects",
                       "example": "kanban"
                     },
                     "label": {
@@ -1965,7 +1965,7 @@
                         "review",
                         "done"
                       ],
-                      "description": "Le statut du projet",
+                      "description": "Status of the project",
                       "example": "todo"
                     },
                     "label": {
@@ -2003,18 +2003,18 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "L'identifiant unique du projet",
+                  "description": "Unique id of the project",
                   "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "title": {
                   "type": "string",
-                  "description": "Le titre du projet",
-                  "example": "Nouveau projet"
+                  "description": "Title of the project",
+                  "example": "New project"
                 },
                 "description": {
                   "type": "string",
-                  "description": "La description du projet",
-                  "example": "Description détaillée du projet"
+                  "description": "Description of the project",
+                  "example": "Detailed description of the project"
                 },
                 "status": {
                   "type": "string",
@@ -2024,12 +2024,12 @@
                     "review",
                     "done"
                   ],
-                  "description": "Le statut du projet",
+                  "description": "Status of the project",
                   "example": "todo"
                 },
                 "statusLabel": {
                   "type": "string",
-                  "description": "Le libellé du statut du projet",
+                  "description": "Label of the project status",
                   "example": "À faire"
                 },
                 "priority": {
@@ -2039,12 +2039,12 @@
                     "medium",
                     "low"
                   ],
-                  "description": "La priorité du projet",
+                  "description": "Priority of the project",
                   "example": "high"
                 },
                 "priorityLabel": {
                   "type": "string",
-                  "description": "Le libellé de la priorité du projet",
+                  "description": "Label of the project priority",
                   "example": "Haute"
                 },
                 "responsible": {
@@ -2052,12 +2052,12 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la personne",
+                      "description": "Unique id of the person",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "name": {
                       "type": "string",
-                      "description": "Le nom de la personne",
+                      "description": "Name of the person",
                       "example": "John Doe"
                     },
                     "avatarUrl": {
@@ -2075,7 +2075,7 @@
                     "name",
                     "avatarUrl"
                   ],
-                  "description": "Une personne assignable à un projet"
+                  "description": "A person who can be assigned to a project"
                 },
                 "assignees": {
                   "type": "array",
@@ -2084,12 +2084,12 @@
                     "properties": {
                       "id": {
                         "type": "string",
-                        "description": "L'identifiant unique de la personne",
+                        "description": "Unique id of the person",
                         "example": "123e4567-e89b-12d3-a456-426614174000"
                       },
                       "name": {
                         "type": "string",
-                        "description": "Le nom de la personne",
+                        "description": "Name of the person",
                         "example": "John Doe"
                       },
                       "avatarUrl": {
@@ -2107,7 +2107,7 @@
                       "name",
                       "avatarUrl"
                     ],
-                    "description": "Une personne assignable à un projet"
+                    "description": "A person who can be assigned to a project"
                   },
                   "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                 },
@@ -2116,7 +2116,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "La liste des étiquettes associées au projet",
+                  "description": "Labels of the project",
                   "example": [
                     "frontend",
                     "urgent"
@@ -2126,17 +2126,17 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 100,
-                  "description": "Le pourcentage d'avancement du projet",
+                  "description": "Progress of the project, in percent",
                   "example": 75
                 },
                 "dueDate": {
                   "type": "string",
-                  "description": "La date d'échéance du projet au format ISO 8601",
+                  "description": "Due date of the project, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
                 "createdAt": {
                   "type": "string",
-                  "description": "La date de création du projet au format ISO 8601",
+                  "description": "Creation date of the project, ISO 8601",
                   "example": "2024-01-01T12:00:00Z"
                 },
                 "tasks": {
@@ -2176,27 +2176,27 @@
                   "properties": {
                     "canView": {
                       "type": "boolean",
-                      "description": "Indique si l'utilisateur peut voir le projet",
+                      "description": "Whether the user can see the project",
                       "example": true
                     },
                     "canEdit": {
                       "type": "boolean",
-                      "description": "Indique si l'utilisateur peut éditer le projet",
+                      "description": "Whether the user can edit the project",
                       "example": true
                     },
                     "canDuplicate": {
                       "type": "boolean",
-                      "description": "Indique si l'utilisateur peut dupliquer le projet",
+                      "description": "Whether the user can duplicate the project",
                       "example": false
                     },
                     "canDelete": {
                       "type": "boolean",
-                      "description": "Indique si l'utilisateur peut supprimer le projet",
+                      "description": "Whether the user can delete the project",
                       "example": false
                     },
                     "canCreateTask": {
                       "type": "boolean",
-                      "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                      "description": "Whether the user can create tasks in the project",
                       "example": true
                     },
                     "canAssignMembers": {
@@ -2215,7 +2215,7 @@
                     "canAssignMembers",
                     "canClose"
                   ],
-                  "description": "Les permissions de l'utilisateur sur le projet"
+                  "description": "Permissions of the user on the project"
                 }
               },
               "required": [
@@ -2235,7 +2235,7 @@
                 "tasks",
                 "permissions"
               ],
-              "description": "Un projet pour les vues de type carte, table ou kanban"
+              "description": "A project for the card, table or kanban views"
             }
           },
           "pagination": {
@@ -2562,13 +2562,13 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "L'identifiant unique de la tâche",
+                  "description": "Unique id of the task",
                   "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "title": {
                   "type": "string",
-                  "description": "Le titre de la tâche",
-                  "example": "Nouvelle tâche"
+                  "description": "Title of the task",
+                  "example": "New task"
                 },
                 "status": {
                   "type": "string",
@@ -2578,12 +2578,12 @@
                     "review",
                     "done"
                   ],
-                  "description": "Le statut du projet",
+                  "description": "Status of the project",
                   "example": "todo"
                 },
                 "statusLabel": {
                   "type": "string",
-                  "description": "Le libellé du statut de la tâche",
+                  "description": "Label of the task status",
                   "example": "À faire"
                 },
                 "responsible": {
@@ -2591,12 +2591,12 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la personne",
+                      "description": "Unique id of the person",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "name": {
                       "type": "string",
-                      "description": "Le nom de la personne",
+                      "description": "Name of the person",
                       "example": "John Doe"
                     },
                     "avatarUrl": {
@@ -2614,7 +2614,7 @@
                     "name",
                     "avatarUrl"
                   ],
-                  "description": "Une personne assignable à un projet"
+                  "description": "A person who can be assigned to a project"
                 },
                 "assignees": {
                   "type": "array",
@@ -2623,12 +2623,12 @@
                     "properties": {
                       "id": {
                         "type": "string",
-                        "description": "L'identifiant unique de la personne",
+                        "description": "Unique id of the person",
                         "example": "123e4567-e89b-12d3-a456-426614174000"
                       },
                       "name": {
                         "type": "string",
-                        "description": "Le nom de la personne",
+                        "description": "Name of the person",
                         "example": "John Doe"
                       },
                       "avatarUrl": {
@@ -2646,9 +2646,9 @@
                       "name",
                       "avatarUrl"
                     ],
-                    "description": "Une personne assignable à un projet"
+                    "description": "A person who can be assigned to a project"
                   },
-                  "description": "La liste des personnes assignées à la tâche"
+                  "description": "People assigned to the task"
                 },
                 "priority": {
                   "type": "string",
@@ -2657,12 +2657,12 @@
                     "medium",
                     "low"
                   ],
-                  "description": "La priorité du projet",
+                  "description": "Priority of the project",
                   "example": "high"
                 },
                 "priorityLabel": {
                   "type": "string",
-                  "description": "Le libellé de la priorité de la tâche",
+                  "description": "Label of the task priority",
                   "example": "Moyenne"
                 },
                 "labels": {
@@ -2670,7 +2670,7 @@
                   "items": {
                     "type": "string"
                   },
-                  "description": "La liste des étiquettes associées à la  tâche",
+                  "description": "Labels of the task",
                   "example": [
                     "backend",
                     "important"
@@ -2678,22 +2678,22 @@
                 },
                 "dueDate": {
                   "type": "string",
-                  "description": "La date d'échéance de la tâche au format ISO 8601",
+                  "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
                 "completed": {
                   "type": "boolean",
-                  "description": "Indique si la tâche est complétée",
+                  "description": "Whether the task is completed",
                   "example": false
                 },
                 "createdAt": {
                   "type": "string",
-                  "description": "La date de création de la tâche au format ISO 8601",
+                  "description": "Creation date of the task, ISO 8601",
                   "example": "2024-01-01T12:00:00Z"
                 },
                 "updatedAt": {
                   "type": "string",
-                  "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                  "description": "Date of the last update of the task, ISO 8601",
                   "example": "2024-01-15T15:30:00Z"
                 },
                 "statusId": {
@@ -2749,7 +2749,7 @@
                 "createdAt",
                 "permissions"
               ],
-              "description": "Une tâche associée à un projet"
+              "description": "A task of a project"
             },
             "description": "Archived tasks of the page the caller may see, the most recently archived first"
           },
@@ -2960,7 +2960,7 @@
         "tags": [
           "Connectivity"
         ],
-        "summary": "Vérifie la santé du BFF",
+        "summary": "Check the health of the BFF",
         "responses": {
           "200": {
             "description": "OK"
@@ -3004,16 +3004,16 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Clôture ou suspend un projet",
+        "summary": "Close or suspend a project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -3040,7 +3040,7 @@
         },
         "responses": {
           "200": {
-            "description": "Projet clôturé ou suspendu",
+            "description": "Project closed or suspended",
             "content": {
               "application/json": {
                 "schema": {
@@ -3051,18 +3051,18 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique du projet",
+                          "description": "Unique id of the project",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "title": {
                           "type": "string",
-                          "description": "Le titre du projet",
-                          "example": "Nouveau projet"
+                          "description": "Title of the project",
+                          "example": "New project"
                         },
                         "description": {
                           "type": "string",
-                          "description": "La description du projet",
-                          "example": "Description détaillée du projet"
+                          "description": "Description of the project",
+                          "example": "Detailed description of the project"
                         },
                         "status": {
                           "type": "string",
@@ -3072,12 +3072,12 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "statusLabel": {
                           "type": "string",
-                          "description": "Le libellé du statut du projet",
+                          "description": "Label of the project status",
                           "example": "À faire"
                         },
                         "priority": {
@@ -3087,12 +3087,12 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "priorityLabel": {
                           "type": "string",
-                          "description": "Le libellé de la priorité du projet",
+                          "description": "Label of the project priority",
                           "example": "Haute"
                         },
                         "responsible": {
@@ -3100,12 +3100,12 @@
                           "properties": {
                             "id": {
                               "type": "string",
-                              "description": "L'identifiant unique de la personne",
+                              "description": "Unique id of the person",
                               "example": "123e4567-e89b-12d3-a456-426614174000"
                             },
                             "name": {
                               "type": "string",
-                              "description": "Le nom de la personne",
+                              "description": "Name of the person",
                               "example": "John Doe"
                             },
                             "avatarUrl": {
@@ -3123,7 +3123,7 @@
                             "name",
                             "avatarUrl"
                           ],
-                          "description": "Une personne assignable à un projet"
+                          "description": "A person who can be assigned to a project"
                         },
                         "assignees": {
                           "type": "array",
@@ -3132,12 +3132,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -3155,7 +3155,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
@@ -3164,7 +3164,7 @@
                           "items": {
                             "type": "string"
                           },
-                          "description": "La liste des étiquettes associées au projet",
+                          "description": "Labels of the project",
                           "example": [
                             "frontend",
                             "urgent"
@@ -3174,17 +3174,17 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 100,
-                          "description": "Le pourcentage d'avancement du projet",
+                          "description": "Progress of the project, in percent",
                           "example": 75
                         },
                         "dueDate": {
                           "type": "string",
-                          "description": "La date d'échéance du projet au format ISO 8601",
+                          "description": "Due date of the project, ISO 8601",
                           "example": "2024-12-31T23:59:59Z"
                         },
                         "createdAt": {
                           "type": "string",
-                          "description": "La date de création du projet au format ISO 8601",
+                          "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
                         "tasks": {
@@ -3224,27 +3224,27 @@
                           "properties": {
                             "canView": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut voir le projet",
+                              "description": "Whether the user can see the project",
                               "example": true
                             },
                             "canEdit": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut éditer le projet",
+                              "description": "Whether the user can edit the project",
                               "example": true
                             },
                             "canDuplicate": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut dupliquer le projet",
+                              "description": "Whether the user can duplicate the project",
                               "example": false
                             },
                             "canDelete": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut supprimer le projet",
+                              "description": "Whether the user can delete the project",
                               "example": false
                             },
                             "canCreateTask": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                              "description": "Whether the user can create tasks in the project",
                               "example": true
                             },
                             "canAssignMembers": {
@@ -3263,7 +3263,7 @@
                             "canAssignMembers",
                             "canClose"
                           ],
-                          "description": "Les permissions de l'utilisateur sur le projet"
+                          "description": "Permissions of the user on the project"
                         }
                       },
                       "required": [
@@ -3283,7 +3283,7 @@
                         "tasks",
                         "permissions"
                       ],
-                      "description": "Un projet pour les vues de type carte, table ou kanban"
+                      "description": "A project for the card, table or kanban views"
                     },
                     "taskItems": {
                       "type": "array",
@@ -3292,13 +3292,13 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la tâche",
+                            "description": "Unique id of the task",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre de la tâche",
-                            "example": "Nouvelle tâche"
+                            "description": "Title of the task",
+                            "example": "New task"
                           },
                           "status": {
                             "type": "string",
@@ -3308,12 +3308,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut de la tâche",
+                            "description": "Label of the task status",
                             "example": "À faire"
                           },
                           "responsible": {
@@ -3321,12 +3321,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -3344,7 +3344,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -3353,12 +3353,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -3376,9 +3376,9 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
-                            "description": "La liste des personnes assignées à la tâche"
+                            "description": "People assigned to the task"
                           },
                           "priority": {
                             "type": "string",
@@ -3387,12 +3387,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité de la tâche",
+                            "description": "Label of the task priority",
                             "example": "Moyenne"
                           },
                           "labels": {
@@ -3400,7 +3400,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées à la  tâche",
+                            "description": "Labels of the task",
                             "example": [
                               "backend",
                               "important"
@@ -3408,22 +3408,22 @@
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance de la tâche au format ISO 8601",
+                            "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "completed": {
                             "type": "boolean",
-                            "description": "Indique si la tâche est complétée",
+                            "description": "Whether the task is completed",
                             "example": false
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création de la tâche au format ISO 8601",
+                            "description": "Creation date of the task, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "updatedAt": {
                             "type": "string",
-                            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                            "description": "Date of the last update of the task, ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
                           "statusId": {
@@ -3479,7 +3479,7 @@
                           "createdAt",
                           "permissions"
                         ],
-                        "description": "Une tâche associée à un projet"
+                        "description": "A task of a project"
                       }
                     }
                   },
@@ -3606,7 +3606,7 @@
                       "review",
                       "done"
                     ],
-                    "description": "Le statut du projet",
+                    "description": "Status of the project",
                     "example": "todo"
                   },
                   "priority": {
@@ -3616,7 +3616,7 @@
                       "medium",
                       "low"
                     ],
-                    "description": "La priorité du projet",
+                    "description": "Priority of the project",
                     "example": "high"
                   },
                   "responsibleId": {
@@ -3663,7 +3663,7 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "priority": {
@@ -3673,7 +3673,7 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "assigneeIds": {
@@ -3742,18 +3742,18 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique du projet",
+                          "description": "Unique id of the project",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "title": {
                           "type": "string",
-                          "description": "Le titre du projet",
-                          "example": "Nouveau projet"
+                          "description": "Title of the project",
+                          "example": "New project"
                         },
                         "description": {
                           "type": "string",
-                          "description": "La description du projet",
-                          "example": "Description détaillée du projet"
+                          "description": "Description of the project",
+                          "example": "Detailed description of the project"
                         },
                         "status": {
                           "type": "string",
@@ -3763,12 +3763,12 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "statusLabel": {
                           "type": "string",
-                          "description": "Le libellé du statut du projet",
+                          "description": "Label of the project status",
                           "example": "À faire"
                         },
                         "priority": {
@@ -3778,12 +3778,12 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "priorityLabel": {
                           "type": "string",
-                          "description": "Le libellé de la priorité du projet",
+                          "description": "Label of the project priority",
                           "example": "Haute"
                         },
                         "responsible": {
@@ -3791,12 +3791,12 @@
                           "properties": {
                             "id": {
                               "type": "string",
-                              "description": "L'identifiant unique de la personne",
+                              "description": "Unique id of the person",
                               "example": "123e4567-e89b-12d3-a456-426614174000"
                             },
                             "name": {
                               "type": "string",
-                              "description": "Le nom de la personne",
+                              "description": "Name of the person",
                               "example": "John Doe"
                             },
                             "avatarUrl": {
@@ -3814,7 +3814,7 @@
                             "name",
                             "avatarUrl"
                           ],
-                          "description": "Une personne assignable à un projet"
+                          "description": "A person who can be assigned to a project"
                         },
                         "assignees": {
                           "type": "array",
@@ -3823,12 +3823,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -3846,7 +3846,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
@@ -3855,7 +3855,7 @@
                           "items": {
                             "type": "string"
                           },
-                          "description": "La liste des étiquettes associées au projet",
+                          "description": "Labels of the project",
                           "example": [
                             "frontend",
                             "urgent"
@@ -3865,17 +3865,17 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 100,
-                          "description": "Le pourcentage d'avancement du projet",
+                          "description": "Progress of the project, in percent",
                           "example": 75
                         },
                         "dueDate": {
                           "type": "string",
-                          "description": "La date d'échéance du projet au format ISO 8601",
+                          "description": "Due date of the project, ISO 8601",
                           "example": "2024-12-31T23:59:59Z"
                         },
                         "createdAt": {
                           "type": "string",
-                          "description": "La date de création du projet au format ISO 8601",
+                          "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
                         "tasks": {
@@ -3915,27 +3915,27 @@
                           "properties": {
                             "canView": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut voir le projet",
+                              "description": "Whether the user can see the project",
                               "example": true
                             },
                             "canEdit": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut éditer le projet",
+                              "description": "Whether the user can edit the project",
                               "example": true
                             },
                             "canDuplicate": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut dupliquer le projet",
+                              "description": "Whether the user can duplicate the project",
                               "example": false
                             },
                             "canDelete": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut supprimer le projet",
+                              "description": "Whether the user can delete the project",
                               "example": false
                             },
                             "canCreateTask": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                              "description": "Whether the user can create tasks in the project",
                               "example": true
                             },
                             "canAssignMembers": {
@@ -3954,7 +3954,7 @@
                             "canAssignMembers",
                             "canClose"
                           ],
-                          "description": "Les permissions de l'utilisateur sur le projet"
+                          "description": "Permissions of the user on the project"
                         }
                       },
                       "required": [
@@ -3974,7 +3974,7 @@
                         "tasks",
                         "permissions"
                       ],
-                      "description": "Un projet pour les vues de type carte, table ou kanban"
+                      "description": "A project for the card, table or kanban views"
                     },
                     "taskItems": {
                       "type": "array",
@@ -3983,13 +3983,13 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la tâche",
+                            "description": "Unique id of the task",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre de la tâche",
-                            "example": "Nouvelle tâche"
+                            "description": "Title of the task",
+                            "example": "New task"
                           },
                           "status": {
                             "type": "string",
@@ -3999,12 +3999,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut de la tâche",
+                            "description": "Label of the task status",
                             "example": "À faire"
                           },
                           "responsible": {
@@ -4012,12 +4012,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -4035,7 +4035,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -4044,12 +4044,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -4067,9 +4067,9 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
-                            "description": "La liste des personnes assignées à la tâche"
+                            "description": "People assigned to the task"
                           },
                           "priority": {
                             "type": "string",
@@ -4078,12 +4078,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité de la tâche",
+                            "description": "Label of the task priority",
                             "example": "Moyenne"
                           },
                           "labels": {
@@ -4091,7 +4091,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées à la  tâche",
+                            "description": "Labels of the task",
                             "example": [
                               "backend",
                               "important"
@@ -4099,22 +4099,22 @@
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance de la tâche au format ISO 8601",
+                            "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "completed": {
                             "type": "boolean",
-                            "description": "Indique si la tâche est complétée",
+                            "description": "Whether the task is completed",
                             "example": false
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création de la tâche au format ISO 8601",
+                            "description": "Creation date of the task, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "updatedAt": {
                             "type": "string",
-                            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                            "description": "Date of the last update of the task, ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
                           "statusId": {
@@ -4170,7 +4170,7 @@
                           "createdAt",
                           "permissions"
                         ],
-                        "description": "Une tâche associée à un projet"
+                        "description": "A task of a project"
                       }
                     }
                   },
@@ -4260,16 +4260,16 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Crée une nouvelle tâche pour un projet existant",
+        "summary": "Create a new task in an existing project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -4294,7 +4294,7 @@
                       "review",
                       "done"
                     ],
-                    "description": "Le statut du projet",
+                    "description": "Status of the project",
                     "example": "todo"
                   },
                   "priority": {
@@ -4304,7 +4304,7 @@
                       "medium",
                       "low"
                     ],
-                    "description": "La priorité du projet",
+                    "description": "Priority of the project",
                     "example": "high"
                   },
                   "responsibleId": {
@@ -4355,7 +4355,7 @@
         },
         "responses": {
           "201": {
-            "description": "Tâche créée avec succès",
+            "description": "Task created",
             "content": {
               "application/json": {
                 "schema": {
@@ -4363,13 +4363,13 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la tâche",
+                      "description": "Unique id of the task",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "title": {
                       "type": "string",
-                      "description": "Le titre de la tâche",
-                      "example": "Nouvelle tâche"
+                      "description": "Title of the task",
+                      "example": "New task"
                     },
                     "status": {
                       "type": "string",
@@ -4379,12 +4379,12 @@
                         "review",
                         "done"
                       ],
-                      "description": "Le statut du projet",
+                      "description": "Status of the project",
                       "example": "todo"
                     },
                     "statusLabel": {
                       "type": "string",
-                      "description": "Le libellé du statut de la tâche",
+                      "description": "Label of the task status",
                       "example": "À faire"
                     },
                     "responsible": {
@@ -4392,12 +4392,12 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique de la personne",
+                          "description": "Unique id of the person",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "name": {
                           "type": "string",
-                          "description": "Le nom de la personne",
+                          "description": "Name of the person",
                           "example": "John Doe"
                         },
                         "avatarUrl": {
@@ -4415,7 +4415,7 @@
                         "name",
                         "avatarUrl"
                       ],
-                      "description": "Une personne assignable à un projet"
+                      "description": "A person who can be assigned to a project"
                     },
                     "assignees": {
                       "type": "array",
@@ -4424,12 +4424,12 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la personne",
+                            "description": "Unique id of the person",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "name": {
                             "type": "string",
-                            "description": "Le nom de la personne",
+                            "description": "Name of the person",
                             "example": "John Doe"
                           },
                           "avatarUrl": {
@@ -4447,9 +4447,9 @@
                           "name",
                           "avatarUrl"
                         ],
-                        "description": "Une personne assignable à un projet"
+                        "description": "A person who can be assigned to a project"
                       },
-                      "description": "La liste des personnes assignées à la tâche"
+                      "description": "People assigned to the task"
                     },
                     "priority": {
                       "type": "string",
@@ -4458,12 +4458,12 @@
                         "medium",
                         "low"
                       ],
-                      "description": "La priorité du projet",
+                      "description": "Priority of the project",
                       "example": "high"
                     },
                     "priorityLabel": {
                       "type": "string",
-                      "description": "Le libellé de la priorité de la tâche",
+                      "description": "Label of the task priority",
                       "example": "Moyenne"
                     },
                     "labels": {
@@ -4471,7 +4471,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "La liste des étiquettes associées à la  tâche",
+                      "description": "Labels of the task",
                       "example": [
                         "backend",
                         "important"
@@ -4479,22 +4479,22 @@
                     },
                     "dueDate": {
                       "type": "string",
-                      "description": "La date d'échéance de la tâche au format ISO 8601",
+                      "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
                     "completed": {
                       "type": "boolean",
-                      "description": "Indique si la tâche est complétée",
+                      "description": "Whether the task is completed",
                       "example": false
                     },
                     "createdAt": {
                       "type": "string",
-                      "description": "La date de création de la tâche au format ISO 8601",
+                      "description": "Creation date of the task, ISO 8601",
                       "example": "2024-01-01T12:00:00Z"
                     },
                     "updatedAt": {
                       "type": "string",
-                      "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                      "description": "Date of the last update of the task, ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
                     },
                     "statusId": {
@@ -4550,7 +4550,7 @@
                     "createdAt",
                     "permissions"
                   ],
-                  "description": "Une tâche associée à un projet"
+                  "description": "A task of a project"
                 }
               }
             }
@@ -4648,18 +4648,18 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-2"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
         ],
         "responses": {
           "204": {
-            "description": "Projet supprimé avec succès"
+            "description": "Project deleted"
           },
           "400": {
             "description": "Invalid request",
@@ -4753,11 +4753,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -4787,7 +4787,7 @@
                       "review",
                       "done"
                     ],
-                    "description": "Le statut du projet",
+                    "description": "Status of the project",
                     "example": "todo"
                   },
                   "priority": {
@@ -4797,7 +4797,7 @@
                       "medium",
                       "low"
                     ],
-                    "description": "La priorité du projet",
+                    "description": "Priority of the project",
                     "example": "high"
                   },
                   "responsibleId": {
@@ -4844,7 +4844,7 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "priority": {
@@ -4854,7 +4854,7 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "assigneeIds": {
@@ -4907,18 +4907,18 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique du projet",
+                          "description": "Unique id of the project",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "title": {
                           "type": "string",
-                          "description": "Le titre du projet",
-                          "example": "Nouveau projet"
+                          "description": "Title of the project",
+                          "example": "New project"
                         },
                         "description": {
                           "type": "string",
-                          "description": "La description du projet",
-                          "example": "Description détaillée du projet"
+                          "description": "Description of the project",
+                          "example": "Detailed description of the project"
                         },
                         "status": {
                           "type": "string",
@@ -4928,12 +4928,12 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "statusLabel": {
                           "type": "string",
-                          "description": "Le libellé du statut du projet",
+                          "description": "Label of the project status",
                           "example": "À faire"
                         },
                         "priority": {
@@ -4943,12 +4943,12 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "priorityLabel": {
                           "type": "string",
-                          "description": "Le libellé de la priorité du projet",
+                          "description": "Label of the project priority",
                           "example": "Haute"
                         },
                         "responsible": {
@@ -4956,12 +4956,12 @@
                           "properties": {
                             "id": {
                               "type": "string",
-                              "description": "L'identifiant unique de la personne",
+                              "description": "Unique id of the person",
                               "example": "123e4567-e89b-12d3-a456-426614174000"
                             },
                             "name": {
                               "type": "string",
-                              "description": "Le nom de la personne",
+                              "description": "Name of the person",
                               "example": "John Doe"
                             },
                             "avatarUrl": {
@@ -4979,7 +4979,7 @@
                             "name",
                             "avatarUrl"
                           ],
-                          "description": "Une personne assignable à un projet"
+                          "description": "A person who can be assigned to a project"
                         },
                         "assignees": {
                           "type": "array",
@@ -4988,12 +4988,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -5011,7 +5011,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
@@ -5020,7 +5020,7 @@
                           "items": {
                             "type": "string"
                           },
-                          "description": "La liste des étiquettes associées au projet",
+                          "description": "Labels of the project",
                           "example": [
                             "frontend",
                             "urgent"
@@ -5030,17 +5030,17 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 100,
-                          "description": "Le pourcentage d'avancement du projet",
+                          "description": "Progress of the project, in percent",
                           "example": 75
                         },
                         "dueDate": {
                           "type": "string",
-                          "description": "La date d'échéance du projet au format ISO 8601",
+                          "description": "Due date of the project, ISO 8601",
                           "example": "2024-12-31T23:59:59Z"
                         },
                         "createdAt": {
                           "type": "string",
-                          "description": "La date de création du projet au format ISO 8601",
+                          "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
                         "tasks": {
@@ -5080,27 +5080,27 @@
                           "properties": {
                             "canView": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut voir le projet",
+                              "description": "Whether the user can see the project",
                               "example": true
                             },
                             "canEdit": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut éditer le projet",
+                              "description": "Whether the user can edit the project",
                               "example": true
                             },
                             "canDuplicate": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut dupliquer le projet",
+                              "description": "Whether the user can duplicate the project",
                               "example": false
                             },
                             "canDelete": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut supprimer le projet",
+                              "description": "Whether the user can delete the project",
                               "example": false
                             },
                             "canCreateTask": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                              "description": "Whether the user can create tasks in the project",
                               "example": true
                             },
                             "canAssignMembers": {
@@ -5119,7 +5119,7 @@
                             "canAssignMembers",
                             "canClose"
                           ],
-                          "description": "Les permissions de l'utilisateur sur le projet"
+                          "description": "Permissions of the user on the project"
                         }
                       },
                       "required": [
@@ -5139,7 +5139,7 @@
                         "tasks",
                         "permissions"
                       ],
-                      "description": "Un projet pour les vues de type carte, table ou kanban"
+                      "description": "A project for the card, table or kanban views"
                     },
                     "taskItems": {
                       "type": "array",
@@ -5148,13 +5148,13 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la tâche",
+                            "description": "Unique id of the task",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre de la tâche",
-                            "example": "Nouvelle tâche"
+                            "description": "Title of the task",
+                            "example": "New task"
                           },
                           "status": {
                             "type": "string",
@@ -5164,12 +5164,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut de la tâche",
+                            "description": "Label of the task status",
                             "example": "À faire"
                           },
                           "responsible": {
@@ -5177,12 +5177,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -5200,7 +5200,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -5209,12 +5209,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -5232,9 +5232,9 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
-                            "description": "La liste des personnes assignées à la tâche"
+                            "description": "People assigned to the task"
                           },
                           "priority": {
                             "type": "string",
@@ -5243,12 +5243,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité de la tâche",
+                            "description": "Label of the task priority",
                             "example": "Moyenne"
                           },
                           "labels": {
@@ -5256,7 +5256,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées à la  tâche",
+                            "description": "Labels of the task",
                             "example": [
                               "backend",
                               "important"
@@ -5264,22 +5264,22 @@
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance de la tâche au format ISO 8601",
+                            "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "completed": {
                             "type": "boolean",
-                            "description": "Indique si la tâche est complétée",
+                            "description": "Whether the task is completed",
                             "example": false
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création de la tâche au format ISO 8601",
+                            "description": "Creation date of the task, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "updatedAt": {
                             "type": "string",
-                            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                            "description": "Date of the last update of the task, ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
                           "statusId": {
@@ -5335,7 +5335,7 @@
                           "createdAt",
                           "permissions"
                         ],
-                        "description": "Une tâche associée à un projet"
+                        "description": "A task of a project"
                       }
                     }
                   },
@@ -5433,23 +5433,23 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Récupère le détail d’un projet",
+        "summary": "Get the detail of a project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
         ],
         "responses": {
           "200": {
-            "description": "Projet trouvé",
+            "description": "Project found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5460,18 +5460,18 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique du projet",
+                          "description": "Unique id of the project",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "title": {
                           "type": "string",
-                          "description": "Le titre du projet",
-                          "example": "Nouveau projet"
+                          "description": "Title of the project",
+                          "example": "New project"
                         },
                         "description": {
                           "type": "string",
-                          "description": "La description du projet",
-                          "example": "Description détaillée du projet"
+                          "description": "Description of the project",
+                          "example": "Detailed description of the project"
                         },
                         "status": {
                           "type": "string",
@@ -5481,12 +5481,12 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "statusLabel": {
                           "type": "string",
-                          "description": "Le libellé du statut du projet",
+                          "description": "Label of the project status",
                           "example": "À faire"
                         },
                         "priority": {
@@ -5496,12 +5496,12 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "priorityLabel": {
                           "type": "string",
-                          "description": "Le libellé de la priorité du projet",
+                          "description": "Label of the project priority",
                           "example": "Haute"
                         },
                         "responsible": {
@@ -5509,12 +5509,12 @@
                           "properties": {
                             "id": {
                               "type": "string",
-                              "description": "L'identifiant unique de la personne",
+                              "description": "Unique id of the person",
                               "example": "123e4567-e89b-12d3-a456-426614174000"
                             },
                             "name": {
                               "type": "string",
-                              "description": "Le nom de la personne",
+                              "description": "Name of the person",
                               "example": "John Doe"
                             },
                             "avatarUrl": {
@@ -5532,7 +5532,7 @@
                             "name",
                             "avatarUrl"
                           ],
-                          "description": "Une personne assignable à un projet"
+                          "description": "A person who can be assigned to a project"
                         },
                         "assignees": {
                           "type": "array",
@@ -5541,12 +5541,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -5564,7 +5564,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
@@ -5573,7 +5573,7 @@
                           "items": {
                             "type": "string"
                           },
-                          "description": "La liste des étiquettes associées au projet",
+                          "description": "Labels of the project",
                           "example": [
                             "frontend",
                             "urgent"
@@ -5583,17 +5583,17 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 100,
-                          "description": "Le pourcentage d'avancement du projet",
+                          "description": "Progress of the project, in percent",
                           "example": 75
                         },
                         "dueDate": {
                           "type": "string",
-                          "description": "La date d'échéance du projet au format ISO 8601",
+                          "description": "Due date of the project, ISO 8601",
                           "example": "2024-12-31T23:59:59Z"
                         },
                         "createdAt": {
                           "type": "string",
-                          "description": "La date de création du projet au format ISO 8601",
+                          "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
                         "tasks": {
@@ -5633,27 +5633,27 @@
                           "properties": {
                             "canView": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut voir le projet",
+                              "description": "Whether the user can see the project",
                               "example": true
                             },
                             "canEdit": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut éditer le projet",
+                              "description": "Whether the user can edit the project",
                               "example": true
                             },
                             "canDuplicate": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut dupliquer le projet",
+                              "description": "Whether the user can duplicate the project",
                               "example": false
                             },
                             "canDelete": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut supprimer le projet",
+                              "description": "Whether the user can delete the project",
                               "example": false
                             },
                             "canCreateTask": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                              "description": "Whether the user can create tasks in the project",
                               "example": true
                             },
                             "canAssignMembers": {
@@ -5672,7 +5672,7 @@
                             "canAssignMembers",
                             "canClose"
                           ],
-                          "description": "Les permissions de l'utilisateur sur le projet"
+                          "description": "Permissions of the user on the project"
                         }
                       },
                       "required": [
@@ -5692,7 +5692,7 @@
                         "tasks",
                         "permissions"
                       ],
-                      "description": "Un projet pour les vues de type carte, table ou kanban"
+                      "description": "A project for the card, table or kanban views"
                     },
                     "taskItems": {
                       "type": "array",
@@ -5701,13 +5701,13 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la tâche",
+                            "description": "Unique id of the task",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre de la tâche",
-                            "example": "Nouvelle tâche"
+                            "description": "Title of the task",
+                            "example": "New task"
                           },
                           "status": {
                             "type": "string",
@@ -5717,12 +5717,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut de la tâche",
+                            "description": "Label of the task status",
                             "example": "À faire"
                           },
                           "responsible": {
@@ -5730,12 +5730,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -5753,7 +5753,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -5762,12 +5762,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -5785,9 +5785,9 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
-                            "description": "La liste des personnes assignées à la tâche"
+                            "description": "People assigned to the task"
                           },
                           "priority": {
                             "type": "string",
@@ -5796,12 +5796,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité de la tâche",
+                            "description": "Label of the task priority",
                             "example": "Moyenne"
                           },
                           "labels": {
@@ -5809,7 +5809,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées à la  tâche",
+                            "description": "Labels of the task",
                             "example": [
                               "backend",
                               "important"
@@ -5817,22 +5817,22 @@
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance de la tâche au format ISO 8601",
+                            "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "completed": {
                             "type": "boolean",
-                            "description": "Indique si la tâche est complétée",
+                            "description": "Whether the task is completed",
                             "example": false
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création de la tâche au format ISO 8601",
+                            "description": "Creation date of the task, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "updatedAt": {
                             "type": "string",
-                            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                            "description": "Date of the last update of the task, ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
                           "statusId": {
@@ -5888,7 +5888,7 @@
                           "createdAt",
                           "permissions"
                         ],
-                        "description": "Une tâche associée à un projet"
+                        "description": "A task of a project"
                       }
                     }
                   },
@@ -5978,34 +5978,34 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Supprime une tâche existante pour un projet",
+        "summary": "Delete an existing task of a project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la tâche",
+              "description": "Id of the task",
               "example": "task-2"
             },
             "required": true,
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "name": "taskId",
             "in": "path"
           }
         ],
         "responses": {
           "204": {
-            "description": "Tâche supprimée avec succès"
+            "description": "Task deleted"
           },
           "400": {
             "description": "Invalid request",
@@ -6093,27 +6093,27 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Met à jour une tâche existante pour un projet",
+        "summary": "Update an existing task of a project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la tâche",
+              "description": "Id of the task",
               "example": "task-1"
             },
             "required": true,
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "name": "taskId",
             "in": "path"
           }
@@ -6138,7 +6138,7 @@
                       "review",
                       "done"
                     ],
-                    "description": "Le statut du projet",
+                    "description": "Status of the project",
                     "example": "todo"
                   },
                   "priority": {
@@ -6148,7 +6148,7 @@
                       "medium",
                       "low"
                     ],
-                    "description": "La priorité du projet",
+                    "description": "Priority of the project",
                     "example": "high"
                   },
                   "responsibleId": {
@@ -6190,7 +6190,7 @@
         },
         "responses": {
           "200": {
-            "description": "Tâche mise à jour avec succès",
+            "description": "Task updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -6198,13 +6198,13 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la tâche",
+                      "description": "Unique id of the task",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "title": {
                       "type": "string",
-                      "description": "Le titre de la tâche",
-                      "example": "Nouvelle tâche"
+                      "description": "Title of the task",
+                      "example": "New task"
                     },
                     "status": {
                       "type": "string",
@@ -6214,12 +6214,12 @@
                         "review",
                         "done"
                       ],
-                      "description": "Le statut du projet",
+                      "description": "Status of the project",
                       "example": "todo"
                     },
                     "statusLabel": {
                       "type": "string",
-                      "description": "Le libellé du statut de la tâche",
+                      "description": "Label of the task status",
                       "example": "À faire"
                     },
                     "responsible": {
@@ -6227,12 +6227,12 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique de la personne",
+                          "description": "Unique id of the person",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "name": {
                           "type": "string",
-                          "description": "Le nom de la personne",
+                          "description": "Name of the person",
                           "example": "John Doe"
                         },
                         "avatarUrl": {
@@ -6250,7 +6250,7 @@
                         "name",
                         "avatarUrl"
                       ],
-                      "description": "Une personne assignable à un projet"
+                      "description": "A person who can be assigned to a project"
                     },
                     "assignees": {
                       "type": "array",
@@ -6259,12 +6259,12 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la personne",
+                            "description": "Unique id of the person",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "name": {
                             "type": "string",
-                            "description": "Le nom de la personne",
+                            "description": "Name of the person",
                             "example": "John Doe"
                           },
                           "avatarUrl": {
@@ -6282,9 +6282,9 @@
                           "name",
                           "avatarUrl"
                         ],
-                        "description": "Une personne assignable à un projet"
+                        "description": "A person who can be assigned to a project"
                       },
-                      "description": "La liste des personnes assignées à la tâche"
+                      "description": "People assigned to the task"
                     },
                     "priority": {
                       "type": "string",
@@ -6293,12 +6293,12 @@
                         "medium",
                         "low"
                       ],
-                      "description": "La priorité du projet",
+                      "description": "Priority of the project",
                       "example": "high"
                     },
                     "priorityLabel": {
                       "type": "string",
-                      "description": "Le libellé de la priorité de la tâche",
+                      "description": "Label of the task priority",
                       "example": "Moyenne"
                     },
                     "labels": {
@@ -6306,7 +6306,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "La liste des étiquettes associées à la  tâche",
+                      "description": "Labels of the task",
                       "example": [
                         "backend",
                         "important"
@@ -6314,22 +6314,22 @@
                     },
                     "dueDate": {
                       "type": "string",
-                      "description": "La date d'échéance de la tâche au format ISO 8601",
+                      "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
                     "completed": {
                       "type": "boolean",
-                      "description": "Indique si la tâche est complétée",
+                      "description": "Whether the task is completed",
                       "example": false
                     },
                     "createdAt": {
                       "type": "string",
-                      "description": "La date de création de la tâche au format ISO 8601",
+                      "description": "Creation date of the task, ISO 8601",
                       "example": "2024-01-01T12:00:00Z"
                     },
                     "updatedAt": {
                       "type": "string",
-                      "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                      "description": "Date of the last update of the task, ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
                     },
                     "statusId": {
@@ -6385,7 +6385,7 @@
                     "createdAt",
                     "permissions"
                   ],
-                  "description": "Une tâche associée à un projet"
+                  "description": "A task of a project"
                 }
               }
             }
@@ -6484,11 +6484,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -6506,18 +6506,18 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique du projet",
+                          "description": "Unique id of the project",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "title": {
                           "type": "string",
-                          "description": "Le titre du projet",
-                          "example": "Nouveau projet"
+                          "description": "Title of the project",
+                          "example": "New project"
                         },
                         "description": {
                           "type": "string",
-                          "description": "La description du projet",
-                          "example": "Description détaillée du projet"
+                          "description": "Description of the project",
+                          "example": "Detailed description of the project"
                         },
                         "status": {
                           "type": "string",
@@ -6527,12 +6527,12 @@
                             "review",
                             "done"
                           ],
-                          "description": "Le statut du projet",
+                          "description": "Status of the project",
                           "example": "todo"
                         },
                         "statusLabel": {
                           "type": "string",
-                          "description": "Le libellé du statut du projet",
+                          "description": "Label of the project status",
                           "example": "À faire"
                         },
                         "priority": {
@@ -6542,12 +6542,12 @@
                             "medium",
                             "low"
                           ],
-                          "description": "La priorité du projet",
+                          "description": "Priority of the project",
                           "example": "high"
                         },
                         "priorityLabel": {
                           "type": "string",
-                          "description": "Le libellé de la priorité du projet",
+                          "description": "Label of the project priority",
                           "example": "Haute"
                         },
                         "responsible": {
@@ -6555,12 +6555,12 @@
                           "properties": {
                             "id": {
                               "type": "string",
-                              "description": "L'identifiant unique de la personne",
+                              "description": "Unique id of the person",
                               "example": "123e4567-e89b-12d3-a456-426614174000"
                             },
                             "name": {
                               "type": "string",
-                              "description": "Le nom de la personne",
+                              "description": "Name of the person",
                               "example": "John Doe"
                             },
                             "avatarUrl": {
@@ -6578,7 +6578,7 @@
                             "name",
                             "avatarUrl"
                           ],
-                          "description": "Une personne assignable à un projet"
+                          "description": "A person who can be assigned to a project"
                         },
                         "assignees": {
                           "type": "array",
@@ -6587,12 +6587,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -6610,7 +6610,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                         },
@@ -6619,7 +6619,7 @@
                           "items": {
                             "type": "string"
                           },
-                          "description": "La liste des étiquettes associées au projet",
+                          "description": "Labels of the project",
                           "example": [
                             "frontend",
                             "urgent"
@@ -6629,17 +6629,17 @@
                           "type": "number",
                           "minimum": 0,
                           "maximum": 100,
-                          "description": "Le pourcentage d'avancement du projet",
+                          "description": "Progress of the project, in percent",
                           "example": 75
                         },
                         "dueDate": {
                           "type": "string",
-                          "description": "La date d'échéance du projet au format ISO 8601",
+                          "description": "Due date of the project, ISO 8601",
                           "example": "2024-12-31T23:59:59Z"
                         },
                         "createdAt": {
                           "type": "string",
-                          "description": "La date de création du projet au format ISO 8601",
+                          "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
                         "tasks": {
@@ -6679,27 +6679,27 @@
                           "properties": {
                             "canView": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut voir le projet",
+                              "description": "Whether the user can see the project",
                               "example": true
                             },
                             "canEdit": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut éditer le projet",
+                              "description": "Whether the user can edit the project",
                               "example": true
                             },
                             "canDuplicate": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut dupliquer le projet",
+                              "description": "Whether the user can duplicate the project",
                               "example": false
                             },
                             "canDelete": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut supprimer le projet",
+                              "description": "Whether the user can delete the project",
                               "example": false
                             },
                             "canCreateTask": {
                               "type": "boolean",
-                              "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                              "description": "Whether the user can create tasks in the project",
                               "example": true
                             },
                             "canAssignMembers": {
@@ -6718,7 +6718,7 @@
                             "canAssignMembers",
                             "canClose"
                           ],
-                          "description": "Les permissions de l'utilisateur sur le projet"
+                          "description": "Permissions of the user on the project"
                         }
                       },
                       "required": [
@@ -6738,7 +6738,7 @@
                         "tasks",
                         "permissions"
                       ],
-                      "description": "Un projet pour les vues de type carte, table ou kanban"
+                      "description": "A project for the card, table or kanban views"
                     },
                     "taskItems": {
                       "type": "array",
@@ -6747,13 +6747,13 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la tâche",
+                            "description": "Unique id of the task",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre de la tâche",
-                            "example": "Nouvelle tâche"
+                            "description": "Title of the task",
+                            "example": "New task"
                           },
                           "status": {
                             "type": "string",
@@ -6763,12 +6763,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut de la tâche",
+                            "description": "Label of the task status",
                             "example": "À faire"
                           },
                           "responsible": {
@@ -6776,12 +6776,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -6799,7 +6799,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -6808,12 +6808,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -6831,9 +6831,9 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
-                            "description": "La liste des personnes assignées à la tâche"
+                            "description": "People assigned to the task"
                           },
                           "priority": {
                             "type": "string",
@@ -6842,12 +6842,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité de la tâche",
+                            "description": "Label of the task priority",
                             "example": "Moyenne"
                           },
                           "labels": {
@@ -6855,7 +6855,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées à la  tâche",
+                            "description": "Labels of the task",
                             "example": [
                               "backend",
                               "important"
@@ -6863,22 +6863,22 @@
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance de la tâche au format ISO 8601",
+                            "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "completed": {
                             "type": "boolean",
-                            "description": "Indique si la tâche est complétée",
+                            "description": "Whether the task is completed",
                             "example": false
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création de la tâche au format ISO 8601",
+                            "description": "Creation date of the task, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "updatedAt": {
                             "type": "string",
-                            "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                            "description": "Date of the last update of the task, ISO 8601",
                             "example": "2024-01-15T15:30:00Z"
                           },
                           "statusId": {
@@ -6934,7 +6934,7 @@
                           "createdAt",
                           "permissions"
                         ],
-                        "description": "Une tâche associée à un projet"
+                        "description": "A task of a project"
                       }
                     }
                   },
@@ -7034,27 +7034,27 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Met à jour le statut d’une tâche existante pour un projet",
+        "summary": "Update the status of an existing task of a project",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la tâche",
+              "description": "Id of the task",
               "example": "task-1"
             },
             "required": true,
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "name": "taskId",
             "in": "path"
           }
@@ -7074,7 +7074,7 @@
                       "review",
                       "done"
                     ],
-                    "description": "Le statut du projet",
+                    "description": "Status of the project",
                     "example": "todo"
                   },
                   "statusId": {
@@ -7090,7 +7090,7 @@
         },
         "responses": {
           "200": {
-            "description": "Statut de la tâche mis à jour avec succès",
+            "description": "Task status updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -7098,13 +7098,13 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "L'identifiant unique de la tâche",
+                      "description": "Unique id of the task",
                       "example": "123e4567-e89b-12d3-a456-426614174000"
                     },
                     "title": {
                       "type": "string",
-                      "description": "Le titre de la tâche",
-                      "example": "Nouvelle tâche"
+                      "description": "Title of the task",
+                      "example": "New task"
                     },
                     "status": {
                       "type": "string",
@@ -7114,12 +7114,12 @@
                         "review",
                         "done"
                       ],
-                      "description": "Le statut du projet",
+                      "description": "Status of the project",
                       "example": "todo"
                     },
                     "statusLabel": {
                       "type": "string",
-                      "description": "Le libellé du statut de la tâche",
+                      "description": "Label of the task status",
                       "example": "À faire"
                     },
                     "responsible": {
@@ -7127,12 +7127,12 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "L'identifiant unique de la personne",
+                          "description": "Unique id of the person",
                           "example": "123e4567-e89b-12d3-a456-426614174000"
                         },
                         "name": {
                           "type": "string",
-                          "description": "Le nom de la personne",
+                          "description": "Name of the person",
                           "example": "John Doe"
                         },
                         "avatarUrl": {
@@ -7150,7 +7150,7 @@
                         "name",
                         "avatarUrl"
                       ],
-                      "description": "Une personne assignable à un projet"
+                      "description": "A person who can be assigned to a project"
                     },
                     "assignees": {
                       "type": "array",
@@ -7159,12 +7159,12 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique de la personne",
+                            "description": "Unique id of the person",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "name": {
                             "type": "string",
-                            "description": "Le nom de la personne",
+                            "description": "Name of the person",
                             "example": "John Doe"
                           },
                           "avatarUrl": {
@@ -7182,9 +7182,9 @@
                           "name",
                           "avatarUrl"
                         ],
-                        "description": "Une personne assignable à un projet"
+                        "description": "A person who can be assigned to a project"
                       },
-                      "description": "La liste des personnes assignées à la tâche"
+                      "description": "People assigned to the task"
                     },
                     "priority": {
                       "type": "string",
@@ -7193,12 +7193,12 @@
                         "medium",
                         "low"
                       ],
-                      "description": "La priorité du projet",
+                      "description": "Priority of the project",
                       "example": "high"
                     },
                     "priorityLabel": {
                       "type": "string",
-                      "description": "Le libellé de la priorité de la tâche",
+                      "description": "Label of the task priority",
                       "example": "Moyenne"
                     },
                     "labels": {
@@ -7206,7 +7206,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "La liste des étiquettes associées à la  tâche",
+                      "description": "Labels of the task",
                       "example": [
                         "backend",
                         "important"
@@ -7214,22 +7214,22 @@
                     },
                     "dueDate": {
                       "type": "string",
-                      "description": "La date d'échéance de la tâche au format ISO 8601",
+                      "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
                     "completed": {
                       "type": "boolean",
-                      "description": "Indique si la tâche est complétée",
+                      "description": "Whether the task is completed",
                       "example": false
                     },
                     "createdAt": {
                       "type": "string",
-                      "description": "La date de création de la tâche au format ISO 8601",
+                      "description": "Creation date of the task, ISO 8601",
                       "example": "2024-01-01T12:00:00Z"
                     },
                     "updatedAt": {
                       "type": "string",
-                      "description": "La date de dernière mise à jour de la tâche au format ISO 8601",
+                      "description": "Date of the last update of the task, ISO 8601",
                       "example": "2024-01-15T15:30:00Z"
                     },
                     "statusId": {
@@ -7285,7 +7285,7 @@
                     "createdAt",
                     "permissions"
                   ],
-                  "description": "Une tâche associée à un projet"
+                  "description": "A task of a project"
                 }
               }
             }
@@ -7379,7 +7379,7 @@
           "Projects"
         ],
         "summary": "Charge la page projets",
-        "description": "Retourne les projets, les filtres, les options et les données Kanban nécessaires à l’affichage de la page.",
+        "description": "Returns the projects, the filters, the options and the Kanban data the page needs.",
         "parameters": [
           {
             "schema": {
@@ -7448,11 +7448,11 @@
                 "grid",
                 "table"
               ],
-              "description": "Le mode de vue pour les projets",
+              "description": "View mode of the projects",
               "example": "kanban"
             },
             "required": false,
-            "description": "Le mode de vue pour les projets",
+            "description": "View mode of the projects",
             "name": "view",
             "in": "query"
           },
@@ -7483,7 +7483,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Page projets chargée avec succès",
+            "description": "Projects page loaded",
             "content": {
               "application/json": {
                 "schema": {
@@ -7552,7 +7552,7 @@
                             "grid",
                             "table"
                           ],
-                          "description": "Le mode de vue pour les projets",
+                          "description": "View mode of the projects",
                           "example": "kanban"
                         },
                         "views": {
@@ -7567,7 +7567,7 @@
                                   "grid",
                                   "table"
                                 ],
-                                "description": "Le mode de vue pour les projets",
+                                "description": "View mode of the projects",
                                 "example": "kanban"
                               },
                               "label": {
@@ -7745,7 +7745,7 @@
                                   "review",
                                   "done"
                                 ],
-                                "description": "Le statut du projet",
+                                "description": "Status of the project",
                                 "example": "todo"
                               },
                               "label": {
@@ -7783,18 +7783,18 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "L'identifiant unique du projet",
+                            "description": "Unique id of the project",
                             "example": "123e4567-e89b-12d3-a456-426614174000"
                           },
                           "title": {
                             "type": "string",
-                            "description": "Le titre du projet",
-                            "example": "Nouveau projet"
+                            "description": "Title of the project",
+                            "example": "New project"
                           },
                           "description": {
                             "type": "string",
-                            "description": "La description du projet",
-                            "example": "Description détaillée du projet"
+                            "description": "Description of the project",
+                            "example": "Detailed description of the project"
                           },
                           "status": {
                             "type": "string",
@@ -7804,12 +7804,12 @@
                               "review",
                               "done"
                             ],
-                            "description": "Le statut du projet",
+                            "description": "Status of the project",
                             "example": "todo"
                           },
                           "statusLabel": {
                             "type": "string",
-                            "description": "Le libellé du statut du projet",
+                            "description": "Label of the project status",
                             "example": "À faire"
                           },
                           "priority": {
@@ -7819,12 +7819,12 @@
                               "medium",
                               "low"
                             ],
-                            "description": "La priorité du projet",
+                            "description": "Priority of the project",
                             "example": "high"
                           },
                           "priorityLabel": {
                             "type": "string",
-                            "description": "Le libellé de la priorité du projet",
+                            "description": "Label of the project priority",
                             "example": "Haute"
                           },
                           "responsible": {
@@ -7832,12 +7832,12 @@
                             "properties": {
                               "id": {
                                 "type": "string",
-                                "description": "L'identifiant unique de la personne",
+                                "description": "Unique id of the person",
                                 "example": "123e4567-e89b-12d3-a456-426614174000"
                               },
                               "name": {
                                 "type": "string",
-                                "description": "Le nom de la personne",
+                                "description": "Name of the person",
                                 "example": "John Doe"
                               },
                               "avatarUrl": {
@@ -7855,7 +7855,7 @@
                               "name",
                               "avatarUrl"
                             ],
-                            "description": "Une personne assignable à un projet"
+                            "description": "A person who can be assigned to a project"
                           },
                           "assignees": {
                             "type": "array",
@@ -7864,12 +7864,12 @@
                               "properties": {
                                 "id": {
                                   "type": "string",
-                                  "description": "L'identifiant unique de la personne",
+                                  "description": "Unique id of the person",
                                   "example": "123e4567-e89b-12d3-a456-426614174000"
                                 },
                                 "name": {
                                   "type": "string",
-                                  "description": "Le nom de la personne",
+                                  "description": "Name of the person",
                                   "example": "John Doe"
                                 },
                                 "avatarUrl": {
@@ -7887,7 +7887,7 @@
                                 "name",
                                 "avatarUrl"
                               ],
-                              "description": "Une personne assignable à un projet"
+                              "description": "A person who can be assigned to a project"
                             },
                             "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
                           },
@@ -7896,7 +7896,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "description": "La liste des étiquettes associées au projet",
+                            "description": "Labels of the project",
                             "example": [
                               "frontend",
                               "urgent"
@@ -7906,17 +7906,17 @@
                             "type": "number",
                             "minimum": 0,
                             "maximum": 100,
-                            "description": "Le pourcentage d'avancement du projet",
+                            "description": "Progress of the project, in percent",
                             "example": 75
                           },
                           "dueDate": {
                             "type": "string",
-                            "description": "La date d'échéance du projet au format ISO 8601",
+                            "description": "Due date of the project, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
                           "createdAt": {
                             "type": "string",
-                            "description": "La date de création du projet au format ISO 8601",
+                            "description": "Creation date of the project, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
                           "tasks": {
@@ -7956,27 +7956,27 @@
                             "properties": {
                               "canView": {
                                 "type": "boolean",
-                                "description": "Indique si l'utilisateur peut voir le projet",
+                                "description": "Whether the user can see the project",
                                 "example": true
                               },
                               "canEdit": {
                                 "type": "boolean",
-                                "description": "Indique si l'utilisateur peut éditer le projet",
+                                "description": "Whether the user can edit the project",
                                 "example": true
                               },
                               "canDuplicate": {
                                 "type": "boolean",
-                                "description": "Indique si l'utilisateur peut dupliquer le projet",
+                                "description": "Whether the user can duplicate the project",
                                 "example": false
                               },
                               "canDelete": {
                                 "type": "boolean",
-                                "description": "Indique si l'utilisateur peut supprimer le projet",
+                                "description": "Whether the user can delete the project",
                                 "example": false
                               },
                               "canCreateTask": {
                                 "type": "boolean",
-                                "description": "Indique si l'utilisateur peut créer des tâches dans le projet",
+                                "description": "Whether the user can create tasks in the project",
                                 "example": true
                               },
                               "canAssignMembers": {
@@ -7995,7 +7995,7 @@
                               "canAssignMembers",
                               "canClose"
                             ],
-                            "description": "Les permissions de l'utilisateur sur le projet"
+                            "description": "Permissions of the user on the project"
                           }
                         },
                         "required": [
@@ -8015,7 +8015,7 @@
                           "tasks",
                           "permissions"
                         ],
-                        "description": "Un projet pour les vues de type carte, table ou kanban"
+                        "description": "A project for the card, table or kanban views"
                       }
                     },
                     "pagination": {
@@ -8124,28 +8124,28 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Consulte les commentaires et l’historique d’une tâche",
+        "summary": "Read the comments and the history of a task",
         "description": "Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la tâche",
+              "description": "Id of the task",
               "example": "task-1"
             },
             "required": true,
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "name": "taskId",
             "in": "path"
           },
@@ -8394,27 +8394,27 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Ajoute un commentaire à une tâche",
+        "summary": "Add a comment to a task",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la tâche",
+              "description": "Id of the task",
               "example": "task-1"
             },
             "required": true,
-            "description": "Identifiant de la tâche",
+            "description": "Id of the task",
             "name": "taskId",
             "in": "path"
           }
@@ -8443,7 +8443,7 @@
         },
         "responses": {
           "201": {
-            "description": "Commentaire ajouté",
+            "description": "Comment added",
             "content": {
               "application/json": {
                 "schema": {
@@ -8578,11 +8578,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
@@ -8704,11 +8704,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -8806,11 +8806,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-3"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           }
@@ -8973,22 +8973,22 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-4"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du statut",
+              "description": "Id of the status",
               "example": "status-11"
             },
             "required": true,
-            "description": "Identifiant du statut",
+            "description": "Id of the status",
             "name": "statusId",
             "in": "path"
           }
@@ -9145,22 +9145,22 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du projet",
+              "description": "Id of the project",
               "example": "project-1"
             },
             "required": true,
-            "description": "Identifiant du projet",
+            "description": "Id of the project",
             "name": "projectId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du statut",
+              "description": "Id of the status",
               "example": "status-999999"
             },
             "required": true,
-            "description": "Identifiant du statut",
+            "description": "Id of the status",
             "name": "statusId",
             "in": "path"
           },
@@ -9555,11 +9555,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du modèle",
+              "description": "Id of the template",
               "example": "template-1"
             },
             "required": true,
-            "description": "Identifiant du modèle",
+            "description": "Id of the template",
             "name": "templateId",
             "in": "path"
           }
@@ -9736,11 +9736,11 @@
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du modèle",
+              "description": "Id of the template",
               "example": "template-999999"
             },
             "required": true,
-            "description": "Identifiant du modèle",
+            "description": "Id of the template",
             "name": "templateId",
             "in": "path"
           }

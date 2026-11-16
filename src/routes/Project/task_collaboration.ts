@@ -26,7 +26,7 @@ registry.registerPath({
   method: 'get',
   path: '/projects/{projectId}/tasks/{taskId}/collaboration',
   tags: ['Projects'],
-  summary: 'Consulte les commentaires et l’historique d’une tâche',
+  summary: 'Read the comments and the history of a task',
   description: 'Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, '
     + 'with their totals; `page` goes back in time.',
   request: { params: ProjectTaskParams, query: TaskCollaborationQuery },
@@ -40,14 +40,14 @@ registry.registerPath({
   method: 'post',
   path: '/projects/{projectId}/tasks/{taskId}/comments',
   tags: ['Projects'],
-  summary: 'Ajoute un commentaire à une tâche',
+  summary: 'Add a comment to a task',
   request: {
     params: ProjectTaskParams,
     body: { required: true, content: { 'application/json': { schema: TaskCommentBody } } },
   },
   responses: {
     ...apiErrorResponses(...COMMENT_ERROR_STATUSES),
-    201: { description: 'Commentaire ajouté', content: { 'application/json': { schema: TaskComment } } },
+    201: { description: 'Comment added', content: { 'application/json': { schema: TaskComment } } },
   },
 });
 

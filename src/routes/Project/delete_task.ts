@@ -15,7 +15,7 @@ registry.registerPath({
     method: 'delete',
     path: '/projects/{projectId}/tasks/{taskId}',
     tags: ['Projects'],
-    summary: 'Supprime une tâche existante pour un projet',
+    summary: 'Delete an existing task of a project',
 
     request: {
         params: DeletedTaskParams,
@@ -24,7 +24,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         204: {
-            description: 'Tâche supprimée avec succès',
+            description: 'Task deleted',
         },
 
         404: {

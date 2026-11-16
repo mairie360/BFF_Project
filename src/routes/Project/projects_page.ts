@@ -39,7 +39,7 @@ registry.registerPath({
   tags: ["Projects"],
   summary: "Charge la page projets",
   description:
-    "Retourne les projets, les filtres, les options et les données Kanban nécessaires à l’affichage de la page.",
+    "Returns the projects, the filters, the options and the Kanban data the page needs.",
 
   request: {
     query: ProjectsPageQuery,
@@ -48,7 +48,7 @@ registry.registerPath({
   responses: {
     ...apiErrorResponses(...ERROR_STATUSES),
     200: {
-      description: "Page projets chargée avec succès",
+      description: "Projects page loaded",
       content: {
         "application/json": {
           schema: ProjectsPageResponse,
