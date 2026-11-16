@@ -15,7 +15,7 @@ registry.registerPath({
     method: 'delete',
     path: '/projects/{projectId}',
     tags: ['Projects'],
-    summary: 'Supprime un projet existant',
+    summary: 'Delete an existing project',
 
     request: {
         params: DeletedProjectIdParams,

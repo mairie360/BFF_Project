@@ -40,7 +40,7 @@ export const ViewMode = z.enum(['kanban', 'grid', 'table']).openapi({
 export const Person = z.object({
     id: z.string().openapi({ description: 'Unique id of the person', example: '123e4567-e89b-12d3-a456-426614174000' }),
     name: z.string().openapi({ description: 'Name of the person', example: 'John Doe' }),
-    avatarUrl: z.string().url().nullable().openapi({ description: 'L\'URL de l\'avatar de la personne', example: 'https://example.com/avatar.jpg' }),
+    avatarUrl: z.string().url().nullable().openapi({ description: "URL of the person's avatar", example: 'https://example.com/avatar.jpg' }),
 }).openapi({
     description: 'A person who can be assigned to a project',
 });

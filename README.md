@@ -35,6 +35,8 @@ PORT=4001
 PROJECT_API_URL=http://localhost:3001
 CORE_API_URL=localhost
 CORE_API_PORT=3000
+# Core's Ed25519 public key (MAIR-680), required: paste the public key of the Core you run against.
+JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n<base64 of Core's public key>\n-----END PUBLIC KEY-----"
 ```
 
 ## Routes
@@ -48,14 +50,14 @@ Generated contract: [`contracts/openapi.json`](contracts/openapi.json) (24 opera
 | `PATCH` | `/projects/{projectId}/close` | Close or suspend a project |
 | `POST` | `/projects` | Create a project |
 | `POST` | `/projects/{projectId}/tasks` | Create a new task in an existing project |
-| `DELETE` | `/projects/{projectId}` | Supprime un projet existant |
+| `DELETE` | `/projects/{projectId}` | Delete an existing project |
 | `PATCH` | `/projects/{projectId}` | Partially update a project |
 | `GET` | `/projects/{projectId}` | Get the detail of a project |
 | `DELETE` | `/projects/{projectId}/tasks/{taskId}` | Delete an existing task of a project |
 | `PATCH` | `/projects/{projectId}/tasks/{taskId}` | Update an existing task of a project |
 | `POST` | `/projects/{projectId}/duplicate` | Duplicate a project |
 | `PATCH` | `/projects/{projectId}/tasks/{taskId}/status` | Update the status of an existing task of a project |
-| `GET` | `/projects-page` | Charge la page projets |
+| `GET` | `/projects-page` | Load the projects page |
 | `GET` | `/projects/{projectId}/tasks/{taskId}/collaboration` | Read the comments and the history of a task |
 | `POST` | `/projects/{projectId}/tasks/{taskId}/comments` | Add a comment to a task |
 | `GET` | `/projects/{projectId}/archived-tasks` | Lists the archived tasks of a project |

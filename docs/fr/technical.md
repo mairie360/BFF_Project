@@ -31,6 +31,8 @@ PORT=4001
 PROJECT_API_URL=http://localhost:3001
 CORE_API_URL=localhost
 CORE_API_PORT=3000
+# Clé publique Ed25519 de Core (MAIR-680), obligatoire : coller la clé publique du Core utilisé.
+JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n<base64 de la clé publique de Core>\n-----END PUBLIC KEY-----"
 ```
 
 Aucune variable de base de données n’est nécessaire : le BFF ne dialogue qu’avec Project API et Core API. `.env` est chargé par `import 'dotenv/config'`, première ligne de `src/index.ts`. Le serveur refuse de démarrer si `PROJECT_API_URL` ou `CORE_API_URL` est absente ou invalide, en nommant chaque variable fautive.

@@ -179,7 +179,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -198,7 +198,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -316,7 +316,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -335,7 +335,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -616,7 +616,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -635,7 +635,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -753,7 +753,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -772,7 +772,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1005,7 +1005,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -1024,7 +1024,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -1248,7 +1248,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1267,7 +1267,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1385,7 +1385,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1404,7 +1404,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1536,7 +1536,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Supprime un projet existant */
+        /** Delete an existing project */
         delete: {
             parameters: {
                 query?: never;
@@ -1761,7 +1761,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1780,7 +1780,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1898,7 +1898,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1917,7 +1917,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2256,7 +2256,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -2275,7 +2275,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -2500,7 +2500,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2519,7 +2519,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2637,7 +2637,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2656,7 +2656,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2887,7 +2887,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -2906,7 +2906,7 @@ export interface paths {
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
@@ -3054,7 +3054,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Charge la page projets
+         * Load the projects page
          * @description Returns the projects, the filters, the options and the Kanban data the page needs.
          */
         get: {
@@ -3215,7 +3215,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -3234,7 +3234,7 @@ export interface paths {
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -3417,7 +3417,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Suivi collaboratif */
+                /** @description Collaboration of the task: comments and history */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -4782,7 +4782,7 @@ export interface components {
             name: string;
             /**
              * Format: uri
-             * @description L'URL de l'avatar de la personne
+             * @description URL of the person's avatar
              * @example https://example.com/avatar.jpg
              */
             avatarUrl: string | null;
@@ -4840,7 +4840,7 @@ export interface components {
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
@@ -4859,7 +4859,7 @@ export interface components {
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
@@ -4978,7 +4978,7 @@ export interface components {
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
@@ -4997,7 +4997,7 @@ export interface components {
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
@@ -5404,7 +5404,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5423,7 +5423,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5541,7 +5541,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5560,7 +5560,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5755,7 +5755,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5774,7 +5774,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5998,7 +5998,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -6017,7 +6017,7 @@ export interface components {
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;

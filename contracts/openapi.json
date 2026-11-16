@@ -68,7 +68,7 @@
               "null"
             ],
             "format": "uri",
-            "description": "L'URL de l'avatar de la personne",
+            "description": "URL of the person's avatar",
             "example": "https://example.com/avatar.jpg"
           }
         },
@@ -147,7 +147,7 @@
                   "null"
                 ],
                 "format": "uri",
-                "description": "L'URL de l'avatar de la personne",
+                "description": "URL of the person's avatar",
                 "example": "https://example.com/avatar.jpg"
               }
             },
@@ -179,7 +179,7 @@
                     "null"
                   ],
                   "format": "uri",
-                  "description": "L'URL de l'avatar de la personne",
+                  "description": "URL of the person's avatar",
                   "example": "https://example.com/avatar.jpg"
                 }
               },
@@ -366,7 +366,7 @@
                   "null"
                 ],
                 "format": "uri",
-                "description": "L'URL de l'avatar de la personne",
+                "description": "URL of the person's avatar",
                 "example": "https://example.com/avatar.jpg"
               }
             },
@@ -398,7 +398,7 @@
                     "null"
                   ],
                   "format": "uri",
-                  "description": "L'URL de l'avatar de la personne",
+                  "description": "URL of the person's avatar",
                   "example": "https://example.com/avatar.jpg"
                 }
               },
@@ -1332,7 +1332,7 @@
                       "null"
                     ],
                     "format": "uri",
-                    "description": "L'URL de l'avatar de la personne",
+                    "description": "URL of the person's avatar",
                     "example": "https://example.com/avatar.jpg"
                   }
                 },
@@ -1364,7 +1364,7 @@
                         "null"
                       ],
                       "format": "uri",
-                      "description": "L'URL de l'avatar de la personne",
+                      "description": "URL of the person's avatar",
                       "example": "https://example.com/avatar.jpg"
                     }
                   },
@@ -1553,7 +1553,7 @@
                         "null"
                       ],
                       "format": "uri",
-                      "description": "L'URL de l'avatar de la personne",
+                      "description": "URL of the person's avatar",
                       "example": "https://example.com/avatar.jpg"
                     }
                   },
@@ -1585,7 +1585,7 @@
                           "null"
                         ],
                         "format": "uri",
-                        "description": "L'URL de l'avatar de la personne",
+                        "description": "URL of the person's avatar",
                         "example": "https://example.com/avatar.jpg"
                       }
                     },
@@ -2066,7 +2066,7 @@
                         "null"
                       ],
                       "format": "uri",
-                      "description": "L'URL de l'avatar de la personne",
+                      "description": "URL of the person's avatar",
                       "example": "https://example.com/avatar.jpg"
                     }
                   },
@@ -2098,7 +2098,7 @@
                           "null"
                         ],
                         "format": "uri",
-                        "description": "L'URL de l'avatar de la personne",
+                        "description": "URL of the person's avatar",
                         "example": "https://example.com/avatar.jpg"
                       }
                     },
@@ -2605,7 +2605,7 @@
                         "null"
                       ],
                       "format": "uri",
-                      "description": "L'URL de l'avatar de la personne",
+                      "description": "URL of the person's avatar",
                       "example": "https://example.com/avatar.jpg"
                     }
                   },
@@ -2637,7 +2637,7 @@
                           "null"
                         ],
                         "format": "uri",
-                        "description": "L'URL de l'avatar de la personne",
+                        "description": "URL of the person's avatar",
                         "example": "https://example.com/avatar.jpg"
                       }
                     },
@@ -3114,7 +3114,7 @@
                                 "null"
                               ],
                               "format": "uri",
-                              "description": "L'URL de l'avatar de la personne",
+                              "description": "URL of the person's avatar",
                               "example": "https://example.com/avatar.jpg"
                             }
                           },
@@ -3146,7 +3146,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -3335,7 +3335,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -3367,7 +3367,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -3805,7 +3805,7 @@
                                 "null"
                               ],
                               "format": "uri",
-                              "description": "L'URL de l'avatar de la personne",
+                              "description": "URL of the person's avatar",
                               "example": "https://example.com/avatar.jpg"
                             }
                           },
@@ -3837,7 +3837,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -4026,7 +4026,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -4058,7 +4058,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -4406,7 +4406,7 @@
                             "null"
                           ],
                           "format": "uri",
-                          "description": "L'URL de l'avatar de la personne",
+                          "description": "URL of the person's avatar",
                           "example": "https://example.com/avatar.jpg"
                         }
                       },
@@ -4438,7 +4438,7 @@
                               "null"
                             ],
                             "format": "uri",
-                            "description": "L'URL de l'avatar de la personne",
+                            "description": "URL of the person's avatar",
                             "example": "https://example.com/avatar.jpg"
                           }
                         },
@@ -4643,7 +4643,7 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Supprime un projet existant",
+        "summary": "Delete an existing project",
         "parameters": [
           {
             "schema": {
@@ -4970,7 +4970,7 @@
                                 "null"
                               ],
                               "format": "uri",
-                              "description": "L'URL de l'avatar de la personne",
+                              "description": "URL of the person's avatar",
                               "example": "https://example.com/avatar.jpg"
                             }
                           },
@@ -5002,7 +5002,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -5191,7 +5191,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -5223,7 +5223,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -5523,7 +5523,7 @@
                                 "null"
                               ],
                               "format": "uri",
-                              "description": "L'URL de l'avatar de la personne",
+                              "description": "URL of the person's avatar",
                               "example": "https://example.com/avatar.jpg"
                             }
                           },
@@ -5555,7 +5555,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -5744,7 +5744,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -5776,7 +5776,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -6241,7 +6241,7 @@
                             "null"
                           ],
                           "format": "uri",
-                          "description": "L'URL de l'avatar de la personne",
+                          "description": "URL of the person's avatar",
                           "example": "https://example.com/avatar.jpg"
                         }
                       },
@@ -6273,7 +6273,7 @@
                               "null"
                             ],
                             "format": "uri",
-                            "description": "L'URL de l'avatar de la personne",
+                            "description": "URL of the person's avatar",
                             "example": "https://example.com/avatar.jpg"
                           }
                         },
@@ -6569,7 +6569,7 @@
                                 "null"
                               ],
                               "format": "uri",
-                              "description": "L'URL de l'avatar de la personne",
+                              "description": "URL of the person's avatar",
                               "example": "https://example.com/avatar.jpg"
                             }
                           },
@@ -6601,7 +6601,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -6790,7 +6790,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -6822,7 +6822,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -7141,7 +7141,7 @@
                             "null"
                           ],
                           "format": "uri",
-                          "description": "L'URL de l'avatar de la personne",
+                          "description": "URL of the person's avatar",
                           "example": "https://example.com/avatar.jpg"
                         }
                       },
@@ -7173,7 +7173,7 @@
                               "null"
                             ],
                             "format": "uri",
-                            "description": "L'URL de l'avatar de la personne",
+                            "description": "URL of the person's avatar",
                             "example": "https://example.com/avatar.jpg"
                           }
                         },
@@ -7378,7 +7378,7 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Charge la page projets",
+        "summary": "Load the projects page",
         "description": "Returns the projects, the filters, the options and the Kanban data the page needs.",
         "parameters": [
           {
@@ -7846,7 +7846,7 @@
                                   "null"
                                 ],
                                 "format": "uri",
-                                "description": "L'URL de l'avatar de la personne",
+                                "description": "URL of the person's avatar",
                                 "example": "https://example.com/avatar.jpg"
                               }
                             },
@@ -7878,7 +7878,7 @@
                                     "null"
                                   ],
                                   "format": "uri",
-                                  "description": "L'URL de l'avatar de la personne",
+                                  "description": "URL of the person's avatar",
                                   "example": "https://example.com/avatar.jpg"
                                 }
                               },
@@ -8174,7 +8174,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Suivi collaboratif",
+            "description": "Collaboration of the task: comments and history",
             "content": {
               "application/json": {
                 "schema": {

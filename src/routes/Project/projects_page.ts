@@ -37,7 +37,7 @@ registry.registerPath({
   method: "get",
   path: "/projects-page",
   tags: ["Projects"],
-  summary: "Charge la page projets",
+  summary: "Load the projects page",
   description:
     "Returns the projects, the filters, the options and the Kanban data the page needs.",
 

@@ -32,7 +32,7 @@ registry.registerPath({
   request: { params: ProjectTaskParams, query: TaskCollaborationQuery },
   responses: {
     ...apiErrorResponses(...COLLABORATION_ERROR_STATUSES),
-    200: { description: 'Suivi collaboratif', content: { 'application/json': { schema: TaskCollaborationResponse } } },
+    200: { description: 'Collaboration of the task: comments and history', content: { 'application/json': { schema: TaskCollaborationResponse } } },
   },
 });
 
