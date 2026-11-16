@@ -27,7 +27,7 @@ x-db-env: &db-env
 
 services:
   postgres:
-    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-c5b8e22}
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:${UPSTREAM_TAG:-dev}}
     container_name: bff-project-gdpr-db
     environment:
       POSTGRES_USER: postgres
@@ -47,7 +47,7 @@ services:
 
   liquibase:
     # Database >= MAIR-413 only seeds the template admin (users.id = 1) with -Dallow_template_admin=true.
-    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-c5b8e22}
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:${UPSTREAM_TAG:-dev}}
     container_name: bff-project-gdpr-liquibase
     depends_on:
       postgres:
@@ -95,7 +95,7 @@ services:
       retries: 5
 
   core-api:
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:2.3.0}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:${UPSTREAM_TAG:-dev}}
     container_name: bff-project-gdpr-core-api
     depends_on:
       liquibase:
@@ -148,7 +148,7 @@ services:
   project-api:
     # Project API main's dev build: 1.2.0 (docker-compose-integration.yml) logs the query string of every
     # request (`?search=<name>`), fixed by Project_API MAIR-290 (#139), not released yet.
-    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:1.3.0}
+    image: ${PROJECT_API_IMAGE:-ghcr.io/mairie360/project-api:${UPSTREAM_TAG:-dev}}
     container_name: bff-project-gdpr-project-api
     depends_on:
       liquibase:
