@@ -21,7 +21,7 @@ registry.registerPath({
     method: 'post',
     path: '/projects/{projectId}/tasks',
     tags: ['Projects'],
-    summary: 'Crée une nouvelle tâche pour un projet existant',
+    summary: 'Create a new task in an existing project',
 
     request: {
         params: ProjectIdParams,
@@ -38,7 +38,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         201: {
-            description: 'Tâche créée avec succès',
+            description: 'Task created',
             content: {
                 'application/json': {
                     schema: ProjectTask,

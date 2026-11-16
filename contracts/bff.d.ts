@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Vérifie la santé du BFF */
+        /** Check the health of the BFF */
         get: {
             parameters: {
                 query?: never;
@@ -96,13 +96,13 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Clôture ou suspend un projet */
+        /** Close or suspend a project */
         patch: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -119,67 +119,67 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Projet clôturé ou suspendu */
+                /** @description Project closed or suspended */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            /** @description Un projet pour les vues de type carte, table ou kanban */
+                            /** @description A project for the card, table or kanban views */
                             project: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -187,24 +187,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -212,17 +212,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -249,30 +249,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -282,77 +282,77 @@ export interface paths {
                             };
                             taskItems: {
                                 /**
-                                 * @description L'identifiant unique de la tâche
+                                 * @description Unique id of the task
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre de la tâche
-                                 * @example Nouvelle tâche
+                                 * @description Title of the task
+                                 * @example New task
                                  */
                                 title: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut de la tâche
+                                 * @description Label of the task status
                                  * @example À faire
                                  */
                                 statusLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées à la tâche */
+                                /** @description People assigned to the task */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité de la tâche
+                                 * @description Label of the task priority
                                  * @example Moyenne
                                  */
                                 priorityLabel: string;
                                 /**
-                                 * @description La liste des étiquettes associées à la  tâche
+                                 * @description Labels of the task
                                  * @example [
                                  *       "backend",
                                  *       "important"
@@ -360,22 +360,22 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description La date d'échéance de la tâche au format ISO 8601
+                                 * @description Due date of the task, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description Indique si la tâche est complétée
+                                 * @description Whether the task is completed
                                  * @example false
                                  */
                                 completed: boolean;
                                 /**
-                                 * @description La date de création de la tâche au format ISO 8601
+                                 * @description Creation date of the task, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
                                 /**
-                                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                                 * @description Date of the last update of the task, ISO 8601
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
@@ -504,13 +504,13 @@ export interface paths {
                         /** @example Project created by the ZAP scan */
                         description: string;
                         /**
-                         * @description Le statut du projet
+                         * @description Status of the project
                          * @example todo
                          * @enum {string}
                          */
                         status: "todo" | "in-progress" | "review" | "done";
                         /**
-                         * @description La priorité du projet
+                         * @description Priority of the project
                          * @example high
                          * @enum {string}
                          */
@@ -528,13 +528,13 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Le statut du projet
+                             * @description Status of the project
                              * @example todo
                              * @enum {string}
                              */
                             status: "todo" | "in-progress" | "review" | "done";
                             /**
-                             * @description La priorité du projet
+                             * @description Priority of the project
                              * @example high
                              * @enum {string}
                              */
@@ -563,60 +563,60 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @description Un projet pour les vues de type carte, table ou kanban */
+                            /** @description A project for the card, table or kanban views */
                             project: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -624,24 +624,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -649,17 +649,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -686,30 +686,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -719,77 +719,77 @@ export interface paths {
                             };
                             taskItems: {
                                 /**
-                                 * @description L'identifiant unique de la tâche
+                                 * @description Unique id of the task
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre de la tâche
-                                 * @example Nouvelle tâche
+                                 * @description Title of the task
+                                 * @example New task
                                  */
                                 title: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut de la tâche
+                                 * @description Label of the task status
                                  * @example À faire
                                  */
                                 statusLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées à la tâche */
+                                /** @description People assigned to the task */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité de la tâche
+                                 * @description Label of the task priority
                                  * @example Moyenne
                                  */
                                 priorityLabel: string;
                                 /**
-                                 * @description La liste des étiquettes associées à la  tâche
+                                 * @description Labels of the task
                                  * @example [
                                  *       "backend",
                                  *       "important"
@@ -797,22 +797,22 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description La date d'échéance de la tâche au format ISO 8601
+                                 * @description Due date of the task, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description Indique si la tâche est complétée
+                                 * @description Whether the task is completed
                                  * @example false
                                  */
                                 completed: boolean;
                                 /**
-                                 * @description La date de création de la tâche au format ISO 8601
+                                 * @description Creation date of the task, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
                                 /**
-                                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                                 * @description Date of the last update of the task, ISO 8601
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
@@ -917,13 +917,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Crée une nouvelle tâche pour un projet existant */
+        /** Create a new task in an existing project */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -934,13 +934,13 @@ export interface paths {
                         /** @example Scan task */
                         title: string;
                         /**
-                         * @description Le statut du projet
+                         * @description Status of the project
                          * @example todo
                          * @enum {string}
                          */
                         status: "todo" | "in-progress" | "review" | "done";
                         /**
-                         * @description La priorité du projet
+                         * @description Priority of the project
                          * @example high
                          * @enum {string}
                          */
@@ -963,7 +963,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Tâche créée avec succès */
+                /** @description Task created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -971,77 +971,77 @@ export interface paths {
                     content: {
                         "application/json": {
                             /**
-                             * @description L'identifiant unique de la tâche
+                             * @description Unique id of the task
                              * @example 123e4567-e89b-12d3-a456-426614174000
                              */
                             id: string;
                             /**
-                             * @description Le titre de la tâche
-                             * @example Nouvelle tâche
+                             * @description Title of the task
+                             * @example New task
                              */
                             title: string;
                             /**
-                             * @description Le statut du projet
+                             * @description Status of the project
                              * @example todo
                              * @enum {string}
                              */
                             status: "todo" | "in-progress" | "review" | "done";
                             /**
-                             * @description Le libellé du statut de la tâche
+                             * @description Label of the task status
                              * @example À faire
                              */
                             statusLabel: string;
-                            /** @description Une personne assignable à un projet */
+                            /** @description A person who can be assigned to a project */
                             responsible: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             };
-                            /** @description La liste des personnes assignées à la tâche */
+                            /** @description People assigned to the task */
                             assignees: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             }[];
                             /**
-                             * @description La priorité du projet
+                             * @description Priority of the project
                              * @example high
                              * @enum {string}
                              */
                             priority: "high" | "medium" | "low";
                             /**
-                             * @description Le libellé de la priorité de la tâche
+                             * @description Label of the task priority
                              * @example Moyenne
                              */
                             priorityLabel: string;
                             /**
-                             * @description La liste des étiquettes associées à la  tâche
+                             * @description Labels of the task
                              * @example [
                              *       "backend",
                              *       "important"
@@ -1049,22 +1049,22 @@ export interface paths {
                              */
                             labels: string[];
                             /**
-                             * @description La date d'échéance de la tâche au format ISO 8601
+                             * @description Due date of the task, ISO 8601
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
                             /**
-                             * @description Indique si la tâche est complétée
+                             * @description Whether the task is completed
                              * @example false
                              */
                             completed: boolean;
                             /**
-                             * @description La date de création de la tâche au format ISO 8601
+                             * @description Creation date of the task, ISO 8601
                              * @example 2024-01-01T12:00:00Z
                              */
                             createdAt: string;
                             /**
-                             * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                             * @description Date of the last update of the task, ISO 8601
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
@@ -1175,80 +1175,80 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Récupère le détail d’un projet */
+        /** Get the detail of a project */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Projet trouvé */
+                /** @description Project found */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            /** @description Un projet pour les vues de type carte, table ou kanban */
+                            /** @description A project for the card, table or kanban views */
                             project: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1256,24 +1256,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -1281,17 +1281,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -1318,30 +1318,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -1351,77 +1351,77 @@ export interface paths {
                             };
                             taskItems: {
                                 /**
-                                 * @description L'identifiant unique de la tâche
+                                 * @description Unique id of the task
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre de la tâche
-                                 * @example Nouvelle tâche
+                                 * @description Title of the task
+                                 * @example New task
                                  */
                                 title: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut de la tâche
+                                 * @description Label of the task status
                                  * @example À faire
                                  */
                                 statusLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées à la tâche */
+                                /** @description People assigned to the task */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité de la tâche
+                                 * @description Label of the task priority
                                  * @example Moyenne
                                  */
                                 priorityLabel: string;
                                 /**
-                                 * @description La liste des étiquettes associées à la  tâche
+                                 * @description Labels of the task
                                  * @example [
                                  *       "backend",
                                  *       "important"
@@ -1429,22 +1429,22 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description La date d'échéance de la tâche au format ISO 8601
+                                 * @description Due date of the task, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description Indique si la tâche est complétée
+                                 * @description Whether the task is completed
                                  * @example false
                                  */
                                 completed: boolean;
                                 /**
-                                 * @description La date de création de la tâche au format ISO 8601
+                                 * @description Creation date of the task, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
                                 /**
-                                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                                 * @description Date of the last update of the task, ISO 8601
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
@@ -1536,20 +1536,20 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Supprime un projet existant */
+        /** Delete an existing project */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Projet supprimé avec succès */
+                /** @description Project deleted */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -1641,7 +1641,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -1654,13 +1654,13 @@ export interface paths {
                         /** @example Project created by the ZAP scan */
                         description?: string;
                         /**
-                         * @description Le statut du projet
+                         * @description Status of the project
                          * @example todo
                          * @enum {string}
                          */
                         status?: "todo" | "in-progress" | "review" | "done";
                         /**
-                         * @description La priorité du projet
+                         * @description Priority of the project
                          * @example high
                          * @enum {string}
                          */
@@ -1678,13 +1678,13 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Le statut du projet
+                             * @description Status of the project
                              * @example todo
                              * @enum {string}
                              */
                             status: "todo" | "in-progress" | "review" | "done";
                             /**
-                             * @description La priorité du projet
+                             * @description Priority of the project
                              * @example high
                              * @enum {string}
                              */
@@ -1708,60 +1708,60 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @description Un projet pour les vues de type carte, table ou kanban */
+                            /** @description A project for the card, table or kanban views */
                             project: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -1769,24 +1769,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -1794,17 +1794,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -1831,30 +1831,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -1864,77 +1864,77 @@ export interface paths {
                             };
                             taskItems: {
                                 /**
-                                 * @description L'identifiant unique de la tâche
+                                 * @description Unique id of the task
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre de la tâche
-                                 * @example Nouvelle tâche
+                                 * @description Title of the task
+                                 * @example New task
                                  */
                                 title: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut de la tâche
+                                 * @description Label of the task status
                                  * @example À faire
                                  */
                                 statusLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées à la tâche */
+                                /** @description People assigned to the task */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité de la tâche
+                                 * @description Label of the task priority
                                  * @example Moyenne
                                  */
                                 priorityLabel: string;
                                 /**
-                                 * @description La liste des étiquettes associées à la  tâche
+                                 * @description Labels of the task
                                  * @example [
                                  *       "backend",
                                  *       "important"
@@ -1942,22 +1942,22 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description La date d'échéance de la tâche au format ISO 8601
+                                 * @description Due date of the task, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description Indique si la tâche est complétée
+                                 * @description Whether the task is completed
                                  * @example false
                                  */
                                 completed: boolean;
                                 /**
-                                 * @description La date de création de la tâche au format ISO 8601
+                                 * @description Creation date of the task, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
                                 /**
-                                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                                 * @description Date of the last update of the task, ISO 8601
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
@@ -2068,22 +2068,22 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Supprime une tâche existante pour un projet */
+        /** Delete an existing task of a project */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant de la tâche */
+                    /** @description Id of the task */
                     taskId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Tâche supprimée avec succès */
+                /** @description Task deleted */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -2166,15 +2166,15 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Met à jour une tâche existante pour un projet */
+        /** Update an existing task of a project */
         patch: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant de la tâche */
+                    /** @description Id of the task */
                     taskId: string;
                 };
                 cookie?: never;
@@ -2185,13 +2185,13 @@ export interface paths {
                         /** @example Scan task */
                         title?: string;
                         /**
-                         * @description Le statut du projet
+                         * @description Status of the project
                          * @example todo
                          * @enum {string}
                          */
                         status?: "todo" | "in-progress" | "review" | "done";
                         /**
-                         * @description La priorité du projet
+                         * @description Priority of the project
                          * @example high
                          * @enum {string}
                          */
@@ -2214,7 +2214,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Tâche mise à jour avec succès */
+                /** @description Task updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2222,77 +2222,77 @@ export interface paths {
                     content: {
                         "application/json": {
                             /**
-                             * @description L'identifiant unique de la tâche
+                             * @description Unique id of the task
                              * @example 123e4567-e89b-12d3-a456-426614174000
                              */
                             id: string;
                             /**
-                             * @description Le titre de la tâche
-                             * @example Nouvelle tâche
+                             * @description Title of the task
+                             * @example New task
                              */
                             title: string;
                             /**
-                             * @description Le statut du projet
+                             * @description Status of the project
                              * @example todo
                              * @enum {string}
                              */
                             status: "todo" | "in-progress" | "review" | "done";
                             /**
-                             * @description Le libellé du statut de la tâche
+                             * @description Label of the task status
                              * @example À faire
                              */
                             statusLabel: string;
-                            /** @description Une personne assignable à un projet */
+                            /** @description A person who can be assigned to a project */
                             responsible: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             };
-                            /** @description La liste des personnes assignées à la tâche */
+                            /** @description People assigned to the task */
                             assignees: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             }[];
                             /**
-                             * @description La priorité du projet
+                             * @description Priority of the project
                              * @example high
                              * @enum {string}
                              */
                             priority: "high" | "medium" | "low";
                             /**
-                             * @description Le libellé de la priorité de la tâche
+                             * @description Label of the task priority
                              * @example Moyenne
                              */
                             priorityLabel: string;
                             /**
-                             * @description La liste des étiquettes associées à la  tâche
+                             * @description Labels of the task
                              * @example [
                              *       "backend",
                              *       "important"
@@ -2300,22 +2300,22 @@ export interface paths {
                              */
                             labels: string[];
                             /**
-                             * @description La date d'échéance de la tâche au format ISO 8601
+                             * @description Due date of the task, ISO 8601
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
                             /**
-                             * @description Indique si la tâche est complétée
+                             * @description Whether the task is completed
                              * @example false
                              */
                             completed: boolean;
                             /**
-                             * @description La date de création de la tâche au format ISO 8601
+                             * @description Creation date of the task, ISO 8601
                              * @example 2024-01-01T12:00:00Z
                              */
                             createdAt: string;
                             /**
-                             * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                             * @description Date of the last update of the task, ISO 8601
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
@@ -2433,7 +2433,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -2447,60 +2447,60 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @description Un projet pour les vues de type carte, table ou kanban */
+                            /** @description A project for the card, table or kanban views */
                             project: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -2508,24 +2508,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -2533,17 +2533,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -2570,30 +2570,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -2603,77 +2603,77 @@ export interface paths {
                             };
                             taskItems: {
                                 /**
-                                 * @description L'identifiant unique de la tâche
+                                 * @description Unique id of the task
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre de la tâche
-                                 * @example Nouvelle tâche
+                                 * @description Title of the task
+                                 * @example New task
                                  */
                                 title: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut de la tâche
+                                 * @description Label of the task status
                                  * @example À faire
                                  */
                                 statusLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 };
-                                /** @description La liste des personnes assignées à la tâche */
+                                /** @description People assigned to the task */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité de la tâche
+                                 * @description Label of the task priority
                                  * @example Moyenne
                                  */
                                 priorityLabel: string;
                                 /**
-                                 * @description La liste des étiquettes associées à la  tâche
+                                 * @description Labels of the task
                                  * @example [
                                  *       "backend",
                                  *       "important"
@@ -2681,22 +2681,22 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description La date d'échéance de la tâche au format ISO 8601
+                                 * @description Due date of the task, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description Indique si la tâche est complétée
+                                 * @description Whether the task is completed
                                  * @example false
                                  */
                                 completed: boolean;
                                 /**
-                                 * @description La date de création de la tâche au format ISO 8601
+                                 * @description Creation date of the task, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
                                 /**
-                                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                                 * @description Date of the last update of the task, ISO 8601
                                  * @example 2024-01-15T15:30:00Z
                                  */
                                 updatedAt?: string;
@@ -2814,15 +2814,15 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Met à jour le statut d’une tâche existante pour un projet */
+        /** Update the status of an existing task of a project */
         patch: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant de la tâche */
+                    /** @description Id of the task */
                     taskId: string;
                 };
                 cookie?: never;
@@ -2831,7 +2831,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
-                         * @description Le statut du projet
+                         * @description Status of the project
                          * @example todo
                          * @enum {string}
                          */
@@ -2845,7 +2845,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Statut de la tâche mis à jour avec succès */
+                /** @description Task status updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2853,77 +2853,77 @@ export interface paths {
                     content: {
                         "application/json": {
                             /**
-                             * @description L'identifiant unique de la tâche
+                             * @description Unique id of the task
                              * @example 123e4567-e89b-12d3-a456-426614174000
                              */
                             id: string;
                             /**
-                             * @description Le titre de la tâche
-                             * @example Nouvelle tâche
+                             * @description Title of the task
+                             * @example New task
                              */
                             title: string;
                             /**
-                             * @description Le statut du projet
+                             * @description Status of the project
                              * @example todo
                              * @enum {string}
                              */
                             status: "todo" | "in-progress" | "review" | "done";
                             /**
-                             * @description Le libellé du statut de la tâche
+                             * @description Label of the task status
                              * @example À faire
                              */
                             statusLabel: string;
-                            /** @description Une personne assignable à un projet */
+                            /** @description A person who can be assigned to a project */
                             responsible: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             };
-                            /** @description La liste des personnes assignées à la tâche */
+                            /** @description People assigned to the task */
                             assignees: {
                                 /**
-                                 * @description L'identifiant unique de la personne
+                                 * @description Unique id of the person
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le nom de la personne
+                                 * @description Name of the person
                                  * @example John Doe
                                  */
                                 name: string;
                                 /**
                                  * Format: uri
-                                 * @description L'URL de l'avatar de la personne
+                                 * @description URL of the person's avatar
                                  * @example https://example.com/avatar.jpg
                                  */
                                 avatarUrl: string | null;
                             }[];
                             /**
-                             * @description La priorité du projet
+                             * @description Priority of the project
                              * @example high
                              * @enum {string}
                              */
                             priority: "high" | "medium" | "low";
                             /**
-                             * @description Le libellé de la priorité de la tâche
+                             * @description Label of the task priority
                              * @example Moyenne
                              */
                             priorityLabel: string;
                             /**
-                             * @description La liste des étiquettes associées à la  tâche
+                             * @description Labels of the task
                              * @example [
                              *       "backend",
                              *       "important"
@@ -2931,22 +2931,22 @@ export interface paths {
                              */
                             labels: string[];
                             /**
-                             * @description La date d'échéance de la tâche au format ISO 8601
+                             * @description Due date of the task, ISO 8601
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
                             /**
-                             * @description Indique si la tâche est complétée
+                             * @description Whether the task is completed
                              * @example false
                              */
                             completed: boolean;
                             /**
-                             * @description La date de création de la tâche au format ISO 8601
+                             * @description Creation date of the task, ISO 8601
                              * @example 2024-01-01T12:00:00Z
                              */
                             createdAt: string;
                             /**
-                             * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                             * @description Date of the last update of the task, ISO 8601
                              * @example 2024-01-15T15:30:00Z
                              */
                             updatedAt?: string;
@@ -3054,8 +3054,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Charge la page projets
-         * @description Retourne les projets, les filtres, les options et les données Kanban nécessaires à l’affichage de la page.
+         * Load the projects page
+         * @description Returns the projects, the filters, the options and the Kanban data the page needs.
          */
         get: {
             parameters: {
@@ -3066,7 +3066,7 @@ export interface paths {
                     priority?: "all" | "high" | "medium" | "low";
                     dueBefore?: string;
                     dueAfter?: string;
-                    /** @description Le mode de vue pour les projets */
+                    /** @description View mode of the projects */
                     view?: "kanban" | "grid" | "table";
                     page?: number | null;
                     limit?: number | null;
@@ -3077,7 +3077,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Page projets chargée avec succès */
+                /** @description Projects page loaded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3099,14 +3099,14 @@ export interface paths {
                                 title: string;
                                 subtitle: string;
                                 /**
-                                 * @description Le mode de vue pour les projets
+                                 * @description View mode of the projects
                                  * @example kanban
                                  * @enum {string}
                                  */
                                 defaultView: "kanban" | "grid" | "table";
                                 views: {
                                     /**
-                                     * @description Le mode de vue pour les projets
+                                     * @description View mode of the projects
                                      * @example kanban
                                      * @enum {string}
                                      */
@@ -3151,7 +3151,7 @@ export interface paths {
                             kanban: {
                                 columns: {
                                     /**
-                                     * @description Le statut du projet
+                                     * @description Status of the project
                                      * @example todo
                                      * @enum {string}
                                      */
@@ -3165,57 +3165,57 @@ export interface paths {
                             };
                             projects: {
                                 /**
-                                 * @description L'identifiant unique du projet
+                                 * @description Unique id of the project
                                  * @example 123e4567-e89b-12d3-a456-426614174000
                                  */
                                 id: string;
                                 /**
-                                 * @description Le titre du projet
-                                 * @example Nouveau projet
+                                 * @description Title of the project
+                                 * @example New project
                                  */
                                 title: string;
                                 /**
-                                 * @description La description du projet
-                                 * @example Description détaillée du projet
+                                 * @description Description of the project
+                                 * @example Detailed description of the project
                                  */
                                 description: string;
                                 /**
-                                 * @description Le statut du projet
+                                 * @description Status of the project
                                  * @example todo
                                  * @enum {string}
                                  */
                                 status: "todo" | "in-progress" | "review" | "done";
                                 /**
-                                 * @description Le libellé du statut du projet
+                                 * @description Label of the project status
                                  * @example À faire
                                  */
                                 statusLabel: string;
                                 /**
-                                 * @description La priorité du projet
+                                 * @description Priority of the project
                                  * @example high
                                  * @enum {string}
                                  */
                                 priority: "high" | "medium" | "low";
                                 /**
-                                 * @description Le libellé de la priorité du projet
+                                 * @description Label of the project priority
                                  * @example Haute
                                  */
                                 priorityLabel: string;
-                                /** @description Une personne assignable à un projet */
+                                /** @description A person who can be assigned to a project */
                                 responsible: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
@@ -3223,24 +3223,24 @@ export interface paths {
                                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                                 assignees: {
                                     /**
-                                     * @description L'identifiant unique de la personne
+                                     * @description Unique id of the person
                                      * @example 123e4567-e89b-12d3-a456-426614174000
                                      */
                                     id: string;
                                     /**
-                                     * @description Le nom de la personne
+                                     * @description Name of the person
                                      * @example John Doe
                                      */
                                     name: string;
                                     /**
                                      * Format: uri
-                                     * @description L'URL de l'avatar de la personne
+                                     * @description URL of the person's avatar
                                      * @example https://example.com/avatar.jpg
                                      */
                                     avatarUrl: string | null;
                                 }[];
                                 /**
-                                 * @description La liste des étiquettes associées au projet
+                                 * @description Labels of the project
                                  * @example [
                                  *       "frontend",
                                  *       "urgent"
@@ -3248,17 +3248,17 @@ export interface paths {
                                  */
                                 labels: string[];
                                 /**
-                                 * @description Le pourcentage d'avancement du projet
+                                 * @description Progress of the project, in percent
                                  * @example 75
                                  */
                                 progress: number;
                                 /**
-                                 * @description La date d'échéance du projet au format ISO 8601
+                                 * @description Due date of the project, ISO 8601
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
                                 /**
-                                 * @description La date de création du projet au format ISO 8601
+                                 * @description Creation date of the project, ISO 8601
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
@@ -3285,30 +3285,30 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Les permissions de l'utilisateur sur le projet */
+                                /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
-                                     * @description Indique si l'utilisateur peut voir le projet
+                                     * @description Whether the user can see the project
                                      * @example true
                                      */
                                     canView: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut éditer le projet
+                                     * @description Whether the user can edit the project
                                      * @example true
                                      */
                                     canEdit: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut dupliquer le projet
+                                     * @description Whether the user can duplicate the project
                                      * @example false
                                      */
                                     canDuplicate: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut supprimer le projet
+                                     * @description Whether the user can delete the project
                                      * @example false
                                      */
                                     canDelete: boolean;
                                     /**
-                                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                                     * @description Whether the user can create tasks in the project
                                      * @example true
                                      */
                                     canCreateTask: boolean;
@@ -3397,7 +3397,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Consulte les commentaires et l’historique d’une tâche
+         * Read the comments and the history of a task
          * @description Paged (MAIR-502): the `limit` (50 by default) most recent comments and history entries of the task, with their totals; `page` goes back in time.
          */
         get: {
@@ -3408,16 +3408,16 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant de la tâche */
+                    /** @description Id of the task */
                     taskId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Suivi collaboratif */
+                /** @description Collaboration of the task: comments and history */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3552,15 +3552,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ajoute un commentaire à une tâche */
+        /** Add a comment to a task */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant de la tâche */
+                    /** @description Id of the task */
                     taskId: string;
                 };
                 cookie?: never;
@@ -3574,7 +3574,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Commentaire ajouté */
+                /** @description Comment added */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -3690,7 +3690,7 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -3795,7 +3795,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -3886,7 +3886,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
                 };
                 cookie?: never;
@@ -4033,9 +4033,9 @@ export interface paths {
                 };
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant du statut */
+                    /** @description Id of the status */
                     statusId: string;
                 };
                 cookie?: never;
@@ -4145,9 +4145,9 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du projet */
+                    /** @description Id of the project */
                     projectId: string;
-                    /** @description Identifiant du statut */
+                    /** @description Id of the status */
                     statusId: string;
                 };
                 cookie?: never;
@@ -4515,7 +4515,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du modèle */
+                    /** @description Id of the template */
                     templateId: string;
                 };
                 cookie?: never;
@@ -4623,7 +4623,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant du modèle */
+                    /** @description Id of the template */
                     templateId: string;
                 };
                 cookie?: never;
@@ -4751,96 +4751,96 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Le statut du projet
+         * @description Status of the project
          * @example todo
          * @enum {string}
          */
         ProjectStatus: "todo" | "in-progress" | "review" | "done";
         /**
-         * @description La priorité du projet
+         * @description Priority of the project
          * @example high
          * @enum {string}
          */
         ProjectPriority: "high" | "medium" | "low";
         /**
-         * @description Le mode de vue pour les projets
+         * @description View mode of the projects
          * @example kanban
          * @enum {string}
          */
         ViewMode: "kanban" | "grid" | "table";
-        /** @description Une personne assignable à un projet */
+        /** @description A person who can be assigned to a project */
         Person: {
             /**
-             * @description L'identifiant unique de la personne
+             * @description Unique id of the person
              * @example 123e4567-e89b-12d3-a456-426614174000
              */
             id: string;
             /**
-             * @description Le nom de la personne
+             * @description Name of the person
              * @example John Doe
              */
             name: string;
             /**
              * Format: uri
-             * @description L'URL de l'avatar de la personne
+             * @description URL of the person's avatar
              * @example https://example.com/avatar.jpg
              */
             avatarUrl: string | null;
         };
-        /** @description Un projet pour les vues de type carte, table ou kanban */
+        /** @description A project for the card, table or kanban views */
         ProjectListItem: {
             /**
-             * @description L'identifiant unique du projet
+             * @description Unique id of the project
              * @example 123e4567-e89b-12d3-a456-426614174000
              */
             id: string;
             /**
-             * @description Le titre du projet
-             * @example Nouveau projet
+             * @description Title of the project
+             * @example New project
              */
             title: string;
             /**
-             * @description La description du projet
-             * @example Description détaillée du projet
+             * @description Description of the project
+             * @example Detailed description of the project
              */
             description: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description Le libellé du statut du projet
+             * @description Label of the project status
              * @example À faire
              */
             statusLabel: string;
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
             priority: "high" | "medium" | "low";
             /**
-             * @description Le libellé de la priorité du projet
+             * @description Label of the project priority
              * @example Haute
              */
             priorityLabel: string;
-            /** @description Une personne assignable à un projet */
+            /** @description A person who can be assigned to a project */
             responsible: {
                 /**
-                 * @description L'identifiant unique de la personne
+                 * @description Unique id of the person
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le nom de la personne
+                 * @description Name of the person
                  * @example John Doe
                  */
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
@@ -4848,24 +4848,24 @@ export interface components {
             /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
             assignees: {
                 /**
-                 * @description L'identifiant unique de la personne
+                 * @description Unique id of the person
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le nom de la personne
+                 * @description Name of the person
                  * @example John Doe
                  */
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
             }[];
             /**
-             * @description La liste des étiquettes associées au projet
+             * @description Labels of the project
              * @example [
              *       "frontend",
              *       "urgent"
@@ -4873,17 +4873,17 @@ export interface components {
              */
             labels: string[];
             /**
-             * @description Le pourcentage d'avancement du projet
+             * @description Progress of the project, in percent
              * @example 75
              */
             progress: number;
             /**
-             * @description La date d'échéance du projet au format ISO 8601
+             * @description Due date of the project, ISO 8601
              * @example 2024-12-31T23:59:59Z
              */
             dueDate: string;
             /**
-             * @description La date de création du projet au format ISO 8601
+             * @description Creation date of the project, ISO 8601
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
@@ -4910,30 +4910,30 @@ export interface components {
                  */
                 archived: number;
             };
-            /** @description Les permissions de l'utilisateur sur le projet */
+            /** @description Permissions of the user on the project */
             permissions: {
                 /**
-                 * @description Indique si l'utilisateur peut voir le projet
+                 * @description Whether the user can see the project
                  * @example true
                  */
                 canView: boolean;
                 /**
-                 * @description Indique si l'utilisateur peut éditer le projet
+                 * @description Whether the user can edit the project
                  * @example true
                  */
                 canEdit: boolean;
                 /**
-                 * @description Indique si l'utilisateur peut dupliquer le projet
+                 * @description Whether the user can duplicate the project
                  * @example false
                  */
                 canDuplicate: boolean;
                 /**
-                 * @description Indique si l'utilisateur peut supprimer le projet
+                 * @description Whether the user can delete the project
                  * @example false
                  */
                 canDelete: boolean;
                 /**
-                 * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                 * @description Whether the user can create tasks in the project
                  * @example true
                  */
                 canCreateTask: boolean;
@@ -4941,80 +4941,80 @@ export interface components {
                 canClose: boolean;
             };
         };
-        /** @description Une tâche associée à un projet */
+        /** @description A task of a project */
         ProjectTask: {
             /**
-             * @description L'identifiant unique de la tâche
+             * @description Unique id of the task
              * @example 123e4567-e89b-12d3-a456-426614174000
              */
             id: string;
             /**
-             * @description Le titre de la tâche
-             * @example Nouvelle tâche
+             * @description Title of the task
+             * @example New task
              */
             title: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description Le libellé du statut de la tâche
+             * @description Label of the task status
              * @example À faire
              */
             statusLabel: string;
-            /** @description Une personne assignable à un projet */
+            /** @description A person who can be assigned to a project */
             responsible: {
                 /**
-                 * @description L'identifiant unique de la personne
+                 * @description Unique id of the person
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le nom de la personne
+                 * @description Name of the person
                  * @example John Doe
                  */
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
             };
-            /** @description La liste des personnes assignées à la tâche */
+            /** @description People assigned to the task */
             assignees: {
                 /**
-                 * @description L'identifiant unique de la personne
+                 * @description Unique id of the person
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le nom de la personne
+                 * @description Name of the person
                  * @example John Doe
                  */
                 name: string;
                 /**
                  * Format: uri
-                 * @description L'URL de l'avatar de la personne
+                 * @description URL of the person's avatar
                  * @example https://example.com/avatar.jpg
                  */
                 avatarUrl: string | null;
             }[];
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
             priority: "high" | "medium" | "low";
             /**
-             * @description Le libellé de la priorité de la tâche
+             * @description Label of the task priority
              * @example Moyenne
              */
             priorityLabel: string;
             /**
-             * @description La liste des étiquettes associées à la  tâche
+             * @description Labels of the task
              * @example [
              *       "backend",
              *       "important"
@@ -5022,22 +5022,22 @@ export interface components {
              */
             labels: string[];
             /**
-             * @description La date d'échéance de la tâche au format ISO 8601
+             * @description Due date of the task, ISO 8601
              * @example 2024-12-31T23:59:59Z
              */
             dueDate: string;
             /**
-             * @description Indique si la tâche est complétée
+             * @description Whether the task is completed
              * @example false
              */
             completed: boolean;
             /**
-             * @description La date de création de la tâche au format ISO 8601
+             * @description Creation date of the task, ISO 8601
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
             /**
-             * @description La date de dernière mise à jour de la tâche au format ISO 8601
+             * @description Date of the last update of the task, ISO 8601
              * @example 2024-01-15T15:30:00Z
              */
             updatedAt?: string;
@@ -5061,19 +5061,19 @@ export interface components {
         };
         ProjectIdParams: {
             /**
-             * @description Identifiant du projet
+             * @description Id of the project
              * @example project-1
              */
             projectId: string;
         };
         ProjectTaskParams: {
             /**
-             * @description Identifiant du projet
+             * @description Id of the project
              * @example project-1
              */
             projectId: string;
             /**
-             * @description Identifiant de la tâche
+             * @description Id of the task
              * @example task-1
              */
             taskId: string;
@@ -5093,7 +5093,7 @@ export interface components {
             /** @example 2020-01-01 */
             dueAfter?: string;
             /**
-             * @description Le mode de vue pour les projets
+             * @description View mode of the projects
              * @example kanban
              * @enum {string}
              */
@@ -5109,13 +5109,13 @@ export interface components {
             /** @example Project created by the ZAP scan */
             description: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
@@ -5133,13 +5133,13 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
@@ -5164,13 +5164,13 @@ export interface components {
             /** @example Project created by the ZAP scan */
             description?: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status?: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
@@ -5188,13 +5188,13 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
@@ -5212,13 +5212,13 @@ export interface components {
             /** @example Scan task */
             title: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
@@ -5242,13 +5242,13 @@ export interface components {
             /** @example Scan task */
             title?: string;
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
             status?: "todo" | "in-progress" | "review" | "done";
             /**
-             * @description La priorité du projet
+             * @description Priority of the project
              * @example high
              * @enum {string}
              */
@@ -5270,7 +5270,7 @@ export interface components {
         };
         UpdateTaskStatusBody: {
             /**
-             * @description Le statut du projet
+             * @description Status of the project
              * @example todo
              * @enum {string}
              */
@@ -5351,60 +5351,60 @@ export interface components {
             };
         };
         ProjectDetailsResponse: {
-            /** @description Un projet pour les vues de type carte, table ou kanban */
+            /** @description A project for the card, table or kanban views */
             project: {
                 /**
-                 * @description L'identifiant unique du projet
+                 * @description Unique id of the project
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le titre du projet
-                 * @example Nouveau projet
+                 * @description Title of the project
+                 * @example New project
                  */
                 title: string;
                 /**
-                 * @description La description du projet
-                 * @example Description détaillée du projet
+                 * @description Description of the project
+                 * @example Detailed description of the project
                  */
                 description: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description Le libellé du statut du projet
+                 * @description Label of the project status
                  * @example À faire
                  */
                 statusLabel: string;
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
                 priority: "high" | "medium" | "low";
                 /**
-                 * @description Le libellé de la priorité du projet
+                 * @description Label of the project priority
                  * @example Haute
                  */
                 priorityLabel: string;
-                /** @description Une personne assignable à un projet */
+                /** @description A person who can be assigned to a project */
                 responsible: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5412,24 +5412,24 @@ export interface components {
                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 }[];
                 /**
-                 * @description La liste des étiquettes associées au projet
+                 * @description Labels of the project
                  * @example [
                  *       "frontend",
                  *       "urgent"
@@ -5437,17 +5437,17 @@ export interface components {
                  */
                 labels: string[];
                 /**
-                 * @description Le pourcentage d'avancement du projet
+                 * @description Progress of the project, in percent
                  * @example 75
                  */
                 progress: number;
                 /**
-                 * @description La date d'échéance du projet au format ISO 8601
+                 * @description Due date of the project, ISO 8601
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
                 /**
-                 * @description La date de création du projet au format ISO 8601
+                 * @description Creation date of the project, ISO 8601
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
@@ -5474,30 +5474,30 @@ export interface components {
                      */
                     archived: number;
                 };
-                /** @description Les permissions de l'utilisateur sur le projet */
+                /** @description Permissions of the user on the project */
                 permissions: {
                     /**
-                     * @description Indique si l'utilisateur peut voir le projet
+                     * @description Whether the user can see the project
                      * @example true
                      */
                     canView: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut éditer le projet
+                     * @description Whether the user can edit the project
                      * @example true
                      */
                     canEdit: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut dupliquer le projet
+                     * @description Whether the user can duplicate the project
                      * @example false
                      */
                     canDuplicate: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut supprimer le projet
+                     * @description Whether the user can delete the project
                      * @example false
                      */
                     canDelete: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                     * @description Whether the user can create tasks in the project
                      * @example true
                      */
                     canCreateTask: boolean;
@@ -5507,77 +5507,77 @@ export interface components {
             };
             taskItems: {
                 /**
-                 * @description L'identifiant unique de la tâche
+                 * @description Unique id of the task
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le titre de la tâche
-                 * @example Nouvelle tâche
+                 * @description Title of the task
+                 * @example New task
                  */
                 title: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description Le libellé du statut de la tâche
+                 * @description Label of the task status
                  * @example À faire
                  */
                 statusLabel: string;
-                /** @description Une personne assignable à un projet */
+                /** @description A person who can be assigned to a project */
                 responsible: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées à la tâche */
+                /** @description People assigned to the task */
                 assignees: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 }[];
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
                 priority: "high" | "medium" | "low";
                 /**
-                 * @description Le libellé de la priorité de la tâche
+                 * @description Label of the task priority
                  * @example Moyenne
                  */
                 priorityLabel: string;
                 /**
-                 * @description La liste des étiquettes associées à la  tâche
+                 * @description Labels of the task
                  * @example [
                  *       "backend",
                  *       "important"
@@ -5585,22 +5585,22 @@ export interface components {
                  */
                 labels: string[];
                 /**
-                 * @description La date d'échéance de la tâche au format ISO 8601
+                 * @description Due date of the task, ISO 8601
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
                 /**
-                 * @description Indique si la tâche est complétée
+                 * @description Whether the task is completed
                  * @example false
                  */
                 completed: boolean;
                 /**
-                 * @description La date de création de la tâche au format ISO 8601
+                 * @description Creation date of the task, ISO 8601
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
                 /**
-                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                 * @description Date of the last update of the task, ISO 8601
                  * @example 2024-01-15T15:30:00Z
                  */
                 updatedAt?: string;
@@ -5639,14 +5639,14 @@ export interface components {
                 title: string;
                 subtitle: string;
                 /**
-                 * @description Le mode de vue pour les projets
+                 * @description View mode of the projects
                  * @example kanban
                  * @enum {string}
                  */
                 defaultView: "kanban" | "grid" | "table";
                 views: {
                     /**
-                     * @description Le mode de vue pour les projets
+                     * @description View mode of the projects
                      * @example kanban
                      * @enum {string}
                      */
@@ -5691,7 +5691,7 @@ export interface components {
             kanban: {
                 columns: {
                     /**
-                     * @description Le statut du projet
+                     * @description Status of the project
                      * @example todo
                      * @enum {string}
                      */
@@ -5705,57 +5705,57 @@ export interface components {
             };
             projects: {
                 /**
-                 * @description L'identifiant unique du projet
+                 * @description Unique id of the project
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le titre du projet
-                 * @example Nouveau projet
+                 * @description Title of the project
+                 * @example New project
                  */
                 title: string;
                 /**
-                 * @description La description du projet
-                 * @example Description détaillée du projet
+                 * @description Description of the project
+                 * @example Detailed description of the project
                  */
                 description: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description Le libellé du statut du projet
+                 * @description Label of the project status
                  * @example À faire
                  */
                 statusLabel: string;
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
                 priority: "high" | "medium" | "low";
                 /**
-                 * @description Le libellé de la priorité du projet
+                 * @description Label of the project priority
                  * @example Haute
                  */
                 priorityLabel: string;
-                /** @description Une personne assignable à un projet */
+                /** @description A person who can be assigned to a project */
                 responsible: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
@@ -5763,24 +5763,24 @@ export interface components {
                 /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
                 assignees: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 }[];
                 /**
-                 * @description La liste des étiquettes associées au projet
+                 * @description Labels of the project
                  * @example [
                  *       "frontend",
                  *       "urgent"
@@ -5788,17 +5788,17 @@ export interface components {
                  */
                 labels: string[];
                 /**
-                 * @description Le pourcentage d'avancement du projet
+                 * @description Progress of the project, in percent
                  * @example 75
                  */
                 progress: number;
                 /**
-                 * @description La date d'échéance du projet au format ISO 8601
+                 * @description Due date of the project, ISO 8601
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
                 /**
-                 * @description La date de création du projet au format ISO 8601
+                 * @description Creation date of the project, ISO 8601
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
@@ -5825,30 +5825,30 @@ export interface components {
                      */
                     archived: number;
                 };
-                /** @description Les permissions de l'utilisateur sur le projet */
+                /** @description Permissions of the user on the project */
                 permissions: {
                     /**
-                     * @description Indique si l'utilisateur peut voir le projet
+                     * @description Whether the user can see the project
                      * @example true
                      */
                     canView: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut éditer le projet
+                     * @description Whether the user can edit the project
                      * @example true
                      */
                     canEdit: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut dupliquer le projet
+                     * @description Whether the user can duplicate the project
                      * @example false
                      */
                     canDuplicate: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut supprimer le projet
+                     * @description Whether the user can delete the project
                      * @example false
                      */
                     canDelete: boolean;
                     /**
-                     * @description Indique si l'utilisateur peut créer des tâches dans le projet
+                     * @description Whether the user can create tasks in the project
                      * @example true
                      */
                     canCreateTask: boolean;
@@ -5964,77 +5964,77 @@ export interface components {
             /** @description Archived tasks of the page the caller may see, the most recently archived first */
             tasks: {
                 /**
-                 * @description L'identifiant unique de la tâche
+                 * @description Unique id of the task
                  * @example 123e4567-e89b-12d3-a456-426614174000
                  */
                 id: string;
                 /**
-                 * @description Le titre de la tâche
-                 * @example Nouvelle tâche
+                 * @description Title of the task
+                 * @example New task
                  */
                 title: string;
                 /**
-                 * @description Le statut du projet
+                 * @description Status of the project
                  * @example todo
                  * @enum {string}
                  */
                 status: "todo" | "in-progress" | "review" | "done";
                 /**
-                 * @description Le libellé du statut de la tâche
+                 * @description Label of the task status
                  * @example À faire
                  */
                 statusLabel: string;
-                /** @description Une personne assignable à un projet */
+                /** @description A person who can be assigned to a project */
                 responsible: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 };
-                /** @description La liste des personnes assignées à la tâche */
+                /** @description People assigned to the task */
                 assignees: {
                     /**
-                     * @description L'identifiant unique de la personne
+                     * @description Unique id of the person
                      * @example 123e4567-e89b-12d3-a456-426614174000
                      */
                     id: string;
                     /**
-                     * @description Le nom de la personne
+                     * @description Name of the person
                      * @example John Doe
                      */
                     name: string;
                     /**
                      * Format: uri
-                     * @description L'URL de l'avatar de la personne
+                     * @description URL of the person's avatar
                      * @example https://example.com/avatar.jpg
                      */
                     avatarUrl: string | null;
                 }[];
                 /**
-                 * @description La priorité du projet
+                 * @description Priority of the project
                  * @example high
                  * @enum {string}
                  */
                 priority: "high" | "medium" | "low";
                 /**
-                 * @description Le libellé de la priorité de la tâche
+                 * @description Label of the task priority
                  * @example Moyenne
                  */
                 priorityLabel: string;
                 /**
-                 * @description La liste des étiquettes associées à la  tâche
+                 * @description Labels of the task
                  * @example [
                  *       "backend",
                  *       "important"
@@ -6042,22 +6042,22 @@ export interface components {
                  */
                 labels: string[];
                 /**
-                 * @description La date d'échéance de la tâche au format ISO 8601
+                 * @description Due date of the task, ISO 8601
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
                 /**
-                 * @description Indique si la tâche est complétée
+                 * @description Whether the task is completed
                  * @example false
                  */
                 completed: boolean;
                 /**
-                 * @description La date de création de la tâche au format ISO 8601
+                 * @description Creation date of the task, ISO 8601
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
                 /**
-                 * @description La date de dernière mise à jour de la tâche au format ISO 8601
+                 * @description Date of the last update of the task, ISO 8601
                  * @example 2024-01-15T15:30:00Z
                  */
                 updatedAt?: string;

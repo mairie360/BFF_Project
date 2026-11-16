@@ -3,7 +3,7 @@ import { ErrorResponseSchema, textField } from '@mairie360/bffs-lib';
 import { z } from 'zod';
 import { isDueDate } from './routes/Project/due_date';
 
-// On ajoute les méthodes .openapi() à Zod
+// Adds the .openapi() methods to Zod
 extendZodWithOpenApi(z);
 
 export const registry = new OpenAPIRegistry();
@@ -21,50 +21,50 @@ export const bearerAuth = registry.registerComponent('securitySchemes', 'bearerA
 // Schema -- ENUMS
 
 export const ProjectStatus = z.enum(['todo', 'in-progress', 'review', 'done']).openapi({
-  description: 'Le statut du projet',
+  description: 'Status of the project',
   example: 'todo',
 });
 
 export const ProjectPriority = z.enum(['high', 'medium', 'low']).openapi({
-  description: 'La priorité du projet',
+  description: 'Priority of the project',
   example: 'high',
 });
 
 export const ViewMode = z.enum(['kanban', 'grid', 'table']).openapi({
-  description: 'Le mode de vue pour les projets',
+  description: 'View mode of the projects',
   example: 'kanban',
 });
 
 // Schema -- Personne assignable
 
 export const Person = z.object({
-    id: z.string().openapi({ description: 'L\'identifiant unique de la personne', example: '123e4567-e89b-12d3-a456-426614174000' }),
-    name: z.string().openapi({ description: 'Le nom de la personne', example: 'John Doe' }),
-    avatarUrl: z.string().url().nullable().openapi({ description: 'L\'URL de l\'avatar de la personne', example: 'https://example.com/avatar.jpg' }),
+    id: z.string().openapi({ description: 'Unique id of the person', example: '123e4567-e89b-12d3-a456-426614174000' }),
+    name: z.string().openapi({ description: 'Name of the person', example: 'John Doe' }),
+    avatarUrl: z.string().url().nullable().openapi({ description: "URL of the person's avatar", example: 'https://example.com/avatar.jpg' }),
 }).openapi({
-    description: 'Une personne assignable à un projet',
+    description: 'A person who can be assigned to a project',
 });
 
 
-// Schema -- Projet pour carte / table / kanban
+// Schema -- Project for the card / table / kanban views
 
 
 export const ProjectListItem = z.object({
-    id: z.string().openapi({ description: 'L\'identifiant unique du projet', example: '123e4567-e89b-12d3-a456-426614174000' }),
-    title: z.string().openapi({ description: 'Le titre du projet', example: 'Nouveau projet' }),
-    description: z.string().openapi({ description: 'La description du projet', example: 'Description détaillée du projet' }),
+    id: z.string().openapi({ description: 'Unique id of the project', example: '123e4567-e89b-12d3-a456-426614174000' }),
+    title: z.string().openapi({ description: 'Title of the project', example: 'New project' }),
+    description: z.string().openapi({ description: 'Description of the project', example: 'Detailed description of the project' }),
     status: ProjectStatus,
-    statusLabel: z.string().openapi({ description: 'Le libellé du statut du projet', example: 'À faire' }),
+    statusLabel: z.string().openapi({ description: 'Label of the project status', example: 'À faire' }),
     priority: ProjectPriority,
-    priorityLabel: z.string().openapi({ description: 'Le libellé de la priorité du projet', example: 'Haute' }),
+    priorityLabel: z.string().openapi({ description: 'Label of the project priority', example: 'Haute' }),
     responsible: Person,
     assignees: z.array(Person).openapi({
       description: 'Members of the project; in the projects page, its first 5 members only (the project detail lists them all)',
     }),
-    labels: z.array(z.string()).openapi({ description: 'La liste des étiquettes associées au projet', example: ['frontend', 'urgent'] }),
-    progress: z.number().min(0).max(100).openapi({ description: 'Le pourcentage d\'avancement du projet', example: 75 }),
-    dueDate: z.string().openapi({ description: 'La date d\'échéance du projet au format ISO 8601', example: '2024-12-31T23:59:59Z' }),
-    createdAt: z.string().openapi({ description: 'La date de création du projet au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
+    labels: z.array(z.string()).openapi({ description: 'Labels of the project', example: ['frontend', 'urgent'] }),
+    progress: z.number().min(0).max(100).openapi({ description: 'Progress of the project, in percent', example: 75 }),
+    dueDate: z.string().openapi({ description: 'Due date of the project, ISO 8601', example: '2024-12-31T23:59:59Z' }),
+    createdAt: z.string().openapi({ description: 'Creation date of the project, ISO 8601', example: '2024-01-01T12:00:00Z' }),
     tasks: z.object({
         total: z.number().openapi({ description: 'Number of tasks of the project, the archived (done) ones included', example: 10 }),
         completed: z.number().openapi({ description: 'Number of done tasks of the project, the archived ones included', example: 7 }),
@@ -80,34 +80,34 @@ export const ProjectListItem = z.object({
       description: 'Task counts of the project: `progress` is `completed / total`; `active + archived = total`',
     }),
     permissions: z.object({
-        canView: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut voir le projet', example: true }),
-        canEdit: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut éditer le projet', example: true }),
-        canDuplicate: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut dupliquer le projet', example: false }),
-        canDelete: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut supprimer le projet', example: false }),
-        canCreateTask: z.boolean().openapi({ description: 'Indique si l\'utilisateur peut créer des tâches dans le projet', example: true }),
+        canView: z.boolean().openapi({ description: 'Whether the user can see the project', example: true }),
+        canEdit: z.boolean().openapi({ description: 'Whether the user can edit the project', example: true }),
+        canDuplicate: z.boolean().openapi({ description: 'Whether the user can duplicate the project', example: false }),
+        canDelete: z.boolean().openapi({ description: 'Whether the user can delete the project', example: false }),
+        canCreateTask: z.boolean().openapi({ description: 'Whether the user can create tasks in the project', example: true }),
         canAssignMembers: z.boolean(),
         canClose: z.boolean(),
-    }).openapi({ description: 'Les permissions de l\'utilisateur sur le projet' }),
+    }).openapi({ description: 'Permissions of the user on the project' }),
 }).openapi({
-    description: 'Un projet pour les vues de type carte, table ou kanban',
+    description: 'A project for the card, table or kanban views',
 });
 
-// Schema -- Tâche
+// Schema -- Task
 
 export const ProjectTask = z.object({
-    id: z.string().openapi({ description: 'L\'identifiant unique de la tâche', example: '123e4567-e89b-12d3-a456-426614174000' }),
-    title: z.string().openapi({ description: 'Le titre de la tâche', example: 'Nouvelle tâche' }),
+    id: z.string().openapi({ description: 'Unique id of the task', example: '123e4567-e89b-12d3-a456-426614174000' }),
+    title: z.string().openapi({ description: 'Title of the task', example: 'New task' }),
     status: ProjectStatus,
-    statusLabel: z.string().openapi({ description: 'Le libellé du statut de la tâche', example: 'À faire' }),
+    statusLabel: z.string().openapi({ description: 'Label of the task status', example: 'À faire' }),
     responsible: Person,
-    assignees: z.array(Person).openapi({ description: 'La liste des personnes assignées à la tâche' }),
+    assignees: z.array(Person).openapi({ description: 'People assigned to the task' }),
     priority: ProjectPriority,
-    priorityLabel: z.string().openapi({ description: 'Le libellé de la priorité de la tâche', example: 'Moyenne' }),
-    labels: z.array(z.string()).openapi({ description: 'La liste des étiquettes associées à la  tâche', example: ['backend', 'important'] }),
-    dueDate: z.string().openapi({ description: 'La date d\'échéance de la tâche au format ISO 8601', example: '2024-12-31T23:59:59Z' }),
-    completed: z.boolean().openapi({ description: 'Indique si la tâche est complétée', example: false }),
-    createdAt: z.string().openapi({ description: 'La date de création de la tâche au format ISO 8601', example: '2024-01-01T12:00:00Z' }),
-    updatedAt: z.string().optional().openapi({ description: 'La date de dernière mise à jour de la tâche au format ISO 8601', example: '2024-01-15T15:30:00Z' }),
+    priorityLabel: z.string().openapi({ description: 'Label of the task priority', example: 'Moyenne' }),
+    labels: z.array(z.string()).openapi({ description: 'Labels of the task', example: ['backend', 'important'] }),
+    dueDate: z.string().openapi({ description: 'Due date of the task, ISO 8601', example: '2024-12-31T23:59:59Z' }),
+    completed: z.boolean().openapi({ description: 'Whether the task is completed', example: false }),
+    createdAt: z.string().openapi({ description: 'Creation date of the task, ISO 8601', example: '2024-01-01T12:00:00Z' }),
+    updatedAt: z.string().optional().openapi({ description: 'Date of the last update of the task, ISO 8601', example: '2024-01-15T15:30:00Z' }),
     statusId: z.string().optional().openapi({ description: 'The status of the project the task is in (MAIR-566); `status` is its category', example: 'status-1' }),
     statusName: z.string().optional().openapi({ description: 'Name of that status, as the Kanban column shows it', example: 'À valider' }),
     permissions: z.object({
@@ -118,7 +118,7 @@ export const ProjectTask = z.object({
       canComment: z.boolean(),
     }),
 }).openapi({
-    description: 'Une tâche associée à un projet',
+    description: 'A task of a project',
 });
 
 registry.register('ProjectStatus', ProjectStatus);
@@ -134,18 +134,18 @@ registry.register('ProjectTask', ProjectTask);
 
 export const ProjectIdParams = z.object({
   projectId: z.string().openapi({
-    description: 'Identifiant du projet',
+    description: 'Id of the project',
     example: 'project-1',
   }),
 });
 
 export const ProjectTaskParams = z.object({
   projectId: z.string().openapi({
-    description: 'Identifiant du projet',
+    description: 'Id of the project',
     example: 'project-1',
   }),
   taskId: z.string().openapi({
-    description: 'Identifiant de la tâche',
+    description: 'Id of the task',
     example: 'task-1',
   }),
 });
@@ -550,7 +550,7 @@ registry.register('UpdateProjectTaskStatusBody', UpdateProjectTaskStatusBody);
 
 export const ProjectStatusParams = z.object({
   projectId: ProjectIdParams.shape.projectId,
-  statusId: z.string().openapi({ description: 'Identifiant du statut', example: 'status-1' }),
+  statusId: z.string().openapi({ description: 'Id of the status', example: 'status-1' }),
 });
 
 export const DeletedProjectStatusParams = ProjectStatusParams.extend({
@@ -618,7 +618,7 @@ export const UpdateProjectTemplateBody = CreateProjectTemplateBody.partial().str
 registry.register('UpdateProjectTemplateBody', UpdateProjectTemplateBody);
 
 export const ProjectTemplateParams = z.object({
-  templateId: z.string().openapi({ description: 'Identifiant du modèle', example: 'template-1' }),
+  templateId: z.string().openapi({ description: 'Id of the template', example: 'template-1' }),
 });
 
 export const DeletedProjectTemplateParams = ProjectTemplateParams.extend({

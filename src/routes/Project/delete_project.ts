@@ -15,7 +15,7 @@ registry.registerPath({
     method: 'delete',
     path: '/projects/{projectId}',
     tags: ['Projects'],
-    summary: 'Supprime un projet existant',
+    summary: 'Delete an existing project',
 
     request: {
         params: DeletedProjectIdParams,
@@ -24,7 +24,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         204: {
-            description: 'Projet supprimé avec succès',
+            description: 'Project deleted',
         },
 
         404: {

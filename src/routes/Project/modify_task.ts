@@ -20,7 +20,7 @@ registry.registerPath({
     method: 'patch',
     path: '/projects/{projectId}/tasks/{taskId}',
     tags: ['Projects'],
-    summary: 'Met à jour une tâche existante pour un projet',
+    summary: 'Update an existing task of a project',
 
     request: {
         params: ProjectTaskParams,
@@ -37,7 +37,7 @@ registry.registerPath({
     responses: {
         ...apiErrorResponses(...ERROR_STATUSES),
         200: {
-            description: 'Tâche mise à jour avec succès',
+            description: 'Task updated',
             content: {
                 'application/json': {
                     schema: ProjectTask,
