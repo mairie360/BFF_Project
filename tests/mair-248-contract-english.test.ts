@@ -15,21 +15,22 @@ const FRENCH_WORDS = new Set([
   // "Charge la page projets" went through with the list above alone).
   'de', 'du', 'le', 'la', 'au', 'aux', 'nom', 'fin', 'suivi', 'contenu', 'adresse',
   'initiales', 'dernier', 'heure', 'complet', 'affichable', 'supprime', 'personne',
-  'identifiants', 'invalide', 'invalides',
+  'identifiants', 'invalide', 'invalides', 'oui',
 ]);
 
 /**
- * Every `summary` and `description` of the document, outside the examples. An `example` /
- * `examples` key is example data, except directly under `properties`, where it is the name of a
- * schema property whose description is checked like the others.
+ * Every `summary` and `description` of the document, outside the examples. `properties` holds a
+ * map of property name → schema: its keys are names (`example`, `description`, `properties`… are
+ * valid property names), so each value is walked as a schema whatever its key.
  */
-function texts(value: unknown, out: string[], parentKey = ''): string[] {
+function texts(value: unknown, out: string[], isPropertyMap = false): string[] {
   if (Array.isArray(value)) value.forEach((item) => texts(item, out));
   else if (value && typeof value === 'object') {
     Object.entries(value).forEach(([key, item]) => {
-      if ((key === 'example' || key === 'examples') && parentKey !== 'properties') return;
-      if ((key === 'summary' || key === 'description') && typeof item === 'string' && parentKey !== 'properties') out.push(item);
-      else texts(item, out, key);
+      if (isPropertyMap) texts(item, out);
+      else if (key === 'example' || key === 'examples') return;
+      else if ((key === 'summary' || key === 'description') && typeof item === 'string') out.push(item);
+      else texts(item, out, key === 'properties');
     });
   }
   return out;
@@ -57,7 +58,7 @@ describe('MAIR-248 contract language', () => {
     [
       'Nom du contact', 'Contenu du message', 'Description de la mention', 'Nom complet affichable',
       'Date de fin au format YYYY-MM-DD', 'Charge la page projets', 'Suivi collaboratif',
-      'Force le changement de mot de passe', 'Configuration du footer', 'Identifiants invalides',
+      'Force le changement de mot de passe', 'Configuration du footer', 'Identifiants invalides', 'Oui',
     ].forEach((text) => expect(isFrench(text)).toBe(true));
     expect(isFrench('End date (YYYY-MM-DD)')).toBe(false);
     expect(isFrench('Load the projects page')).toBe(false);
@@ -71,5 +72,10 @@ describe('MAIR-248 contract language', () => {
       example: { name: 'Nom du contact' },
     };
     expect(texts(doc, [])).toEqual(['Nom du contact']);
+    // A property named `properties`: its description is checked, its example data is not.
+    const nested = {
+      properties: { properties: { type: 'object', description: 'Nom du contact', example: { description: 'Exemple' } } },
+    };
+    expect(texts(nested, [])).toEqual(['Nom du contact']);
   });
 });
