@@ -252,7 +252,7 @@ against `contracts/openapi.json` (status documented + schema).
   without any upstream call, and accepted only while `JWT_SECRET` is set (transition).
 - `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
-- Jest's coverage threshold is 60 % on branches, functions, lines and statements.
+- Jest's coverage threshold is 80 % on functions, lines, statements and branches (MAIR-241: it was 60 %; branches stood at 77 % until `tests/mair-241-branch-coverage.test.ts` covered the helpers' fallbacks, now 83 %). Never lower it.
 
 ## Integration tests on the real stack (MAIR-262)
 
