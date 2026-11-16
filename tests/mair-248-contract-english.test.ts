@@ -13,18 +13,22 @@ const FRENCH_WORDS = new Set([
   'utilisateur', 'requête', 'erreur', 'corps', 'chemin', 'récupère', 'liste',
   // Articles and words that carry no accent (review of the MAIR-248 PRs: "Nom du contact" and
   // "Charge la page projets" went through with the list above alone).
-  'de', 'du', 'le', 'la', 'au', 'aux', 'nom', 'fin', 'charge', 'suivi', 'contenu', 'adresse',
+  'de', 'du', 'le', 'la', 'au', 'aux', 'nom', 'fin', 'suivi', 'contenu', 'adresse',
   'initiales', 'dernier', 'heure', 'complet', 'affichable', 'supprime', 'personne',
 ]);
 
-/** Every `summary` and `description` of the document, outside the examples. */
-function texts(value: unknown, out: string[]): string[] {
+/**
+ * Every `summary` and `description` of the document, outside the examples. An `example` /
+ * `examples` key is example data, except directly under `properties`, where it is the name of a
+ * schema property whose description is checked like the others.
+ */
+function texts(value: unknown, out: string[], parentKey = ''): string[] {
   if (Array.isArray(value)) value.forEach((item) => texts(item, out));
   else if (value && typeof value === 'object') {
     Object.entries(value).forEach(([key, item]) => {
-      if (key === 'example' || key === 'examples') return;
-      if ((key === 'summary' || key === 'description') && typeof item === 'string') out.push(item);
-      else texts(item, out);
+      if ((key === 'example' || key === 'examples') && parentKey !== 'properties') return;
+      if ((key === 'summary' || key === 'description') && typeof item === 'string' && parentKey !== 'properties') out.push(item);
+      else texts(item, out, key);
     });
   }
   return out;
@@ -56,5 +60,15 @@ describe('MAIR-248 contract language', () => {
     ].forEach((text) => expect(isFrench(text)).toBe(true));
     expect(isFrench('End date (YYYY-MM-DD)')).toBe(false);
     expect(isFrench('Load the projects page')).toBe(false);
+    // "charge" is English too.
+    expect(isFrench('The user in charge of the project')).toBe(false);
+  });
+
+  it('checks a schema property named example, and skips example data', () => {
+    const doc = {
+      properties: { example: { type: 'string', description: 'Nom du contact' } },
+      example: { name: 'Nom du contact' },
+    };
+    expect(texts(doc, [])).toEqual(['Nom du contact']);
   });
 });
