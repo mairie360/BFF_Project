@@ -463,6 +463,45 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(Number.isNaN(Date.parse(project.dueDate))).toBe(false);
     });
 
+    // MAIR-536: page and limit are bounded integers; they were truncated or clamped silently (`limit=1e9`, `page=1.5`).
+    test.each([
+      ['page=0', 'page'], ['page=-1', 'page'], ['page=1.5', 'page'], ['page=abc', 'page'], ['page=10001', 'page'], ['page=1e12', 'page'],
+      ['limit=0', 'limit'], ['limit=-5', 'limit'], ['limit=2.5', 'limit'], ['limit=501', 'limit'], ['limit=1e9', 'limit'],
+    ])('GET /projects-page?%s answers 400 on %s without calling Project API', async (query, field) => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get(`/projects-page?${query}`), admin);
+
+      expect(response.status).toBe(400);
+      expectBffContract('get', '/projects-page', response);
+      expect(response.body.error.details).toEqual([expect.objectContaining({ path: `query.${field}` })]);
+      expect(projectApi.requests).toHaveLength(0);
+    });
+
+    test.each([['page=1&limit=1', 0, 1], ['page=10000&limit=500', 4_999_500, 500]])(
+      'GET /projects-page?%s accepts the bounds and sends offset %i, limit %i', async (query, offset, limit) => {
+        signIn(admin);
+        mockProjectApi();
+
+        const response = await as(request(app).get(`/projects-page?${query}`), admin);
+
+        expect(response.status).toBe(200);
+        expect(projectApi.calls(PROJECT.projects, 'GET').map((call) => pageOf(call.url))).toEqual([{ limit, offset }]);
+      });
+
+    test.each([[500, 502], [503, 502], [401, 401]])('MAIR-536 GET /projects-page maps a Core API %i on the directory read to %i, without its body', async (coreStatus, status) => {
+      signIn(admin);
+      mockProjectApi();
+      coreApi.on('get', CORE.directory, textError(coreStatus, 'Database error users'));
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(status);
+      expectBffContract('get', '/projects-page', response);
+      expect(JSON.stringify(response.body)).not.toContain('Database error');
+    });
+
     test('GET /projects-page refuses a search longer than Project API accepts without calling it', async () => {
       signIn(admin);
       mockProjectApi();
@@ -1158,6 +1197,112 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('patch', '/projects/project-1/tasks/task-2/status', status);
       expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ status: 'Completed' });
       expect(content.status).toBe(403);
+    });
+  });
+
+  // MAIR-536: the business 403s the table above does not cover, for an employee and for the roles no fixture used.
+  describe('MAIR-536 business 403s by role', () => {
+    const maire = { id: 4, first_name: 'Marc', last_name: 'Leroy', role: 'Maire' } as Agent;
+    const guest = { id: 5, first_name: 'Gaelle', last_name: 'Invitee', role: 'Guest' } as Agent;
+    const createBody = {
+      title: 'Fête du village', description: 'Organisation', status: 'todo', priority: 'medium',
+      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-07-14T00:00:00Z', taskItems: [],
+    };
+    const someoneElsesTask = () => projectBundle(projetView(1), [taskView(2, { assigned_to: marie.id })], [alice, marie, guest]);
+
+    test.each([
+      ['an employee', alice],
+      ['a guest', guest],
+    ])('POST /projects answers 403 for %s without creating anything', async (_label, agent) => {
+      signIn(agent);
+      mockProjectApi({ bundles: { 1: someoneElsesTask() } });
+
+      const response = await as(request(app).post('/projects'), agent).send(createBody);
+
+      expect(response.status).toBe(403);
+      expectBffContract('post', '/projects', response);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
+    });
+
+    test('POST /projects lets the mayor create a project, like an administrator', async () => {
+      signIn(maire);
+      mockProjectApi({ createdProjectId: 12, bundles: { 12: projectBundle(projetView(12, { name: 'Fête du village' }), [], [alice]) } });
+      projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+      const response = await as(request(app).post('/projects'), maire).send(createBody);
+
+      expect(response.status).toBe(201);
+      expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(1);
+    });
+
+    test.each([
+      ['PATCH close by an employee', alice, 'patch', '/projects/project-1/close', { status: 'done' }],
+      ['PATCH close by a guest', guest, 'patch', '/projects/project-1/close', { status: 'done' }],
+      ['DELETE task by an employee', alice, 'delete', '/projects/project-1/tasks/task-2', undefined],
+      ['DELETE task by a guest', guest, 'delete', '/projects/project-1/tasks/task-2', undefined],
+    ] as const)('%s answers 403 and writes nothing', async (_label, agent, method, url, body) => {
+      signIn(agent);
+      // The task is the caller's own: they see it, so the refusal is a 403 (a task they cannot see is a 404).
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { assigned_to: agent.id })], [alice, marie, guest]) } });
+
+      const call = as(request(app)[method](url), agent);
+      const response = await (body === undefined ? call : call.send(body));
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe('FORBIDDEN');
+      expect(projectApi.requests.filter((request) => request.method !== 'GET')).toEqual([]);
+    });
+
+    test('a task status can only be changed by its assignee or a manager (requireTaskStatusUpdate)', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: someoneElsesTask() } });
+
+      const refused = await as(request(app).patch('/projects/project-1/tasks/task-2/status'), alice).send({ status: 'done' });
+
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.message).toBe('Only the assigned agent or a manager can change this status.');
+      expect(projectApi.calls(PROJECT.task, 'PATCH')).toHaveLength(0);
+
+      signIn(maire);
+      const allowed = await as(request(app).patch('/projects/project-1/tasks/task-2/status'), maire).send({ status: 'done' });
+      expect(allowed.status).toBe(200);
+      expect(projectApi.calls(PROJECT.task, 'PATCH')).toHaveLength(1);
+    });
+
+    test('DELETE of a task the caller cannot see is a 404, not a 403 that would confirm it exists', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: someoneElsesTask() } });
+
+      const response = await as(request(app).delete('/projects/project-1/tasks/task-2'), alice);
+
+      expect(response.status).toBe(404);
+      expect(projectApi.requests.filter((request) => request.method !== 'GET')).toEqual([]);
+    });
+
+    test('a comment is refused to someone who is neither assigned nor a manager (requireTaskComment)', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: someoneElsesTask() } });
+
+      const refused = await as(request(app).post('/projects/project-1/tasks/task-2/comments'), alice).send({ message: 'Je passe par là.' });
+
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.message).toBe('You cannot comment on this task.');
+      expect(projectApi.calls(PROJECT.comments, 'POST')).toHaveLength(0);
+    });
+
+    test('a manager can only assign agents of their team (requireAssignableUsers), the mayor anyone', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice, marie]) } });
+
+      // user-99 is not in the directory the manager may assign from.
+      const refused = await as(request(app).post('/projects/project-1/tasks'), marie).send({
+        title: 'Réserver', status: 'todo', priority: 'high', responsibleId: 'user-99', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z',
+      });
+
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.message).toBe('You can only assign agents of your team.');
+      expect(projectApi.calls(PROJECT.tasks, 'POST')).toHaveLength(0);
     });
   });
 
