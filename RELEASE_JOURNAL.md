@@ -1,13 +1,13 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "d02a4425bcd701006070ddca630981f2b2a37fca", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-17 17:05 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
+<!-- release-journal-state {"dev": "d02a4425bcd701006070ddca630981f2b2a37fca", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-17 17:07 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v1.2.0 | `26cf27d` | 2026-11-13 00:45 UTC |
 | staging | — | `26cf27d` | 2026-11-13 00:28 UTC |
-| dev | — | `d02a442` | 2026-11-17 17:05 UTC |
+| dev | — | `d02a442` | 2026-11-17 17:07 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v1.2.0)
 
@@ -44,6 +44,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-17 17:07 UTC | dev | — | `740990c` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44131455165) |
 | 2026-11-17 17:05 UTC | dev | — | `d02a442` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44131468867) |
 | 2026-11-17 11:52 UTC | dev | — | `6a837eb` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44076492036) |
 | 2026-11-17 11:51 UTC | dev | — | `6b03912` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44076082292) |
