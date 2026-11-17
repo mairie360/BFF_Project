@@ -1,16 +1,18 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "6a837eb84be991e4745cb8de9239bf1806a248ca", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-17 11:52 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
+<!-- release-journal-state {"dev": "d02a4425bcd701006070ddca630981f2b2a37fca", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-17 17:05 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v1.2.0 | `26cf27d` | 2026-11-13 00:45 UTC |
 | staging | — | `26cf27d` | 2026-11-13 00:28 UTC |
-| dev | — | `6a837eb` | 2026-11-17 11:52 UTC |
+| dev | — | `d02a442` | 2026-11-17 17:05 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v1.2.0)
 
+- fix: MAIR-536 Test the business 403s and bound the pagination of BFF_Project ([#271](https://github.com/mairie360/BFF_Project/pull/271))
+- test: MAIR-538 Add cross-cutting timeout, 413 and token-refusal tests to the BFFs and the template ([#269](https://github.com/mairie360/BFF_Project/pull/269))
 - feat: MAIR-998 Test stacks follow the moving upstream tag of the stage (#266) ([#266](https://github.com/mairie360/BFF_Project/pull/266))
 - chore(deps): pin actions/checkout action to 3d3c42e (#267) ([#267](https://github.com/mairie360/BFF_Project/pull/267))
 - ci: MAIR-1008 Nightly rehearsal of the promotion gates (#264) ([#264](https://github.com/mairie360/BFF_Project/pull/264))
@@ -21,6 +23,8 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+- fix: MAIR-536 Test the business 403s and bound the pagination of BFF_Project ([#271](https://github.com/mairie360/BFF_Project/pull/271))
+- test: MAIR-538 Add cross-cutting timeout, 413 and token-refusal tests to the BFFs and the template ([#269](https://github.com/mairie360/BFF_Project/pull/269))
 - feat: MAIR-998 Test stacks follow the moving upstream tag of the stage (#266) ([#266](https://github.com/mairie360/BFF_Project/pull/266))
 - chore(deps): pin actions/checkout action to 3d3c42e (#267) ([#267](https://github.com/mairie360/BFF_Project/pull/267))
 - ci: MAIR-1008 Nightly rehearsal of the promotion gates (#264) ([#264](https://github.com/mairie360/BFF_Project/pull/264))
@@ -40,6 +44,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-17 17:05 UTC | dev | — | `d02a442` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44131468867) |
 | 2026-11-17 11:52 UTC | dev | — | `6a837eb` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44076492036) |
 | 2026-11-17 11:51 UTC | dev | — | `6b03912` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44076082292) |
 | 2026-11-17 11:04 UTC | dev | — | `c790c81` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44069137822) |
