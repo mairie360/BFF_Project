@@ -90,7 +90,7 @@ services:
   project-api:
     container_name: project-api-bff-project-developpement
     image: ghcr.io/mairie360/project-api:${UPSTREAM_TAG:-dev}
-    pull_policy: always
+    pull_policy: ${UPSTREAM_PULL_POLICY:-always}
     ports:
       - "3001:3001"
     networks:
