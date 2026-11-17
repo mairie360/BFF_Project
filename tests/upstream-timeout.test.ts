@@ -70,12 +70,16 @@ describe('MAIR-538 upstream timeout', () => {
   });
 
   it('stays reachable for the other routes while an upstream hangs (the timeout frees the request)', async () => {
+    const settledAt = <T extends { status: number }>(pending: PromiseLike<T>) =>
+      Promise.resolve(pending).then((response) => ({ response, at: Date.now() }));
     const [slow, health] = await Promise.all([
-      request(app).get(ROUTE).set('Authorization', `Bearer ${eddsaToken(1)}`),
-      request(app).get('/health'),
+      settledAt(request(app).get(ROUTE).set('Authorization', `Bearer ${eddsaToken(1)}`)),
+      settledAt(request(app).get('/health')),
     ]);
 
-    expect(slow.status).toBe(502);
-    expect(health.status).toBe(200);
+    expect(slow.response.status).toBe(502);
+    expect(health.response.status).toBe(200);
+    // The health probe answers while the slow request still waits for its upstream, not after it timed out.
+    expect(health.at).toBeLessThan(slow.at);
   });
 });
