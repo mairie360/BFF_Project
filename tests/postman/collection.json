@@ -401,6 +401,153 @@
             }
           ],
           "response": []
+        },
+        {
+          "name": "MAIR-536 Projects page refuses an unbounded limit",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?limit=1000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1000000000"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error envelope is the documented one\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.code).to.eql('BAD_REQUEST');",
+                  "    pm.expect(body.error).to.have.property('message');",
+                  "    pm.expect(body.error.details).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-536 Projects page refuses a fractional page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?page=1.5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1.5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error envelope is the documented one\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.code).to.eql('BAD_REQUEST');",
+                  "    pm.expect(body.error).to.have.property('message');",
+                  "    pm.expect(body.error.details).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-536 An employee cannot create a project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Refused\", \"description\": \"An employee cannot create a project\", \"status\": \"todo\", \"priority\": \"medium\", \"responsibleId\": \"user-2\", \"assigneeIds\": [], \"labels\": [], \"dueDate\": \"2030-01-01T00:00:00Z\", \"taskItems\": []}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"The error envelope is the documented one\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.code).to.eql('FORBIDDEN');",
+                  "    pm.expect(body.error).to.have.property('message');",
+                  "    pm.expect(body.error.details).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
         }
       ],
       "description": "The caller comes from the Bearer JWT: its id from `sub`, its role from the `role` claim (MAIR-529)."

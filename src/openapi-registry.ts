@@ -177,6 +177,10 @@ export const StatusCreationProjectIdParams = ProjectIdParams.extend({
 // An unparsable date would filter every project out (NaN comparisons): it is refused instead.
 const DateFilter = z.string().refine((value) => !Number.isNaN(Date.parse(value)), 'Expected a date');
 
+/** Largest page Project API serves, and the highest page number accepted (MAIR-536: both were unbounded). */
+export const PROJECTS_PAGE_MAX_LIMIT = 500;
+export const PROJECTS_PAGE_MAX_PAGE = 10_000;
+
 export const ProjectsPageQuery = z.object({
   q: z.string().max(255).optional().openapi({ description: 'Case-insensitive text searched in the name and the description', example: 'scan' }),
 
@@ -194,9 +198,9 @@ export const ProjectsPageQuery = z.object({
 
   view: ViewMode.optional(),
 
-  page: z.coerce.number().optional().openapi({ example: 1 }),
+  page: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_PAGE).optional().openapi({ example: 1 }),
 
-  limit: z.coerce.number().optional().openapi({ example: 20 }),
+  limit: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_LIMIT).optional().openapi({ example: 20 }),
 });
 
 registry.register('ProjectsPageQuery', ProjectsPageQuery);

@@ -591,17 +591,15 @@
             "example": "kanban"
           },
           "page": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
             "example": 1
           },
           "limit": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
             "example": 20
           }
         }
@@ -7458,10 +7456,9 @@
           },
           {
             "schema": {
-              "type": [
-                "number",
-                "null"
-              ],
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
               "example": 1
             },
             "required": false,
@@ -7470,10 +7467,9 @@
           },
           {
             "schema": {
-              "type": [
-                "number",
-                "null"
-              ],
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
               "example": 20
             },
             "required": false,

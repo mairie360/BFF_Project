@@ -21,8 +21,6 @@ import { callerOf, getProjectPermissions, listAssignableUsers, listProjectsPage 
 
 const router = Router();
 
-/** Largest page Project API serves. */
-const MAX_PAGE_SIZE = 500;
 
 // Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`;
 // `review` also covers the projects suspended by the close route (see `mapProjectStatus`); `high` covers
@@ -71,8 +69,8 @@ router.get("/", async (req: Request, res: Response) => {
   const query = parseRequest(ProjectsPageQuery, req.query, "query");
   const caller = callerOf(req, ERROR_STATUSES);
   const user = getProjectUserContext(res);
-  const page = Math.max(Math.trunc(query.page ?? 1), 1);
-  const limit = Math.min(Math.max(Math.trunc(query.limit ?? 10), 1), MAX_PAGE_SIZE);
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 10;
 
   // One Project API call (MAIR-474): it filters, pages and aggregates the tasks of the visible projects, and
   // counts every match per status and priority. The BFF used to read every task of every visible project.

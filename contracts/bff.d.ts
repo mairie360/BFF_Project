@@ -3068,8 +3068,8 @@ export interface paths {
                     dueAfter?: string;
                     /** @description View mode of the projects */
                     view?: "kanban" | "grid" | "table";
-                    page?: number | null;
-                    limit?: number | null;
+                    page?: number;
+                    limit?: number;
                 };
                 header?: never;
                 path?: never;
@@ -5099,9 +5099,9 @@ export interface components {
              */
             view?: "kanban" | "grid" | "table";
             /** @example 1 */
-            page?: number | null;
+            page?: number;
             /** @example 20 */
-            limit?: number | null;
+            limit?: number;
         };
         CreateProjectBody: {
             /** @example Scan project */
