@@ -1,16 +1,17 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "2a588fae8f665a7e09eaeb023dacd4d3235dad20", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-16 17:58 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
+<!-- release-journal-state {"dev": "c790c81a529abeb481f8438e1eab06ba49d7a146", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-17 11:04 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v1.2.0 | `26cf27d` | 2026-11-13 00:45 UTC |
 | staging | — | `26cf27d` | 2026-11-13 00:28 UTC |
-| dev | — | `2a588fa` | 2026-11-16 17:58 UTC |
+| dev | — | `c790c81` | 2026-11-17 11:04 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v1.2.0)
 
+- ci: MAIR-1008 Nightly rehearsal of the promotion gates (#264) ([#264](https://github.com/mairie360/BFF_Project/pull/264))
 - test: MAIR-248 Translate the BFFs' messages and the ansible documentation into English (#262) ([#262](https://github.com/mairie360/BFF_Project/pull/262))
 - fix: MAIR-248 Translate the BFFs' messages and the ansible documentation into English (#261) ([#261](https://github.com/mairie360/BFF_Project/pull/261))
 - test: MAIR-241 Test the BFF_user admin routes and raise the BFFs coverage thresholds (#256) ([#256](https://github.com/mairie360/BFF_Project/pull/256))
@@ -18,6 +19,7 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+- ci: MAIR-1008 Nightly rehearsal of the promotion gates (#264) ([#264](https://github.com/mairie360/BFF_Project/pull/264))
 - test: MAIR-248 Translate the BFFs' messages and the ansible documentation into English (#262) ([#262](https://github.com/mairie360/BFF_Project/pull/262))
 - fix: MAIR-248 Translate the BFFs' messages and the ansible documentation into English (#261) ([#261](https://github.com/mairie360/BFF_Project/pull/261))
 - test: MAIR-241 Test the BFF_user admin routes and raise the BFFs coverage thresholds (#256) ([#256](https://github.com/mairie360/BFF_Project/pull/256))
@@ -34,6 +36,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-17 11:04 UTC | dev | — | `c790c81` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44069137822) |
 | 2026-11-16 17:58 UTC | dev | — | `2a588fa` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43922933423) |
 | 2026-11-16 16:22 UTC | dev | — | `7cf3e9a` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43905595553) |
 | 2026-11-16 14:18 UTC | dev | — | `893a420` | [run](https://github.com/mairie360/BFF_Project/actions/runs/43883472103) |
