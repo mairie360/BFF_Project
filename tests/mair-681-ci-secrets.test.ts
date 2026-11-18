@@ -122,6 +122,15 @@ const expectedValue = (job: Job, key: string): string =>
   callee(job) === 'promote-prod.yml [dry-run]' && key === 'ANTHROPIC_REVIEW_API_KEY'
     ? DRY_RUN_REVIEW
     : `\${{ secrets.${key} }}`;
+// `dry_run: true` (a YAML boolean) among the `with:` inputs of the call.
+const passesDryRun = (job: Job): boolean => {
+  let parent = '';
+  return job.lines.some((line) => {
+    const key = /^ {4}([A-Za-z0-9_-]+):/.exec(line);
+    if (key) parent = key[1];
+    return parent === 'with' && /^ {6}dry_run:\s*true$/.test(line);
+  });
+};
 const cicdCalls = jobs.filter((job) => callee(job) !== null);
 const sameKeys = (job: Job): boolean =>
   JSON.stringify(Object.keys(mapping(job)).sort()) ===
@@ -171,7 +180,7 @@ describe('MAIR-681 CI secrets', () => {
     const live = cicdCalls.filter(
       (job) =>
         (callee(job) ?? '').endsWith('[dry-run]') &&
-        !job.lines.some((line) => /^ {6}dry_run:\s*['"]?true['"]?$/.test(line)),
+        !passesDryRun(job),
     );
     expect(live.map((job) => job.where)).toEqual([]);
   });
