@@ -101,7 +101,9 @@ relayed. Tasks carry `statusId` / `statusName` (their `status` is the category);
 
 `src/routes/Project/groups.ts` (`/project-groups`) lists the groups a project can be linked to. `groupId`
 (`group-<id>`) on `POST /projects` and `PATCH /projects/{projectId}` (`null` removes it) is only shape-checked;
-Project API decides which groups the caller may link and answers 404 otherwise, relayed as is. The project detail
+Project API decides which groups the caller may link and answers 404 otherwise, relayed as is. When `groupId: null`
+takes the project away from the caller (a Responsable who saw it only through that group), `modify_project.ts` writes
+the members first and answers 204 instead of the re-read. The project detail
 maps Project API's `group` to `{ id: 'group-<id>', name }` or `null`.
 
 ### Everything goes through the APIs

@@ -1954,6 +1954,49 @@ describe('MAIR-683 project linked to a group', () => {
     ]);
   });
 
+  // A Responsable who sees the project only through its group loses it when removing the group.
+  const loseProjectOnPatch = () => {
+    const bundles = { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice]) };
+    mockProjectApi({ bundles });
+    projectApi.on('patch', PROJECT.project, () => {
+      delete (bundles as Record<number, unknown>)[1];
+      return { status: 204 };
+    });
+  };
+
+  test('PATCH /projects/:id answers 204 when removing the group takes the project away from the caller', async () => {
+    signIn(marie);
+    loseProjectOnPatch();
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé', groupId: null });
+
+    expect(response.status).toBe(204);
+    expectBffContract('patch', '/projects/project-1', response);
+    expect(response.text).toBe('');
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Renommé', group_id: null }]);
+  });
+
+  test('PATCH /projects/:id writes the members before removing the group', async () => {
+    signIn(marie);
+    loseProjectOnPatch();
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ responsibleId: `user-${marie.id}`, groupId: null });
+
+    expect(response.status).toBe(204);
+    const writes = projectApi.requests.filter((call) => call.method !== 'GET').map((call) => `${call.method} ${call.template}`);
+    expect(writes).toEqual([`POST ${PROJECT.users}`, `PATCH ${PROJECT.project}`]);
+  });
+
+  test('PATCH /projects/:id still answers 404 when the project disappears without a group removal', async () => {
+    signIn(marie);
+    loseProjectOnPatch();
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('patch', '/projects/project-1', response);
+  });
+
   test('PATCH /projects/:id relays the 404 of a group the caller may not link', async () => {
     signIn(marie);
     mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
