@@ -52,7 +52,7 @@ describe('MAIR-771 CICD release carrying the GDPR controls', () => {
   it('CI and the prod promotion hand the AI review its key', () => {
     for (const name of ['cicd.yml', 'promote-prod.yml']) {
       const workflow = readWorkflow(name);
-      expect({ name, passesKey: /secrets: inherit|ANTHROPIC_API_KEY:/.test(workflow) }).toEqual({
+      expect({ name, passesKey: /ANTHROPIC_REVIEW_API_KEY:/.test(workflow) }).toEqual({
         name,
         passesKey: true,
       });
