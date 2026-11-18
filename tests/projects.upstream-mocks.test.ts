@@ -1864,3 +1864,99 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
     expect(writes()).toEqual([]);
   });
 });
+
+describe('MAIR-683 project linked to a group', () => {
+  const GROUPS = '/api/v1/project-groups/';
+  const createBody = {
+    title: 'Réfection de la place', description: 'Travaux 2027', status: 'todo', priority: 'medium',
+    responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2027-06-30T00:00:00Z',
+  };
+
+  test('GET /project-groups lists the linkable groups with group-<id> ids', async () => {
+    signIn(marie);
+    projectApi.on('get', GROUPS, { body: { groups: [{ id: 5, name: 'Green spaces' }, { id: 3, name: 'Roads' }] } });
+
+    const response = await as(request(app).get('/project-groups'), marie);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-groups', response);
+    expect(response.body).toEqual({ groups: [{ id: 'group-5', name: 'Green spaces' }, { id: 'group-3', name: 'Roads' }] });
+  });
+
+  test('GET /project-groups refuses a call without session before any upstream call', async () => {
+    const response = await request(app).get('/project-groups');
+
+    expect(response.status).toBe(401);
+    expect(projectApi.requests).toEqual([]);
+  });
+
+  test('POST /projects sends the group to Project API and returns it with the project', async () => {
+    signIn(marie);
+    mockProjectApi({ createdProjectId: 12, bundles: {
+      12: projectBundle(projetView(12, { name: 'Réfection de la place', group: { id: 3, name: 'Roads' } }), [], [alice]),
+    } });
+    projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: 'group-3' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ group_id: 3 });
+    expect(response.body.project.group).toEqual({ id: 'group-3', name: 'Roads' });
+  });
+
+  test('POST /projects with a group the caller may not link answers 404 and writes nothing more', async () => {
+    signIn(marie);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projects, textError(404, 'Group not found.'));
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: 'group-99' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('post', '/projects', response);
+    expect(response.body.error.code).toBeDefined();
+    expect(JSON.stringify(response.body)).not.toContain('Group not found');
+    expect(projectApi.calls(PROJECT.users, 'POST')).toEqual([]);
+    expect(projectApi.calls(PROJECT.project, 'DELETE')).toEqual([]);
+  });
+
+  test('POST /projects refuses a malformed groupId before any upstream call', async () => {
+    signIn(marie);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: '3' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toEqual([]);
+  });
+
+  test('PATCH /projects/:id changes the group, removes it with null, and keeps it when absent', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: null }), [], [marie]) } });
+
+    const changed = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: 'group-5' });
+    const removed = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: null });
+    const kept = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé' });
+
+    for (const response of [changed, removed, kept]) {
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1', response);
+    }
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+      { group_id: 5 }, { group_id: null }, { name: 'Renommé' },
+    ]);
+    expect(removed.body.project.group).toBeNull();
+  });
+
+  test('PATCH /projects/:id relays the 404 of a group the caller may not link', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('patch', PROJECT.project, textError(404, 'Group not found.'));
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: 'group-99' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('patch', '/projects/project-1', response);
+  });
+});

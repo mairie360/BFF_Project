@@ -14,6 +14,7 @@ Domaine fonctionnel: Projets et tâches.
 
 - Page projets paginée avec résumé, membres, filtres et colonnes Kanban.
 - Création, modification, duplication, clôture et suppression de projets; gestion des tâches et de leurs statuts.
+- Rattachement d’un projet à un groupe d’agents, pour que toute l’équipe le voie.
 - Détails de tâches, commentaires, historique et permissions adaptées au rôle.
 
 ## Parcours type

@@ -46,6 +46,18 @@ export const Person = z.object({
 });
 
 
+// A Core API group linked to a project: its current and future members all see the project.
+export const ProjectGroup = z.object({
+    id: z.string().openapi({ description: 'Id of the group, to send as `groupId`', example: 'group-3' }),
+    name: z.string().openapi({ description: 'Name of the group', example: 'Roads' }),
+}).openapi({ description: 'A group of agents linked to a project' });
+
+export const ProjectGroups = z.object({
+    groups: z.array(ProjectGroup).openapi({
+      description: "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles",
+    }),
+});
+
 // Schema -- Project for the card / table / kanban views
 
 
@@ -78,6 +90,9 @@ export const ProjectListItem = z.object({
         }),
     }).openapi({
       description: 'Task counts of the project: `progress` is `completed / total`; `active + archived = total`',
+    }),
+    group: ProjectGroup.nullable().optional().openapi({
+      description: 'Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)',
     }),
     permissions: z.object({
         canView: z.boolean().openapi({ description: 'Whether the user can see the project', example: true }),
@@ -125,6 +140,8 @@ registry.register('ProjectStatus', ProjectStatus);
 registry.register('ProjectPriority', ProjectPriority);
 registry.register('ViewMode', ViewMode);
 registry.register('Person', Person);
+registry.register('ProjectGroup', ProjectGroup);
+registry.register('ProjectGroups', ProjectGroups);
 registry.register('ProjectListItem', ProjectListItem);
 registry.register('ProjectTask', ProjectTask);
 
@@ -238,6 +255,11 @@ const TemplateIdField = z.string().regex(/^template-\d+$/, 'Expected a template-
   description: 'Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template',
   example: 'template-1',
 });
+// A Core API group (`group-<id>`, from `GET /project-groups`).
+const GroupIdField = z.string().regex(/^group-\d+$/, 'Expected a group-<id> identifier').openapi({
+  description: 'Group whose current and future members all see the project (`GET /project-groups`)',
+  example: 'group-3',
+});
 // A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
 // The BFF turns it into the date-time Project API stores (MAIR-559).
 const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').openapi({
@@ -279,6 +301,8 @@ export const CreateProjectBody = z.object({
   taskItems: z.array(CreateProjectTaskInput).optional(),
 
   templateId: TemplateIdField.optional(),
+
+  groupId: GroupIdField.optional(),
 });
 
 registry.register('CreateProjectBody', CreateProjectBody);
@@ -288,7 +312,13 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // =====================
 
 // The template only applies at creation (its statuses are copied then): not part of a PATCH.
-export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true }).partial();
+// `groupId: null` removes the group of the project.
+export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true, groupId: true }).partial().extend({
+  groupId: GroupIdField.nullable().optional().openapi({
+    description: 'New group of the project (`GET /project-groups`), or `null` to remove it',
+    example: 'group-3',
+  }),
+});
 
 registry.register('UpdateProjectBody', UpdateProjectBody);
 

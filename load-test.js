@@ -334,6 +334,13 @@ const handlers = {
     });
   },
 
+  // --- Groups a project can be linked to: the agent's own groups (possibly none), read by any agent ---
+  'GET /project-groups': ({ request }) =>
+    check(request({ headers: randomAgent() }), {
+      'project groups 200': (r) => r.status === 200,
+      'project groups are a list': (r) => r.status === 200 && Array.isArray(r.json('groups')),
+    }),
+
   // --- Project templates (MAIR-566; written by the Responsable and Admin roles only) ---
   // The templates seeded by the Database (Simple, the default one, and the three others), read by any agent.
   'GET /project-templates': ({ request }) =>

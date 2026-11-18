@@ -14,6 +14,7 @@ Business domain: Projects and tasks.
 
 - Paginated project page with summary, members, filters and Kanban columns.
 - Create, edit, duplicate, close and delete projects; manage tasks and their statuses.
+- Link a project to a group of agents, so that the whole team sees it.
 - Task details, comments, history and role-dependent permissions.
 
 ## Typical workflow

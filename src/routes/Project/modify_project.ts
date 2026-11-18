@@ -8,6 +8,7 @@ import {
     fetchProjectBundle,
     mapPriorityToBackend,
     mapProjectStatusToBackend,
+    parseGroupIdField,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
@@ -26,7 +27,7 @@ registry.registerPath({
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project and `null` removes it (`404` for a group the caller may not link); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
 
     request: {
         params: ProjectIdParams,
@@ -61,7 +62,7 @@ registry.registerPath({
         },
         
         404: {
-            description: 'Project not found',
+            description: 'Project not found, or a group the caller may not link',
             content: {
                 'application/json': {
                     schema: ErrorResponse,
@@ -83,8 +84,12 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         ...(body.assigneeIds ?? []),
     ]);
 
-    if (body.title !== undefined || body.description !== undefined || body.status !== undefined || body.priority !== undefined) {
+    if (
+        body.title !== undefined || body.description !== undefined || body.status !== undefined
+        || body.priority !== undefined || body.groupId !== undefined
+    ) {
         await updateProjectRecord(caller, projectId, {
+            groupId: body.groupId === undefined || body.groupId === null ? body.groupId : parseGroupIdField(body.groupId),
             title: body.title,
             description: body.description,
             status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),

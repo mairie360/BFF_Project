@@ -67,7 +67,7 @@ in the environment; `.npmrc` references it. Never commit the value.
 
 `app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY))`, the lib's `securityHeaders` and
 `apiOnlyHeaders()` (strict `default-src 'none'` everywhere but `/docs`), then the session-bound routers
-(`/projects-page`, `/projects*`, `/project-templates*`) get, in order:
+(`/projects-page`, `/projects*`, `/project-templates*`, `/project-groups`) get, in order:
 
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
@@ -98,6 +98,11 @@ Status writes need `requireProjectManagement`; template writes need the Responsa
 API's 409s (name taken, status still holding tasks, last status of a category, default template) are declared and
 relayed. Tasks carry `statusId` / `statusName` (their `status` is the category); `statusId` on a task write and
 `templateId` on `POST /projects` are only shape-checked by the BFF, Project API checks they exist.
+
+`src/routes/Project/groups.ts` (`/project-groups`) lists the groups a project can be linked to. `groupId`
+(`group-<id>`) on `POST /projects` and `PATCH /projects/{projectId}` (`null` removes it) is only shape-checked;
+Project API decides which groups the caller may link and answers 404 otherwise, relayed as is. The project detail
+maps Project API's `group` to `{ id: 'group-<id>', name }` or `null`.
 
 ### Everything goes through the APIs
 

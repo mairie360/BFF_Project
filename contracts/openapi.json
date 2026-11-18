@@ -79,6 +79,58 @@
         ],
         "description": "A person who can be assigned to a project"
       },
+      "ProjectGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the group, to send as `groupId`",
+            "example": "group-3"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the group",
+            "example": "Roads"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "A group of agents linked to a project"
+      },
+      "ProjectGroups": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id of the group, to send as `groupId`",
+                  "example": "group-3"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Name of the group",
+                  "example": "Roads"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "description": "A group of agents linked to a project"
+            },
+            "description": "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles"
+          }
+        },
+        "required": [
+          "groups"
+        ]
+      },
       "ProjectListItem": {
         "type": "object",
         "properties": {
@@ -251,6 +303,29 @@
               "archived"
             ],
             "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+          },
+          "group": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Id of the group, to send as `groupId`",
+                "example": "group-3"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the group",
+                "example": "Roads"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
           },
           "permissions": {
             "type": "object",
@@ -732,6 +807,12 @@
             "pattern": "^template-\\d+$",
             "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
             "example": "template-1"
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^group-\\d+$",
+            "description": "Group whose current and future members all see the project (`GET /project-groups`)",
+            "example": "group-3"
           }
         },
         "required": [
@@ -867,6 +948,15 @@
                 "dueDate"
               ]
             }
+          },
+          "groupId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^group-\\d+$",
+            "description": "New group of the project (`GET /project-groups`), or `null` to remove it",
+            "example": "group-3"
           }
         }
       },
@@ -1434,6 +1524,29 @@
                   "archived"
                 ],
                 "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+              },
+              "group": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Id of the group, to send as `groupId`",
+                    "example": "group-3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the group",
+                    "example": "Roads"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
               },
               "permissions": {
                 "type": "object",
@@ -2168,6 +2281,29 @@
                     "archived"
                   ],
                   "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                },
+                "group": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Id of the group, to send as `groupId`",
+                      "example": "group-3"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Name of the group",
+                      "example": "Roads"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                 },
                 "permissions": {
                   "type": "object",
@@ -3217,6 +3353,29 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
+                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -3578,7 +3737,7 @@
           "Projects"
         ],
         "summary": "Create a project",
-        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.",
+        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3711,6 +3870,12 @@
                     "pattern": "^template-\\d+$",
                     "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
                     "example": "template-1"
+                  },
+                  "groupId": {
+                    "type": "string",
+                    "pattern": "^group-\\d+$",
+                    "description": "Group whose current and future members all see the project (`GET /project-groups`)",
+                    "example": "group-3"
                   }
                 },
                 "required": [
@@ -3907,6 +4072,29 @@
                             "archived"
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                         },
                         "permissions": {
                           "type": "object",
@@ -4202,6 +4390,16 @@
           },
           "403": {
             "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown group, or a group the caller may not link (`GET /project-groups`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4746,7 +4944,7 @@
           "Projects"
         ],
         "summary": "Partially update a project",
-        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project and `null` removes it (`404` for a group the caller may not link); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
         "parameters": [
           {
             "schema": {
@@ -4886,6 +5084,15 @@
                         "dueDate"
                       ]
                     }
+                  },
+                  "groupId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^group-\\d+$",
+                    "description": "New group of the project (`GET /project-groups`), or `null` to remove it",
+                    "example": "group-3"
                   }
                 }
               }
@@ -5072,6 +5279,29 @@
                             "archived"
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                         },
                         "permissions": {
                           "type": "object",
@@ -5376,7 +5606,7 @@
             }
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found, or a group the caller may not link",
             "content": {
               "application/json": {
                 "schema": {
@@ -5625,6 +5855,29 @@
                             "archived"
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                         },
                         "permissions": {
                           "type": "object",
@@ -6671,6 +6924,29 @@
                             "archived"
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                         },
                         "permissions": {
                           "type": "object",
@@ -7946,6 +8222,29 @@
                               "archived"
                             ],
                             "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+                          },
+                          "group": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Id of the group, to send as `groupId`",
+                                "example": "group-3"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Name of the group",
+                                "example": "Roads"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                           },
                           "permissions": {
                             "type": "object",
@@ -9787,6 +10086,106 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-groups": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists the groups a project can be linked to",
+        "description": "The caller's groups, or every group for the Admin and Maire roles, by name. Empty for a caller without group.",
+        "responses": {
+          "200": {
+            "description": "The groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Id of the group, to send as `groupId`",
+                            "example": "group-3"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Name of the group",
+                            "example": "Roads"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "description": "A group of agents linked to a project"
+                      },
+                      "description": "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles"
+                    }
+                  },
+                  "required": [
+                    "groups"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
             "content": {
               "application/json": {
                 "schema": {

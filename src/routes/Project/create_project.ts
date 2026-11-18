@@ -19,14 +19,14 @@ import { callerOf } from '../../services/projectData';
 const router = Router();
 
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
-const ERROR_STATUSES = [400, 401, 403, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: 'post',
   path: '/projects',
   tags: ['Projects'],
   summary: 'Create a project',
-  description: 'Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.',
+  description: 'Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.',
 
   request: {
     body: {
@@ -46,6 +46,15 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: ProjectDetailsResponse,
+        },
+      },
+    },
+
+    404: {
+      description: 'Unknown group, or a group the caller may not link (`GET /project-groups`)',
+      content: {
+        'application/json': {
+          schema: ErrorResponse,
         },
       },
     },

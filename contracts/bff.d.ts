@@ -249,6 +249,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -487,7 +500,7 @@ export interface paths {
         put?: never;
         /**
          * Create a project
-         * @description Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.
+         * @description Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.
          */
         post: {
             parameters: {
@@ -552,6 +565,11 @@ export interface paths {
                          * @example template-1
                          */
                         templateId?: string;
+                        /**
+                         * @description Group whose current and future members all see the project (`GET /project-groups`)
+                         * @example group-3
+                         */
+                        groupId?: string;
                     };
                 };
             };
@@ -686,6 +704,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -857,6 +888,15 @@ export interface paths {
                 };
                 /** @description Insufficient rights */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unknown group, or a group the caller may not link (`GET /project-groups`) */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1318,6 +1358,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -1634,7 +1687,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a project
-         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project and `null` removes it (`404` for a group the caller may not link); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.
          */
         patch: {
             parameters: {
@@ -1697,6 +1750,11 @@ export interface paths {
                              */
                             dueDate: string;
                         }[];
+                        /**
+                         * @description New group of the project (`GET /project-groups`), or `null` to remove it
+                         * @example group-3
+                         */
+                        groupId?: string | null;
                     };
                 };
             };
@@ -1831,6 +1889,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -2009,7 +2080,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Project not found */
+                /** @description Project not found, or a group the caller may not link */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2570,6 +2641,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -3285,6 +3369,19 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
+                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                                group?: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -4746,6 +4843,104 @@ export interface paths {
         };
         trace?: never;
     };
+    "/project-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the groups a project can be linked to
+         * @description The caller's groups, or every group for the Admin and Maire roles, by name. Empty for a caller without group.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The groups */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles */
+                            groups: {
+                                /**
+                                 * @description Id of the group, to send as `groupId`
+                                 * @example group-3
+                                 */
+                                id: string;
+                                /**
+                                 * @description Name of the group
+                                 * @example Roads
+                                 */
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4786,6 +4981,34 @@ export interface components {
              * @example https://example.com/avatar.jpg
              */
             avatarUrl: string | null;
+        };
+        /** @description A group of agents linked to a project */
+        ProjectGroup: {
+            /**
+             * @description Id of the group, to send as `groupId`
+             * @example group-3
+             */
+            id: string;
+            /**
+             * @description Name of the group
+             * @example Roads
+             */
+            name: string;
+        };
+        ProjectGroups: {
+            /** @description Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles */
+            groups: {
+                /**
+                 * @description Id of the group, to send as `groupId`
+                 * @example group-3
+                 */
+                id: string;
+                /**
+                 * @description Name of the group
+                 * @example Roads
+                 */
+                name: string;
+            }[];
         };
         /** @description A project for the card, table or kanban views */
         ProjectListItem: {
@@ -4910,6 +5133,19 @@ export interface components {
                  */
                 archived: number;
             };
+            /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+            group?: {
+                /**
+                 * @description Id of the group, to send as `groupId`
+                 * @example group-3
+                 */
+                id: string;
+                /**
+                 * @description Name of the group
+                 * @example Roads
+                 */
+                name: string;
+            } | null;
             /** @description Permissions of the user on the project */
             permissions: {
                 /**
@@ -5157,6 +5393,11 @@ export interface components {
              * @example template-1
              */
             templateId?: string;
+            /**
+             * @description Group whose current and future members all see the project (`GET /project-groups`)
+             * @example group-3
+             */
+            groupId?: string;
         };
         UpdateProjectBody: {
             /** @example Scan project */
@@ -5207,6 +5448,11 @@ export interface components {
                  */
                 dueDate: string;
             }[];
+            /**
+             * @description New group of the project (`GET /project-groups`), or `null` to remove it
+             * @example group-3
+             */
+            groupId?: string | null;
         };
         CreateTaskBody: {
             /** @example Scan task */
@@ -5474,6 +5720,19 @@ export interface components {
                      */
                     archived: number;
                 };
+                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                group?: {
+                    /**
+                     * @description Id of the group, to send as `groupId`
+                     * @example group-3
+                     */
+                    id: string;
+                    /**
+                     * @description Name of the group
+                     * @example Roads
+                     */
+                    name: string;
+                } | null;
                 /** @description Permissions of the user on the project */
                 permissions: {
                     /**
@@ -5825,6 +6084,19 @@ export interface components {
                      */
                     archived: number;
                 };
+                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
+                group?: {
+                    /**
+                     * @description Id of the group, to send as `groupId`
+                     * @example group-3
+                     */
+                    id: string;
+                    /**
+                     * @description Name of the group
+                     * @example Roads
+                     */
+                    name: string;
+                } | null;
                 /** @description Permissions of the user on the project */
                 permissions: {
                     /**

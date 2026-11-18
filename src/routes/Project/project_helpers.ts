@@ -81,6 +81,7 @@ export interface BffCreateProjectInput {
   labels: string[];
   dueDate: string;
   templateId?: string;
+  groupId?: string;
   taskItems?: Array<
     Pick<
       TaskInputLike,
@@ -481,6 +482,7 @@ export function mapProjectToDto(
       active: tasks.length,
       archived: archivedTasks,
     },
+    group: project.group ? { id: groupPublicId(project.group.id), name: project.group.name } : null,
     permissions,
   };
 }
@@ -676,7 +678,28 @@ export function mapProjectCreateBodyToBackend(
     ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
     ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
     ...templateIdToBackend(body.templateId),
+    ...(body.groupId === undefined ? {} : { group_id: parseGroupIdField(body.groupId) }),
   };
+}
+
+/** Public id of a Core API group. */
+export function groupPublicId(groupId: number): string {
+  return `group-${groupId}`;
+}
+
+/** The Core API id of a `group-<id>` already checked by the body schema. */
+export function parseGroupIdField(groupId: string): number {
+  const parsed = Number(groupId.slice('group-'.length));
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw validationError("body", [{ path: ["groupId"], message: "Expected a group-<id> identifier" }]);
+  }
+  return parsed;
+}
+
+/** Groups the caller may link to a project, as Project API lists them (by name). */
+export async function listProjectGroups(caller: Caller): Promise<Array<{ id: string; name: string }>> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options));
+  return data.groups.map((group) => ({ id: groupPublicId(group.id), name: group.name }));
 }
 
 /** `template_id` of a `templateId` (MAIR-566); absent, Project API uses the default template. */
