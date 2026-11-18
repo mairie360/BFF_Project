@@ -20,7 +20,7 @@ FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d
 ENV NODE_ENV=production
 # The runtime only runs `node dist/index.js`: drop the package managers bundled with the base image
 # (their own dependencies carry CVEs that fail the Trivy scan).
-RUN apk add --no-cache curl \
+RUN apk add --no-cache curl tini \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
               /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
               /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
@@ -38,4 +38,7 @@ ENV NODE_OPTIONS="--max-old-space-size=180"
 
 EXPOSE 4001
 # dist/index.js est un bundle esbuild autonome (les clients @mairie360/*-openapi sont inlinés).
+# tini as PID 1 forwards SIGTERM to Node and reaps zombies: Node as PID 1 would ignore the signal, so the BFF
+# could not drain its requests (gracefulShutdown) and would be killed at the end of the grace period.
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/index.js"]
