@@ -9,6 +9,7 @@ import {
     mapPriorityToBackend,
     mapProjectStatusToBackend,
     parseGroupIdField,
+    requireLinkableGroup,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
@@ -88,13 +89,18 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         ...(body.assigneeIds ?? []),
     ]);
 
+    const groupId = body.groupId === undefined ? undefined : parseGroupIdField(body.groupId);
+    if (groupId !== undefined) {
+        await requireLinkableGroup(caller, groupId, new HttpError(404, 'Unknown group.'));
+    }
+
     const updateRecord = async () => {
         if (
             body.title !== undefined || body.description !== undefined || body.status !== undefined
             || body.priority !== undefined || body.groupId !== undefined
         ) {
             await updateProjectRecord(caller, projectId, {
-                groupId: body.groupId === undefined ? undefined : parseGroupIdField(body.groupId),
+                groupId,
                 title: body.title,
                 description: body.description,
                 status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),

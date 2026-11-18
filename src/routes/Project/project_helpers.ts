@@ -704,6 +704,15 @@ export async function listProjectGroups(caller: Caller): Promise<Array<{ id: str
   return data.groups.map((group) => ({ id: groupPublicId(group.id), name: group.name }));
 }
 
+/**
+ * Refuses, before any write, a group the caller may not link (not one of their groups, unless Admin or Maire), so
+ * that a request touching the members and the group never writes the members and then fails on the group.
+ */
+export async function requireLinkableGroup(caller: Caller, groupId: number, refusal: HttpError): Promise<void> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options), true);
+  if (!data.groups.some((group) => group.id === groupId)) throw refusal;
+}
+
 /** Projects linked to no group, for the Admin and Maire roles (Project API answers 403 to the others). */
 export async function listProjectsWithoutGroup(
   caller: Caller,

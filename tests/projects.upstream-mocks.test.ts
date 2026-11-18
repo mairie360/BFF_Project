@@ -113,6 +113,8 @@ type Scenario = {
 };
 
 function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, createdTaskId = 30 }: Scenario = {}) {
+  // The groups the caller may link: the BFF checks them before writing a group (create, duplicate, PATCH).
+  projectApi.on('get', '/api/v1/project-groups/', { body: { groups: [{ id: 3, name: 'Roads' }, { id: 4, name: 'Administration' }, { id: 5, name: 'Green spaces' }] } });
   projectApi.on('get', PROJECT.projects, { body: projectsResult(projects) });
   projectApi.on('get', PROJECT.project, ({ pathParams }) => {
     const bundle = bundles[Number(pathParams.projectId)];
@@ -2097,14 +2099,26 @@ describe('MAIR-683 project linked to a group', () => {
     expect(sequence.slice(-2)).toEqual(['PATCH', 'GET']);
   });
 
-  test('PATCH /projects/:id relays the 404 of a group the caller may not link', async () => {
+  test('mair_683 PATCH /projects/:id refuses a group the caller may not link before writing the members', async () => {
     signIn(marie);
-    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
-    projectApi.on('patch', PROJECT.project, textError(404, 'Group not found.'));
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice, marie]) } });
 
-    const response = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: 'group-99' });
+    const response = await as(request(app).patch('/projects/project-1'), marie)
+      .send({ responsibleId: `user-${marie.id}`, assigneeIds: [], groupId: 'group-99' });
 
     expect(response.status).toBe(404);
     expectBffContract('patch', '/projects/project-1', response);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('mair_683 POST /projects/:id/duplicate refuses a source group the caller may not link and creates nothing', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: { id: 8, name: 'Finances' } }), [], [marie]) } });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), marie).send({});
+
+    expect(response.status).toBe(403);
+    expectBffContract('post', '/projects/project-1/duplicate', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
   });
 });

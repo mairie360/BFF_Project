@@ -2504,7 +2504,7 @@ export interface paths {
         put?: never;
         /**
          * Duplicate a project
-         * @description Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets the `404` of Project API and nothing is created.
+         * @description Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets `403` and nothing is created.
          */
         post: {
             parameters: {
@@ -2839,7 +2839,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Project not found, or a source group the caller may not link */
+                /** @description Project not found */
                 404: {
                     headers: {
                         [name: string]: unknown;

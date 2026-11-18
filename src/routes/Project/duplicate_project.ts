@@ -9,6 +9,7 @@ import {
     mapTaskInputToBackend,
     mapTaskPriority,
     mapTaskStatus,
+    requireLinkableGroup,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
@@ -29,7 +30,7 @@ registry.registerPath({
     path: '/projects/{projectId}/duplicate',
     tags: ['Projects'],
     summary: 'Duplicate a project',
-    description: 'Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets the `404` of Project API and nothing is created.',
+    description: 'Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets `403` and nothing is created.',
 
     request: {
         params: ProjectIdParams,
@@ -47,7 +48,7 @@ registry.registerPath({
         },
 
         404: {
-            description: 'Project not found, or a source group the caller may not link',
+            description: 'Project not found',
             content: {
                 'application/json': {
                     schema: ErrorResponse,
@@ -68,6 +69,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
     if (!sourceGroup) {
         throw new HttpError(400, 'The project has no group: choose one before duplicating it.');
     }
+    await requireLinkableGroup(caller, sourceGroup.id, new HttpError(403, 'You may not use the group of this project.'));
     const createdProject = await createProjectOnApi(caller, {
         name: source.project.name,
         description: source.project.description,
