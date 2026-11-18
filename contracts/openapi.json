@@ -131,6 +131,46 @@
           "groups"
         ]
       },
+      "ProjectsWithoutGroup": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id of the project",
+                  "example": "project-9"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title of the project",
+                  "example": "LED street lighting"
+                },
+                "createdAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Creation date (ISO 8601), `null` when unknown",
+                  "example": "2026-03-03T09:12:00+00:00"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "createdAt"
+              ]
+            },
+            "description": "Projects without a group, newest first; empty when every project has one"
+          }
+        },
+        "required": [
+          "projects"
+        ]
+      },
       "ProjectListItem": {
         "type": "object",
         "properties": {
@@ -10385,6 +10425,124 @@
           },
           "401": {
             "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-groups/projects-without-group": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists the projects linked to no group",
+        "description": "Every project must have a group, but a project created before groups were required, or whose group was deleted in Core API, has none until a manager picks one. Restricted to the Admin and Maire roles (`403` otherwise), for the administration page.",
+        "responses": {
+          "200": {
+            "description": "The projects without a group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Id of the project",
+                            "example": "project-9"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Title of the project",
+                            "example": "LED street lighting"
+                          },
+                          "createdAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Creation date (ISO 8601), `null` when unknown",
+                            "example": "2026-03-03T09:12:00+00:00"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "createdAt"
+                        ]
+                      },
+                      "description": "Projects without a group, newest first; empty when every project has one"
+                    }
+                  },
+                  "required": [
+                    "projects"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
             "content": {
               "application/json": {
                 "schema": {

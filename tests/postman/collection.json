@@ -2034,6 +2034,92 @@
           "response": []
         },
         {
+          "name": "MAIR-683 The administrator lists the projects without a group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-groups/projects-without-group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-groups",
+                "projects-without-group"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Seeded projects without a group, never the group project\", function () {",
+                  "    const projects = pm.response.json().projects;",
+                  "    pm.expect(projects).to.be.an('array').that.is.not.empty;",
+                  "    projects.forEach((project) => {",
+                  "        pm.expect(project.id).to.match(/^project-\\d+$/);",
+                  "        pm.expect(project.title).to.be.a('string');",
+                  "    });",
+                  "    pm.expect(projects.map((project) => project.id)).to.not.include(pm.environment.get('group_project_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 An agent cannot list the projects without a group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-groups/projects-without-group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-groups",
+                "projects-without-group"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    pm.expect(pm.response.json().error.code).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "MAIR-683 Delete the project linked to the group",
           "request": {
             "method": "DELETE",

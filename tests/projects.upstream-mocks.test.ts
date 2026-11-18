@@ -1883,6 +1883,42 @@ describe('MAIR-683 project linked to a group', () => {
     expect(response.body).toEqual({ groups: [{ id: 'group-5', name: 'Green spaces' }, { id: 'group-3', name: 'Roads' }] });
   });
 
+  const WITHOUT_GROUP = '/api/v1/project-groups/projects-without-group/';
+
+  test('mair_683 GET /project-groups/projects-without-group lists them with project ids for the administration', async () => {
+    signIn(admin);
+    projectApi.on('get', WITHOUT_GROUP, { body: { projects: [
+      { id: 9, name: 'LED street lighting', created_at: '2026-03-03T09:12:00+00:00' },
+      { id: 4, name: 'Gymnasium', created_at: null },
+    ] } });
+
+    const response = await as(request(app).get('/project-groups/projects-without-group'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-groups/projects-without-group', response);
+    expect(response.body).toEqual({ projects: [
+      { id: 'project-9', title: 'LED street lighting', createdAt: '2026-03-03T09:12:00+00:00' },
+      { id: 'project-4', title: 'Gymnasium', createdAt: null },
+    ] });
+  });
+
+  test('mair_683 GET /project-groups/projects-without-group relays the 403 of a caller outside Admin and Maire', async () => {
+    signIn(marie);
+    projectApi.on('get', WITHOUT_GROUP, textError(403, 'Forbidden.'));
+
+    const response = await as(request(app).get('/project-groups/projects-without-group'), marie);
+
+    expect(response.status).toBe(403);
+    expectBffContract('get', '/project-groups/projects-without-group', response);
+  });
+
+  test('mair_683 GET /project-groups/projects-without-group refuses a call without session before any upstream call', async () => {
+    const response = await request(app).get('/project-groups/projects-without-group');
+
+    expect(response.status).toBe(401);
+    expect(projectApi.requests).toEqual([]);
+  });
+
   test('GET /project-groups refuses a call without session before any upstream call', async () => {
     const response = await request(app).get('/project-groups');
 

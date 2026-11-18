@@ -343,6 +343,19 @@ const handlers = {
       'project groups are a list': (r) => r.status === 200 && Array.isArray(r.json('groups')),
     }),
 
+  // --- Projects without a group: the administrator's list (the seeded projects have none); an agent gets 403, which
+  // must not count as a failed request ---
+  'GET /project-groups/projects-without-group': ({ request, data }) => {
+    const admin = randomInt(2) === 0;
+    const res = admin
+      ? request({ headers: data.admin })
+      : request({ headers: randomAgent(), params: { responseCallback: http.expectedStatuses(403) } });
+    check(res, {
+      'projects without group 200 for the administrator': (r) => !admin || (r.status === 200 && r.json('projects').length > 0),
+      'projects without group 403 for an agent': (r) => admin || r.status === 403,
+    });
+  },
+
   // --- Project templates (MAIR-566; written by the Responsable and Admin roles only) ---
   // The templates seeded by the Database (Simple, the default one, and the three others), read by any agent.
   'GET /project-templates': ({ request }) =>

@@ -58,6 +58,17 @@ export const ProjectGroups = z.object({
     }),
 });
 
+// A project left without a group (created before groups were required, or its group was deleted in Core API).
+export const ProjectWithoutGroup = z.object({
+    id: z.string().openapi({ description: 'Id of the project', example: 'project-9' }),
+    title: z.string().openapi({ description: 'Title of the project', example: 'LED street lighting' }),
+    createdAt: z.string().nullable().openapi({ description: 'Creation date (ISO 8601), `null` when unknown', example: '2026-03-03T09:12:00+00:00' }),
+});
+
+export const ProjectsWithoutGroup = z.object({
+    projects: z.array(ProjectWithoutGroup).openapi({ description: 'Projects without a group, newest first; empty when every project has one' }),
+});
+
 // Schema -- Project for the card / table / kanban views
 
 
@@ -139,6 +150,7 @@ registry.register('ViewMode', ViewMode);
 registry.register('Person', Person);
 registry.register('ProjectGroup', ProjectGroup);
 registry.register('ProjectGroups', ProjectGroups);
+registry.register('ProjectsWithoutGroup', ProjectsWithoutGroup);
 registry.register('ProjectListItem', ProjectListItem);
 
 // A project as the detail answers return it: the list item plus its group (not in `GET /projects-page`).

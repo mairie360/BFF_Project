@@ -4935,6 +4935,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/project-groups/projects-without-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the projects linked to no group
+         * @description Every project must have a group, but a project created before groups were required, or whose group was deleted in Core API, has none until a manager picks one. Restricted to the Admin and Maire roles (`403` otherwise), for the administration page.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The projects without a group */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Projects without a group, newest first; empty when every project has one */
+                            projects: {
+                                /**
+                                 * @description Id of the project
+                                 * @example project-9
+                                 */
+                                id: string;
+                                /**
+                                 * @description Title of the project
+                                 * @example LED street lighting
+                                 */
+                                title: string;
+                                /**
+                                 * @description Creation date (ISO 8601), `null` when unknown
+                                 * @example 2026-03-03T09:12:00+00:00
+                                 */
+                                createdAt: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5002,6 +5114,26 @@ export interface components {
                  * @example Roads
                  */
                 name: string;
+            }[];
+        };
+        ProjectsWithoutGroup: {
+            /** @description Projects without a group, newest first; empty when every project has one */
+            projects: {
+                /**
+                 * @description Id of the project
+                 * @example project-9
+                 */
+                id: string;
+                /**
+                 * @description Title of the project
+                 * @example LED street lighting
+                 */
+                title: string;
+                /**
+                 * @description Creation date (ISO 8601), `null` when unknown
+                 * @example 2026-03-03T09:12:00+00:00
+                 */
+                createdAt: string | null;
             }[];
         };
         /** @description A project for the card, table or kanban views */

@@ -83,7 +83,7 @@ export interface BffCreateProjectInput {
   labels: string[];
   dueDate: string;
   templateId?: string;
-  groupId?: string;
+  groupId: string;
   taskItems?: Array<
     Pick<
       TaskInputLike,
@@ -680,7 +680,7 @@ export function mapProjectCreateBodyToBackend(
     ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
     ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
     ...templateIdToBackend(body.templateId),
-    ...(body.groupId === undefined ? {} : { group_id: parseGroupIdField(body.groupId) }),
+    group_id: parseGroupIdField(body.groupId),
   };
 }
 
@@ -702,6 +702,18 @@ export function parseGroupIdField(groupId: string): number {
 export async function listProjectGroups(caller: Caller): Promise<Array<{ id: string; name: string }>> {
   const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options), true);
   return data.groups.map((group) => ({ id: groupPublicId(group.id), name: group.name }));
+}
+
+/** Projects linked to no group, for the Admin and Maire roles (Project API answers 403 to the others). */
+export async function listProjectsWithoutGroup(
+  caller: Caller,
+): Promise<Array<{ id: string; title: string; createdAt: string | null }>> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectsWithoutGroup(options), true);
+  return data.projects.map((project) => ({
+    id: projectPublicId(project.id),
+    title: project.name,
+    createdAt: project.created_at ?? null,
+  }));
 }
 
 /** `template_id` of a `templateId` (MAIR-566); absent, Project API uses the default template. */

@@ -104,7 +104,8 @@ relayed. Tasks carry `statusId` / `statusName` (their `status` is the category);
 (both `400` in the BFF schema); it is only shape-checked, Project API decides which groups the caller may link and
 answers 404 otherwise, relayed as is. When a group change takes the project away from the caller (a Responsable who
 saw it only through the former group), `modify_project.ts` writes the members first and answers 204 instead of the
-re-read. `duplicate_project.ts` gives the copy the source's group and answers 400 for a source without one. The
+re-read. `GET /project-groups/projects-without-group` (Admin/Maire, 403 relayed) lists the projects left without a
+group for the administration page (BFF_user). `duplicate_project.ts` gives the copy the source's group and answers 400 for a source without one. The
 project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `null` once Core deleted the group.
 
 ### Everything goes through the APIs

@@ -106,14 +106,15 @@ describe('MAIR-241 branch coverage of the Project helpers', () => {
     });
 
     test('a project is created without status, priority nor template when none is chosen', () => {
-      expect(mapProjectCreateBodyToBackend({ title: 'P', description: 'D' } as never)).toEqual({ name: 'P', description: 'D' });
+      expect(mapProjectCreateBodyToBackend({ title: 'P', description: 'D', groupId: 'group-3' } as never))
+        .toEqual({ name: 'P', description: 'D', group_id: 3 });
     });
 
     test('a project is created with the status, priority and template it names, and refuses a malformed template', () => {
       expect(mapProjectCreateBodyToBackend({
-        title: 'P', description: 'D', status: 'done', priority: 'high', templateId: 'template-2',
-      } as never)).toEqual({ name: 'P', description: 'D', status: 'Completed', priority: 'High', template_id: 2 });
-      expect(() => mapProjectCreateBodyToBackend({ title: 'P', description: 'D', templateId: '2' } as never)).toThrow(HttpError);
+        title: 'P', description: 'D', status: 'done', priority: 'high', templateId: 'template-2', groupId: 'group-3',
+      } as never)).toEqual({ name: 'P', description: 'D', status: 'Completed', priority: 'High', template_id: 2, group_id: 3 });
+      expect(() => mapProjectCreateBodyToBackend({ title: 'P', description: 'D', templateId: '2', groupId: 'group-3' } as never)).toThrow(HttpError);
     });
   });
 
