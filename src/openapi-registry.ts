@@ -306,7 +306,8 @@ export const CreateProjectBody = z.object({
 
   templateId: TemplateIdField.optional(),
 
-  groupId: GroupIdField.optional(),
+  // Required: every project has a group (`GET /project-groups`).
+  groupId: GroupIdField,
 });
 
 registry.register('CreateProjectBody', CreateProjectBody);
@@ -316,10 +317,10 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // =====================
 
 // The template only applies at creation (its statuses are copied then): not part of a PATCH.
-// `groupId: null` removes the group of the project.
+// The group can be changed but not removed: `groupId: null` is refused in 400.
 export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true, groupId: true }).partial().extend({
-  groupId: GroupIdField.nullable().optional().openapi({
-    description: 'New group of the project (`GET /project-groups`), or `null` to remove it',
+  groupId: GroupIdField.optional().openapi({
+    description: 'New group of the project (`GET /project-groups`); a project always keeps a group',
     example: 'group-3',
   }),
 });

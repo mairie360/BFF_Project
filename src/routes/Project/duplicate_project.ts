@@ -14,7 +14,7 @@ import {
     userPublicId,
     withCreatedProjectRollback,
 } from './project_helpers';
-import { parseRequest } from '@mairie360/bffs-lib';
+import { HttpError, parseRequest } from '@mairie360/bffs-lib';
 import { requireProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
 import { callerOf } from '../../services/projectData';
@@ -29,7 +29,7 @@ registry.registerPath({
     path: '/projects/{projectId}/duplicate',
     tags: ['Projects'],
     summary: 'Duplicate a project',
-    description: 'Recreates the project with its members and its tasks; if a step fails, the partial duplicate is deleted again.',
+    description: 'Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group (its group was deleted) answers `400`: pick a group for it first.',
 
     request: {
         params: ProjectIdParams,
@@ -63,9 +63,15 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
     const caller = callerOf(req, ERROR_STATUSES);
 
     const { user, bundle: source } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    // Every project needs a group: the copy takes the source's.
+    const sourceGroup = source.project.group;
+    if (!sourceGroup) {
+        throw new HttpError(400, 'The project has no group: choose one before duplicating it.');
+    }
     const createdProject = await createProjectOnApi(caller, {
         name: source.project.name,
         description: source.project.description,
+        group_id: sourceGroup.id,
     });
     const duplicateId = createdProject.project_id;
 

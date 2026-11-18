@@ -123,6 +123,8 @@ function projectBody(title) {
     assigneeIds: [`user-${ADMIN_ID}`],
     labels: ['perf'],
     dueDate: DUE_DATE,
+    // Group 4 of init-test.sql, the administrator alone: every project needs a group.
+    groupId: 'group-4',
   };
 }
 

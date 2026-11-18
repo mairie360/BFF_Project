@@ -65,6 +65,16 @@ INSERT INTO group_members (group_id, user_id)
 VALUES (3, 2)
 ON CONFLICT DO NOTHING;
 
+-- Group 4 (`group-4`): the administrator alone. Every project needs a group, and the projects of the other folders
+-- use this one so that linking them gives nobody else access.
+INSERT INTO groups (id, owner_id, name, description)
+VALUES (4, 1, 'Administration', 'Administrator only')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO group_members (group_id, user_id)
+VALUES (4, 1)
+ON CONFLICT DO NOTHING;
+
 -- Explicit ids do not advance the sequences: move them past the seeded rows so that the
 -- rows created during the tests (users, projects, tasks) do not collide.
 SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT max(id) FROM users));

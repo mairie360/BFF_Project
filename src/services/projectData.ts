@@ -263,10 +263,10 @@ function toApiUsers(users: Array<{ id: number; first_name: string; last_name: st
 export async function updateProjectRecord(
   caller: Caller,
   projectId: number,
-  input: { title?: string; description?: string; status?: ProjectStatus; priority?: TaskPriority; groupId?: number | null },
+  input: { title?: string; description?: string; status?: ProjectStatus; priority?: TaskPriority; groupId?: number },
 ): Promise<void> {
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
-    // `null` removes the group; absent, the group is kept.
+    // Absent, the group is kept.
     ...(input.groupId !== undefined ? { group_id: input.groupId } : {}),
     ...(input.title !== undefined ? { name: input.title } : {}),
     ...(input.description !== undefined ? { description: input.description } : {}),

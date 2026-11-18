@@ -991,7 +991,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1047,7 +1047,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1103,7 +1103,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [\n    \"newman\"\n  ],\n  \"dueDate\": \"2030-12-31\",\n  \"templateId\": \"{{template_id}}\",\n  \"taskItems\": [\n    {\n      \"title\": \"Newman seed task {{run_id}}\",\n      \"status\": \"todo\",\n      \"priority\": \"medium\",\n      \"assigneeIds\": [],\n      \"labels\": [],\n      \"dueDate\": \"2030-12-31\"\n    }\n  ]\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [\n    \"newman\"\n  ],\n  \"dueDate\": \"2030-12-31\",\n  \"templateId\": \"{{template_id}}\",\n  \"taskItems\": [\n    {\n      \"title\": \"Newman seed task {{run_id}}\",\n      \"status\": \"todo\",\n      \"priority\": \"medium\",\n      \"assigneeIds\": [],\n      \"labels\": [],\n      \"dueDate\": \"2030-12-31\"\n    }\n  ],\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1827,7 +1827,7 @@
           "response": []
         },
         {
-          "name": "MAIR-683 Remove the group of the project",
+          "name": "MAIR-683 Removing the group of the project answers 400",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1868,11 +1868,66 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error names groupId\", function () {",
+                  "    const details = pm.response.json().error.details;",
+                  "    pm.expect(details.map((detail) => detail.path)).to.include('body.groupId');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Move the project to another group",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"group-4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
                   "pm.test(\"Status is 200\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"The project has no group any more\", function () {",
-                  "    pm.expect(pm.response.json().project.group).to.eql(null);",
+                  "pm.test(\"The project has its new group\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-4', name: 'Administration' });",
                   "});"
                 ]
               }
@@ -3642,6 +3697,9 @@
                   "    pm.expect(body.taskItems[0].id).to.not.eql(pm.environment.get('seed_task_id'));",
                   "    pm.expect(body.project.tasks).to.include({ total: 1, completed: 0, active: 1, archived: 0 });",
                   "    pm.environment.set('duplicate_project_id', body.project.id);",
+                  "});",
+                  "pm.test(\"The duplicate keeps the group of its source\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-4', name: 'Administration' });",
                   "});"
                 ]
               }

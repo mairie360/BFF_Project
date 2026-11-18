@@ -100,11 +100,12 @@ relayed. Tasks carry `statusId` / `statusName` (their `status` is the category);
 `templateId` on `POST /projects` are only shape-checked by the BFF, Project API checks they exist.
 
 `src/routes/Project/groups.ts` (`/project-groups`) lists the groups a project can be linked to. `groupId`
-(`group-<id>`) on `POST /projects` and `PATCH /projects/{projectId}` (`null` removes it) is only shape-checked;
-Project API decides which groups the caller may link and answers 404 otherwise, relayed as is. When `groupId: null`
-takes the project away from the caller (a Responsable who saw it only through that group), `modify_project.ts` writes
-the members first and answers 204 instead of the re-read. The project detail
-maps Project API's `group` to `{ id: 'group-<id>', name }` or `null`.
+(`group-<id>`) is required on `POST /projects` and may change, never be `null`, on `PATCH /projects/{projectId}`
+(both `400` in the BFF schema); it is only shape-checked, Project API decides which groups the caller may link and
+answers 404 otherwise, relayed as is. When a group change takes the project away from the caller (a Responsable who
+saw it only through the former group), `modify_project.ts` writes the members first and answers 204 instead of the
+re-read. `duplicate_project.ts` gives the copy the source's group and answers 400 for a source without one. The
+project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `null` once Core deleted the group.
 
 ### Everything goes through the APIs
 

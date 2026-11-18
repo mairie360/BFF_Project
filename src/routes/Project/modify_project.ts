@@ -27,7 +27,7 @@ registry.registerPath({
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project and `null` removes it (`404` for a group the caller may not link); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. A caller who saw the project only through the group they remove no longer sees it: the update is saved and the answer is `204` without a body.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. A caller who saw the project only through the group they replace no longer sees it: the update is saved and the answer is `204` without a body.',
 
     request: {
         params: ProjectIdParams,
@@ -94,7 +94,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
             || body.priority !== undefined || body.groupId !== undefined
         ) {
             await updateProjectRecord(caller, projectId, {
-                groupId: body.groupId === undefined || body.groupId === null ? body.groupId : parseGroupIdField(body.groupId),
+                groupId: body.groupId === undefined ? undefined : parseGroupIdField(body.groupId),
                 title: body.title,
                 description: body.description,
                 status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),
@@ -116,10 +116,10 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         }
     };
 
-    // Removing the group can take the project away from a caller who saw it only through that group:
-    // the members are then written first, while the caller still sees the project.
-    const removesGroup = body.groupId === null;
-    if (removesGroup) {
+    // Changing the group can take the project away from a caller who saw it only through the former
+    // group: the members are then written first, while the caller still sees the project.
+    const changesGroup = body.groupId !== undefined;
+    if (changesGroup) {
         await updateMembers();
         await updateRecord();
     } else {
@@ -130,8 +130,8 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     // Only the state Project API persisted is returned (labels and dueDate are not stored).
     const bundle = await getProjectBundle(caller, projectId);
     if (!bundle) {
-        // Saved, but the caller no longer sees the project: only after removing the group it came through.
-        if (removesGroup) {
+        // Saved, but the caller no longer sees the project: only after replacing the group it came through.
+        if (changesGroup) {
             res.status(204).end();
             return;
         }
