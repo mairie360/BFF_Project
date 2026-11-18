@@ -489,10 +489,10 @@ export function setup() {
 export function reads(data) {
   for (const operation of readOperations) {
     const request = (call = {}) =>
-      http.get(coverage.url(operation.op, call.path, call.query), {
+      http.get(coverage.url(operation.op, call.path, call.query), Object.assign({}, call.params, {
         headers: Object.assign({}, data.user, call.headers),
         tags: { op: operation.op },
-      });
+      }));
     handlers[operation.op]({ request, data, op: operation.op, method: operation.method, path: operation.path });
   }
   sleep(1);

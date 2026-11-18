@@ -1687,7 +1687,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a project
-         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. A caller who saw the project only through the group they replace no longer sees it: the update is saved and the answer is `204` without a body.
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.
          */
         patch: {
             parameters: {
@@ -1751,7 +1751,7 @@ export interface paths {
                             dueDate: string;
                         }[];
                         /**
-                         * @description New group of the project (`GET /project-groups`); a project always keeps a group
+                         * @description New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid
                          * @example group-3
                          */
                         groupId?: string;
@@ -2504,7 +2504,7 @@ export interface paths {
         put?: never;
         /**
          * Duplicate a project
-         * @description Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group (its group was deleted) answers `400`: pick a group for it first.
+         * @description Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets the `404` of Project API and nothing is created.
          */
         post: {
             parameters: {
@@ -2839,7 +2839,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Project not found */
+                /** @description Project not found, or a source group the caller may not link */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -5729,7 +5729,7 @@ export interface components {
                 dueDate: string;
             }[];
             /**
-             * @description New group of the project (`GET /project-groups`); a project always keeps a group
+             * @description New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid
              * @example group-3
              */
             groupId?: string;

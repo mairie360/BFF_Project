@@ -332,7 +332,7 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // The group can be changed but not removed: `groupId: null` is refused in 400.
 export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true, groupId: true }).partial().extend({
   groupId: GroupIdField.optional().openapi({
-    description: 'New group of the project (`GET /project-groups`); a project always keeps a group',
+    description: 'New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid',
     example: 'group-3',
   }),
 });

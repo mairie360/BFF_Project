@@ -1910,6 +1910,7 @@ describe('MAIR-683 project linked to a group', () => {
 
     expect(response.status).toBe(403);
     expectBffContract('get', '/project-groups/projects-without-group', response);
+    expect(projectApi.calls(WITHOUT_GROUP, 'GET')).toHaveLength(1);
   });
 
   test('mair_683 GET /project-groups/projects-without-group refuses a call without session before any upstream call', async () => {
@@ -2059,13 +2060,25 @@ describe('MAIR-683 project linked to a group', () => {
     expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Renommé', group_id: 5 }]);
   });
 
-  test('PATCH /projects/:id writes the members before changing the group', async () => {
+  test('PATCH /projects/:id writes the members before changing the group, so a caller who joins keeps the project', async () => {
     signIn(marie);
-    loseProjectOnPatch();
+    // Marie sees the project only through its group until she is added as a member.
+    const bundle = projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice]);
+    const bundles: Record<number, typeof bundle> = { 1: bundle };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.users, () => {
+      bundle.users = [...bundle.users, marie];
+      return { status: 200 };
+    });
+    projectApi.on('patch', PROJECT.project, () => {
+      if (!bundle.users.some((member) => member.id === marie.id)) delete bundles[1];
+      return { status: 204 };
+    });
 
     const response = await as(request(app).patch('/projects/project-1'), marie).send({ responsibleId: `user-${marie.id}`, groupId: 'group-5' });
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1', response);
     const writes = projectApi.requests.filter((call) => call.method !== 'GET').map((call) => `${call.method} ${call.template}`);
     expect(writes).toEqual([`POST ${PROJECT.users}`, `PATCH ${PROJECT.project}`]);
   });
@@ -2078,6 +2091,10 @@ describe('MAIR-683 project linked to a group', () => {
 
     expect(response.status).toBe(404);
     expectBffContract('patch', '/projects/project-1', response);
+    // The 404 comes from the re-read after the write, not from an early refusal.
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Renommé' }]);
+    const sequence = projectApi.requests.filter((call) => call.template === PROJECT.project).map((call) => call.method);
+    expect(sequence.slice(-2)).toEqual(['PATCH', 'GET']);
   });
 
   test('PATCH /projects/:id relays the 404 of a group the caller may not link', async () => {
