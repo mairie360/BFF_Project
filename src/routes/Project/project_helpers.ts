@@ -19,6 +19,7 @@ import type {
 import {
   Person as PersonSchema,
   ProjectListItem as ProjectListItemSchema,
+  ProjectDetail as ProjectDetailSchema,
   ProjectPriority as ProjectPrioritySchema,
   ProjectStatus as ProjectStatusSchema,
   ProjectTask as ProjectTaskSchema,
@@ -43,6 +44,7 @@ export type BffProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
 export type BffPerson = z.infer<typeof PersonSchema>;
 export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
+export type BffProjectDetail = z.infer<typeof ProjectDetailSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
 
 // A member's name may be missing in Project API (deleted user): the BFF contract replaces it.
@@ -450,7 +452,7 @@ export function mapProjectToDto(
     canAssignMembers: true,
     canClose: true,
   },
-): BffProjectListItem {
+): BffProjectDetail {
   const status = mapProjectStatus(project.status);
   // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
   const priority = mapTaskPriority(project.priority);
@@ -698,7 +700,7 @@ export function parseGroupIdField(groupId: string): number {
 
 /** Groups the caller may link to a project, as Project API lists them (by name). */
 export async function listProjectGroups(caller: Caller): Promise<Array<{ id: string; name: string }>> {
-  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options));
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options), true);
   return data.groups.map((group) => ({ id: groupPublicId(group.id), name: group.name }));
 }
 

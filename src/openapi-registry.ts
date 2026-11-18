@@ -91,9 +91,6 @@ export const ProjectListItem = z.object({
     }).openapi({
       description: 'Task counts of the project: `progress` is `completed / total`; `active + archived = total`',
     }),
-    group: ProjectGroup.nullable().optional().openapi({
-      description: 'Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)',
-    }),
     permissions: z.object({
         canView: z.boolean().openapi({ description: 'Whether the user can see the project', example: true }),
         canEdit: z.boolean().openapi({ description: 'Whether the user can edit the project', example: true }),
@@ -143,6 +140,12 @@ registry.register('Person', Person);
 registry.register('ProjectGroup', ProjectGroup);
 registry.register('ProjectGroups', ProjectGroups);
 registry.register('ProjectListItem', ProjectListItem);
+
+// A project as the detail answers return it: the list item plus its group (not in `GET /projects-page`).
+export const ProjectDetail = ProjectListItem.extend({
+  group: ProjectGroup.nullable().openapi({ description: 'Group linked to the project, `null` without one' }),
+});
+registry.register('ProjectDetail', ProjectDetail);
 registry.register('ProjectTask', ProjectTask);
 
 // =====================
@@ -256,8 +259,9 @@ const TemplateIdField = z.string().regex(/^template-\d+$/, 'Expected a template-
   example: 'template-1',
 });
 // A Core API group (`group-<id>`, from `GET /project-groups`).
-const GroupIdField = z.string().regex(/^group-\d+$/, 'Expected a group-<id> identifier').openapi({
-  description: 'Group whose current and future members all see the project (`GET /project-groups`)',
+// The id is a safe integer: at most 15 digits.
+const GroupIdField = z.string().regex(/^group-\d{1,15}$/, 'Expected a group-<id> identifier').openapi({
+  description: 'Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits',
   example: 'group-3',
 });
 // A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
@@ -427,7 +431,7 @@ registry.register('TaskCollaborationResponse', TaskCollaborationResponse);
 // =====================
 
 export const ProjectDetailsResponse = z.object({
-  project: ProjectListItem,
+  project: ProjectDetail,
 
   taskItems: z.array(ProjectTask),
 });

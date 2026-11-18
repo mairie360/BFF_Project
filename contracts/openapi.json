@@ -304,29 +304,6 @@
             ],
             "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
           },
-          "group": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Id of the group, to send as `groupId`",
-                "example": "group-3"
-              },
-              "name": {
-                "type": "string",
-                "description": "Name of the group",
-                "example": "Roads"
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ],
-            "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-          },
           "permissions": {
             "type": "object",
             "properties": {
@@ -390,6 +367,269 @@
           "createdAt",
           "tasks",
           "permissions"
+        ],
+        "description": "A project for the card, table or kanban views"
+      },
+      "ProjectDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique id of the project",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the project",
+            "example": "New project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the project",
+            "example": "Detailed description of the project"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in-progress",
+              "review",
+              "done"
+            ],
+            "description": "Status of the project",
+            "example": "todo"
+          },
+          "statusLabel": {
+            "type": "string",
+            "description": "Label of the project status",
+            "example": "À faire"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "Priority of the project",
+            "example": "high"
+          },
+          "priorityLabel": {
+            "type": "string",
+            "description": "Label of the project priority",
+            "example": "Haute"
+          },
+          "responsible": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique id of the person",
+                "example": "123e4567-e89b-12d3-a456-426614174000"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the person",
+                "example": "John Doe"
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri",
+                "description": "URL of the person's avatar",
+                "example": "https://example.com/avatar.jpg"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "avatarUrl"
+            ],
+            "description": "A person who can be assigned to a project"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique id of the person",
+                  "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Name of the person",
+                  "example": "John Doe"
+                },
+                "avatarUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri",
+                  "description": "URL of the person's avatar",
+                  "example": "https://example.com/avatar.jpg"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "avatarUrl"
+              ],
+              "description": "A person who can be assigned to a project"
+            },
+            "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Labels of the project",
+            "example": [
+              "frontend",
+              "urgent"
+            ]
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Progress of the project, in percent",
+            "example": 75
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Due date of the project, ISO 8601",
+            "example": "2024-12-31T23:59:59Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation date of the project, ISO 8601",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "tasks": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "description": "Number of tasks of the project, the archived (done) ones included",
+                "example": 10
+              },
+              "completed": {
+                "type": "number",
+                "description": "Number of done tasks of the project, the archived ones included",
+                "example": 7
+              },
+              "active": {
+                "type": "number",
+                "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                "example": 3
+              },
+              "archived": {
+                "type": "number",
+                "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
+                "example": 7
+              }
+            },
+            "required": [
+              "total",
+              "completed",
+              "active",
+              "archived"
+            ],
+            "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "canView": {
+                "type": "boolean",
+                "description": "Whether the user can see the project",
+                "example": true
+              },
+              "canEdit": {
+                "type": "boolean",
+                "description": "Whether the user can edit the project",
+                "example": true
+              },
+              "canDuplicate": {
+                "type": "boolean",
+                "description": "Whether the user can duplicate the project",
+                "example": false
+              },
+              "canDelete": {
+                "type": "boolean",
+                "description": "Whether the user can delete the project",
+                "example": false
+              },
+              "canCreateTask": {
+                "type": "boolean",
+                "description": "Whether the user can create tasks in the project",
+                "example": true
+              },
+              "canAssignMembers": {
+                "type": "boolean"
+              },
+              "canClose": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canView",
+              "canEdit",
+              "canDuplicate",
+              "canDelete",
+              "canCreateTask",
+              "canAssignMembers",
+              "canClose"
+            ],
+            "description": "Permissions of the user on the project"
+          },
+          "group": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Id of the group, to send as `groupId`",
+                "example": "group-3"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the group",
+                "example": "Roads"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Group linked to the project, `null` without one"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "status",
+          "statusLabel",
+          "priority",
+          "priorityLabel",
+          "responsible",
+          "assignees",
+          "labels",
+          "progress",
+          "dueDate",
+          "createdAt",
+          "tasks",
+          "permissions",
+          "group"
         ],
         "description": "A project for the card, table or kanban views"
       },
@@ -810,8 +1050,8 @@
           },
           "groupId": {
             "type": "string",
-            "pattern": "^group-\\d+$",
-            "description": "Group whose current and future members all see the project (`GET /project-groups`)",
+            "pattern": "^group-\\d{1,15}$",
+            "description": "Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits",
             "example": "group-3"
           }
         },
@@ -954,7 +1194,7 @@
               "string",
               "null"
             ],
-            "pattern": "^group-\\d+$",
+            "pattern": "^group-\\d{1,15}$",
             "description": "New group of the project (`GET /project-groups`), or `null` to remove it",
             "example": "group-3"
           }
@@ -1525,29 +1765,6 @@
                 ],
                 "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
               },
-              "group": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "description": "Id of the group, to send as `groupId`",
-                    "example": "group-3"
-                  },
-                  "name": {
-                    "type": "string",
-                    "description": "Name of the group",
-                    "example": "Roads"
-                  }
-                },
-                "required": [
-                  "id",
-                  "name"
-                ],
-                "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-              },
               "permissions": {
                 "type": "object",
                 "properties": {
@@ -1593,6 +1810,29 @@
                   "canClose"
                 ],
                 "description": "Permissions of the user on the project"
+              },
+              "group": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Id of the group, to send as `groupId`",
+                    "example": "group-3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the group",
+                    "example": "Roads"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "description": "Group linked to the project, `null` without one"
               }
             },
             "required": [
@@ -1610,7 +1850,8 @@
               "dueDate",
               "createdAt",
               "tasks",
-              "permissions"
+              "permissions",
+              "group"
             ],
             "description": "A project for the card, table or kanban views"
           },
@@ -2281,29 +2522,6 @@
                     "archived"
                   ],
                   "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
-                },
-                "group": {
-                  "type": [
-                    "object",
-                    "null"
-                  ],
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Id of the group, to send as `groupId`",
-                      "example": "group-3"
-                    },
-                    "name": {
-                      "type": "string",
-                      "description": "Name of the group",
-                      "example": "Roads"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "name"
-                  ],
-                  "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                 },
                 "permissions": {
                   "type": "object",
@@ -3353,29 +3571,6 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
-                        "group": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Id of the group, to send as `groupId`",
-                              "example": "group-3"
-                            },
-                            "name": {
-                              "type": "string",
-                              "description": "Name of the group",
-                              "example": "Roads"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -3421,6 +3616,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -3438,7 +3656,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -3873,8 +4092,8 @@
                   },
                   "groupId": {
                     "type": "string",
-                    "pattern": "^group-\\d+$",
-                    "description": "Group whose current and future members all see the project (`GET /project-groups`)",
+                    "pattern": "^group-\\d{1,15}$",
+                    "description": "Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits",
                     "example": "group-3"
                   }
                 },
@@ -4073,29 +4292,6 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
-                        "group": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Id of the group, to send as `groupId`",
-                              "example": "group-3"
-                            },
-                            "name": {
-                              "type": "string",
-                              "description": "Name of the group",
-                              "example": "Roads"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -4141,6 +4337,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -4158,7 +4377,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -5090,7 +5310,7 @@
                       "string",
                       "null"
                     ],
-                    "pattern": "^group-\\d+$",
+                    "pattern": "^group-\\d{1,15}$",
                     "description": "New group of the project (`GET /project-groups`), or `null` to remove it",
                     "example": "group-3"
                   }
@@ -5280,29 +5500,6 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
-                        "group": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Id of the group, to send as `groupId`",
-                              "example": "group-3"
-                            },
-                            "name": {
-                              "type": "string",
-                              "description": "Name of the group",
-                              "example": "Roads"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -5348,6 +5545,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -5365,7 +5585,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -5856,29 +6077,6 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
-                        "group": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Id of the group, to send as `groupId`",
-                              "example": "group-3"
-                            },
-                            "name": {
-                              "type": "string",
-                              "description": "Name of the group",
-                              "example": "Roads"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -5924,6 +6122,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -5941,7 +6162,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -6925,29 +7147,6 @@
                           ],
                           "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
                         },
-                        "group": {
-                          "type": [
-                            "object",
-                            "null"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "description": "Id of the group, to send as `groupId`",
-                              "example": "group-3"
-                            },
-                            "name": {
-                              "type": "string",
-                              "description": "Name of the group",
-                              "example": "Roads"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
-                        },
                         "permissions": {
                           "type": "object",
                           "properties": {
@@ -6993,6 +7192,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -7010,7 +7232,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -8222,29 +8445,6 @@
                               "archived"
                             ],
                             "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
-                          },
-                          "group": {
-                            "type": [
-                              "object",
-                              "null"
-                            ],
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "description": "Id of the group, to send as `groupId`",
-                                "example": "group-3"
-                              },
-                              "name": {
-                                "type": "string",
-                                "description": "Name of the group",
-                                "example": "Roads"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "name"
-                            ],
-                            "description": "Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`)"
                           },
                           "permissions": {
                             "type": "object",

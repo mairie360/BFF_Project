@@ -1888,6 +1888,7 @@ describe('MAIR-683 project linked to a group', () => {
 
     expect(response.status).toBe(401);
     expect(projectApi.requests).toEqual([]);
+    expect(coreApi.requests).toEqual([]);
   });
 
   test('POST /projects sends the group to Project API and returns it with the project', async () => {
@@ -1933,20 +1934,24 @@ describe('MAIR-683 project linked to a group', () => {
 
   test('PATCH /projects/:id changes the group, removes it with null, and keeps it when absent', async () => {
     signIn(marie);
-    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: null }), [], [marie]) } });
-
-    const changed = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: 'group-5' });
-    const removed = await as(request(app).patch('/projects/project-1'), marie).send({ groupId: null });
-    const kept = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé' });
-
-    for (const response of [changed, removed, kept]) {
+    const patchAs = async (body: object, group: { id: number; name: string } | null) => {
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group }), [], [marie]) } });
+      const response = await as(request(app).patch('/projects/project-1'), marie).send(body);
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1', response);
-    }
-    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
-      { group_id: 5 }, { group_id: null }, { name: 'Renommé' },
-    ]);
+      return response;
+    };
+
+    const changed = await patchAs({ groupId: 'group-5' }, { id: 5, name: 'Green spaces' });
+    const kept = await patchAs({ title: 'Renommé' }, { id: 5, name: 'Green spaces' });
+    const removed = await patchAs({ groupId: null }, null);
+
+    expect(changed.body.project.group).toEqual({ id: 'group-5', name: 'Green spaces' });
+    expect(kept.body.project.group).toEqual({ id: 'group-5', name: 'Green spaces' });
     expect(removed.body.project.group).toBeNull();
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+      { group_id: 5 }, { name: 'Renommé' }, { group_id: null },
+    ]);
   });
 
   test('PATCH /projects/:id relays the 404 of a group the caller may not link', async () => {

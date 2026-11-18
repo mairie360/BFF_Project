@@ -249,19 +249,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -292,6 +279,19 @@ export interface paths {
                                     canAssignMembers: boolean;
                                     canClose: boolean;
                                 };
+                                /** @description Group linked to the project, `null` without one */
+                                group: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                             };
                             taskItems: {
                                 /**
@@ -566,7 +566,7 @@ export interface paths {
                          */
                         templateId?: string;
                         /**
-                         * @description Group whose current and future members all see the project (`GET /project-groups`)
+                         * @description Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits
                          * @example group-3
                          */
                         groupId?: string;
@@ -704,19 +704,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -747,6 +734,19 @@ export interface paths {
                                     canAssignMembers: boolean;
                                     canClose: boolean;
                                 };
+                                /** @description Group linked to the project, `null` without one */
+                                group: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                             };
                             taskItems: {
                                 /**
@@ -1358,19 +1358,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -1401,6 +1388,19 @@ export interface paths {
                                     canAssignMembers: boolean;
                                     canClose: boolean;
                                 };
+                                /** @description Group linked to the project, `null` without one */
+                                group: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                             };
                             taskItems: {
                                 /**
@@ -1889,19 +1889,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -1932,6 +1919,19 @@ export interface paths {
                                     canAssignMembers: boolean;
                                     canClose: boolean;
                                 };
+                                /** @description Group linked to the project, `null` without one */
+                                group: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                             };
                             taskItems: {
                                 /**
@@ -2641,19 +2641,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -2684,6 +2671,19 @@ export interface paths {
                                     canAssignMembers: boolean;
                                     canClose: boolean;
                                 };
+                                /** @description Group linked to the project, `null` without one */
+                                group: {
+                                    /**
+                                     * @description Id of the group, to send as `groupId`
+                                     * @example group-3
+                                     */
+                                    id: string;
+                                    /**
+                                     * @description Name of the group
+                                     * @example Roads
+                                     */
+                                    name: string;
+                                } | null;
                             };
                             taskItems: {
                                 /**
@@ -3369,19 +3369,6 @@ export interface paths {
                                      */
                                     archived: number;
                                 };
-                                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                                group?: {
-                                    /**
-                                     * @description Id of the group, to send as `groupId`
-                                     * @example group-3
-                                     */
-                                    id: string;
-                                    /**
-                                     * @description Name of the group
-                                     * @example Roads
-                                     */
-                                    name: string;
-                                } | null;
                                 /** @description Permissions of the user on the project */
                                 permissions: {
                                     /**
@@ -5133,19 +5120,6 @@ export interface components {
                  */
                 archived: number;
             };
-            /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-            group?: {
-                /**
-                 * @description Id of the group, to send as `groupId`
-                 * @example group-3
-                 */
-                id: string;
-                /**
-                 * @description Name of the group
-                 * @example Roads
-                 */
-                name: string;
-            } | null;
             /** @description Permissions of the user on the project */
             permissions: {
                 /**
@@ -5176,6 +5150,173 @@ export interface components {
                 canAssignMembers: boolean;
                 canClose: boolean;
             };
+        };
+        /** @description A project for the card, table or kanban views */
+        ProjectDetail: {
+            /**
+             * @description Unique id of the project
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            id: string;
+            /**
+             * @description Title of the project
+             * @example New project
+             */
+            title: string;
+            /**
+             * @description Description of the project
+             * @example Detailed description of the project
+             */
+            description: string;
+            /**
+             * @description Status of the project
+             * @example todo
+             * @enum {string}
+             */
+            status: "todo" | "in-progress" | "review" | "done";
+            /**
+             * @description Label of the project status
+             * @example À faire
+             */
+            statusLabel: string;
+            /**
+             * @description Priority of the project
+             * @example high
+             * @enum {string}
+             */
+            priority: "high" | "medium" | "low";
+            /**
+             * @description Label of the project priority
+             * @example Haute
+             */
+            priorityLabel: string;
+            /** @description A person who can be assigned to a project */
+            responsible: {
+                /**
+                 * @description Unique id of the person
+                 * @example 123e4567-e89b-12d3-a456-426614174000
+                 */
+                id: string;
+                /**
+                 * @description Name of the person
+                 * @example John Doe
+                 */
+                name: string;
+                /**
+                 * Format: uri
+                 * @description URL of the person's avatar
+                 * @example https://example.com/avatar.jpg
+                 */
+                avatarUrl: string | null;
+            };
+            /** @description Members of the project; in the projects page, its first 5 members only (the project detail lists them all) */
+            assignees: {
+                /**
+                 * @description Unique id of the person
+                 * @example 123e4567-e89b-12d3-a456-426614174000
+                 */
+                id: string;
+                /**
+                 * @description Name of the person
+                 * @example John Doe
+                 */
+                name: string;
+                /**
+                 * Format: uri
+                 * @description URL of the person's avatar
+                 * @example https://example.com/avatar.jpg
+                 */
+                avatarUrl: string | null;
+            }[];
+            /**
+             * @description Labels of the project
+             * @example [
+             *       "frontend",
+             *       "urgent"
+             *     ]
+             */
+            labels: string[];
+            /**
+             * @description Progress of the project, in percent
+             * @example 75
+             */
+            progress: number;
+            /**
+             * @description Due date of the project, ISO 8601
+             * @example 2024-12-31T23:59:59Z
+             */
+            dueDate: string;
+            /**
+             * @description Creation date of the project, ISO 8601
+             * @example 2024-01-01T12:00:00Z
+             */
+            createdAt: string;
+            /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
+            tasks: {
+                /**
+                 * @description Number of tasks of the project, the archived (done) ones included
+                 * @example 10
+                 */
+                total: number;
+                /**
+                 * @description Number of done tasks of the project, the archived ones included
+                 * @example 7
+                 */
+                completed: number;
+                /**
+                 * @description Number of active tasks, the ones the project detail lists (MAIR-559)
+                 * @example 3
+                 */
+                active: number;
+                /**
+                 * @description Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)
+                 * @example 7
+                 */
+                archived: number;
+            };
+            /** @description Permissions of the user on the project */
+            permissions: {
+                /**
+                 * @description Whether the user can see the project
+                 * @example true
+                 */
+                canView: boolean;
+                /**
+                 * @description Whether the user can edit the project
+                 * @example true
+                 */
+                canEdit: boolean;
+                /**
+                 * @description Whether the user can duplicate the project
+                 * @example false
+                 */
+                canDuplicate: boolean;
+                /**
+                 * @description Whether the user can delete the project
+                 * @example false
+                 */
+                canDelete: boolean;
+                /**
+                 * @description Whether the user can create tasks in the project
+                 * @example true
+                 */
+                canCreateTask: boolean;
+                canAssignMembers: boolean;
+                canClose: boolean;
+            };
+            /** @description Group linked to the project, `null` without one */
+            group: {
+                /**
+                 * @description Id of the group, to send as `groupId`
+                 * @example group-3
+                 */
+                id: string;
+                /**
+                 * @description Name of the group
+                 * @example Roads
+                 */
+                name: string;
+            } | null;
         };
         /** @description A task of a project */
         ProjectTask: {
@@ -5394,7 +5535,7 @@ export interface components {
              */
             templateId?: string;
             /**
-             * @description Group whose current and future members all see the project (`GET /project-groups`)
+             * @description Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits
              * @example group-3
              */
             groupId?: string;
@@ -5720,19 +5861,6 @@ export interface components {
                      */
                     archived: number;
                 };
-                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                group?: {
-                    /**
-                     * @description Id of the group, to send as `groupId`
-                     * @example group-3
-                     */
-                    id: string;
-                    /**
-                     * @description Name of the group
-                     * @example Roads
-                     */
-                    name: string;
-                } | null;
                 /** @description Permissions of the user on the project */
                 permissions: {
                     /**
@@ -5763,6 +5891,19 @@ export interface components {
                     canAssignMembers: boolean;
                     canClose: boolean;
                 };
+                /** @description Group linked to the project, `null` without one */
+                group: {
+                    /**
+                     * @description Id of the group, to send as `groupId`
+                     * @example group-3
+                     */
+                    id: string;
+                    /**
+                     * @description Name of the group
+                     * @example Roads
+                     */
+                    name: string;
+                } | null;
             };
             taskItems: {
                 /**
@@ -6084,19 +6225,6 @@ export interface components {
                      */
                     archived: number;
                 };
-                /** @description Group linked to the project, `null` without one. Only in the answers that return a project detail (not in `GET /projects-page`) */
-                group?: {
-                    /**
-                     * @description Id of the group, to send as `groupId`
-                     * @example group-3
-                     */
-                    id: string;
-                    /**
-                     * @description Name of the group
-                     * @example Roads
-                     */
-                    name: string;
-                } | null;
                 /** @description Permissions of the user on the project */
                 permissions: {
                     /**

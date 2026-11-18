@@ -1677,6 +1677,55 @@
           "response": []
         },
         {
+          "name": "MAIR-683 The project refused for its group was not created",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman unknown group {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman unknown group {{run_id}}"
+                }
+              ]
+            },
+            "description": "The administrator sees every project: no project carries the title of the refused creation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"No project has the title of the refused creation\", function () {",
+                  "    const title = `Newman unknown group ${pm.environment.get('run_id')}`;",
+                  "    const projects = pm.response.json().projects;",
+                  "    pm.expect(projects).to.be.an('array');",
+                  "    pm.expect(projects.filter((project) => project.title === title)).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "MAIR-683 Create a project linked to the group",
           "request": {
             "method": "POST",
@@ -1720,11 +1769,13 @@
                   "pm.test(\"Status is 201\", function () {",
                   "    pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"The project carries its group\", function () {",
+                  "pm.test(\"The project id is saved for the next requests\", function () {",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.project.id).to.match(/^project-\\d+$/);",
-                  "    pm.expect(body.project.group).to.eql({ id: 'group-3', name: 'Roads' });",
                   "    pm.environment.set('group_project_id', body.project.id);",
+                  "});",
+                  "pm.test(\"The project carries its group\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-3', name: 'Roads' });",
                   "});"
                 ]
               }
