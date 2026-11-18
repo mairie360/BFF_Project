@@ -991,7 +991,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1047,7 +1047,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1103,7 +1103,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [\n    \"newman\"\n  ],\n  \"dueDate\": \"2030-12-31\",\n  \"templateId\": \"{{template_id}}\",\n  \"taskItems\": [\n    {\n      \"title\": \"Newman seed task {{run_id}}\",\n      \"status\": \"todo\",\n      \"priority\": \"medium\",\n      \"assigneeIds\": [],\n      \"labels\": [],\n      \"dueDate\": \"2030-12-31\"\n    }\n  ]\n}",
+              "raw": "{\n  \"title\": \"Newman project {{run_id}}\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [\n    \"newman\"\n  ],\n  \"dueDate\": \"2030-12-31\",\n  \"templateId\": \"{{template_id}}\",\n  \"taskItems\": [\n    {\n      \"title\": \"Newman seed task {{run_id}}\",\n      \"status\": \"todo\",\n      \"priority\": \"medium\",\n      \"assigneeIds\": [],\n      \"labels\": [],\n      \"dueDate\": \"2030-12-31\"\n    }\n  ],\n  \"groupId\": \"group-4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1573,6 +1573,590 @@
         }
       ],
       "description": "An administrator creates a project from the template; a plain user only sees it once a member."
+    },
+    {
+      "name": "MAIR-683 Project linked to a group",
+      "description": "A group linked to a project gives every current and future member of the group access to it; removing the group takes it away.",
+      "item": [
+        {
+          "name": "MAIR-683 The agent lists the groups they may link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-groups"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent's group is listed with a group-<id> id\", function () {",
+                  "    const groups = pm.response.json().groups;",
+                  "    pm.expect(groups).to.be.an('array');",
+                  "    groups.forEach((group) => pm.expect(group.id).to.match(/^group-\\d+$/));",
+                  "    pm.expect(groups).to.deep.include({ id: 'group-3', name: 'Roads' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 A group that does not exist answers 404 and creates no project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman unknown group {{run_id}}\",\n  \"description\": \"Project linked to a group by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"medium\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-999999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 The project refused for its group was not created",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman unknown group {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman unknown group {{run_id}}"
+                }
+              ]
+            },
+            "description": "The administrator sees every project: no project carries the title of the refused creation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"No project has the title of the refused creation\", function () {",
+                  "    const title = `Newman unknown group ${pm.environment.get('run_id')}`;",
+                  "    const projects = pm.response.json().projects;",
+                  "    pm.expect(projects).to.be.an('array');",
+                  "    pm.expect(projects.filter((project) => project.title === title)).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Create a project linked to the group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman group project {{run_id}}\",\n  \"description\": \"Project linked to a group by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"medium\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\",\n  \"groupId\": \"group-3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The project id is saved for the next requests\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.project.id).to.match(/^project-\\d+$/);",
+                  "    pm.environment.set('group_project_id', body.project.id);",
+                  "});",
+                  "pm.test(\"The project carries its group\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-3', name: 'Roads' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 A member of the group sees the project without being a member of it",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The project and its group are answered\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.project.id).to.eql(pm.environment.get('group_project_id'));",
+                  "    pm.expect(body.project.group).to.eql({ id: 'group-3', name: 'Roads' });",
+                  "    pm.expect(body.project.assignees.map((person) => person.id)).to.not.include(`user-${pm.environment.get('agent_user_id')}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Removing the group of the project answers 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error names groupId\", function () {",
+                  "    const details = pm.response.json().error.details;",
+                  "    pm.expect(details.map((detail) => detail.path)).to.include('body.groupId');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Move the project to another group",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"group-4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The project has its new group\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-4', name: 'Administration' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 The former group member no longer sees the project",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            },
+            "description": "Project API hides a project the caller cannot see: 404, never 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Link the group again",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"group-3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The group is back\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-3', name: 'Roads' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 The administrator lists the projects without a group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-groups/projects-without-group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-groups",
+                "projects-without-group"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Seeded projects without a group, never the group project\", function () {",
+                  "    const projects = pm.response.json().projects;",
+                  "    pm.expect(projects).to.be.an('array').that.is.not.empty;",
+                  "    projects.forEach((project) => {",
+                  "        pm.expect(project.id).to.match(/^project-\\d+$/);",
+                  "        pm.expect(project.title).to.be.a('string');",
+                  "    });",
+                  "    pm.expect(projects.map((project) => project.id)).to.not.include(pm.environment.get('group_project_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 An agent cannot list the projects without a group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-groups/projects-without-group",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-groups",
+                "projects-without-group"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    pm.expect(pm.response.json().error.code).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-683 Delete the project linked to the group",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{group_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{group_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"The project is deleted\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
     },
     {
       "name": "Task statuses",
@@ -3199,6 +3783,9 @@
                   "    pm.expect(body.taskItems[0].id).to.not.eql(pm.environment.get('seed_task_id'));",
                   "    pm.expect(body.project.tasks).to.include({ total: 1, completed: 0, active: 1, archived: 0 });",
                   "    pm.environment.set('duplicate_project_id', body.project.id);",
+                  "});",
+                  "pm.test(\"The duplicate keeps the group of its source\", function () {",
+                  "    pm.expect(pm.response.json().project.group).to.eql({ id: 'group-4', name: 'Administration' });",
                   "});"
                 ]
               }

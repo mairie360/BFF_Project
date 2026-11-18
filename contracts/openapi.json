@@ -79,6 +79,98 @@
         ],
         "description": "A person who can be assigned to a project"
       },
+      "ProjectGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the group, to send as `groupId`",
+            "example": "group-3"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the group",
+            "example": "Roads"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "A group of agents linked to a project"
+      },
+      "ProjectGroups": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id of the group, to send as `groupId`",
+                  "example": "group-3"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Name of the group",
+                  "example": "Roads"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "description": "A group of agents linked to a project"
+            },
+            "description": "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles"
+          }
+        },
+        "required": [
+          "groups"
+        ]
+      },
+      "ProjectsWithoutGroup": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id of the project",
+                  "example": "project-9"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title of the project",
+                  "example": "LED street lighting"
+                },
+                "createdAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Creation date (ISO 8601), `null` when unknown",
+                  "example": "2026-03-03T09:12:00+00:00"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "createdAt"
+              ]
+            },
+            "description": "Projects without a group, newest first; empty when every project has one"
+          }
+        },
+        "required": [
+          "projects"
+        ]
+      },
       "ProjectListItem": {
         "type": "object",
         "properties": {
@@ -315,6 +407,269 @@
           "createdAt",
           "tasks",
           "permissions"
+        ],
+        "description": "A project for the card, table or kanban views"
+      },
+      "ProjectDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique id of the project",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the project",
+            "example": "New project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the project",
+            "example": "Detailed description of the project"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in-progress",
+              "review",
+              "done"
+            ],
+            "description": "Status of the project",
+            "example": "todo"
+          },
+          "statusLabel": {
+            "type": "string",
+            "description": "Label of the project status",
+            "example": "À faire"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "Priority of the project",
+            "example": "high"
+          },
+          "priorityLabel": {
+            "type": "string",
+            "description": "Label of the project priority",
+            "example": "Haute"
+          },
+          "responsible": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique id of the person",
+                "example": "123e4567-e89b-12d3-a456-426614174000"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the person",
+                "example": "John Doe"
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri",
+                "description": "URL of the person's avatar",
+                "example": "https://example.com/avatar.jpg"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "avatarUrl"
+            ],
+            "description": "A person who can be assigned to a project"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Unique id of the person",
+                  "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Name of the person",
+                  "example": "John Doe"
+                },
+                "avatarUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uri",
+                  "description": "URL of the person's avatar",
+                  "example": "https://example.com/avatar.jpg"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "avatarUrl"
+              ],
+              "description": "A person who can be assigned to a project"
+            },
+            "description": "Members of the project; in the projects page, its first 5 members only (the project detail lists them all)"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Labels of the project",
+            "example": [
+              "frontend",
+              "urgent"
+            ]
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Progress of the project, in percent",
+            "example": 75
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Due date of the project, ISO 8601",
+            "example": "2024-12-31T23:59:59Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation date of the project, ISO 8601",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "tasks": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "description": "Number of tasks of the project, the archived (done) ones included",
+                "example": 10
+              },
+              "completed": {
+                "type": "number",
+                "description": "Number of done tasks of the project, the archived ones included",
+                "example": 7
+              },
+              "active": {
+                "type": "number",
+                "description": "Number of active tasks, the ones the project detail lists (MAIR-559)",
+                "example": 3
+              },
+              "archived": {
+                "type": "number",
+                "description": "Number of archived (done) tasks, listed apart by `GET /projects/{projectId}/archived-tasks` (MAIR-559)",
+                "example": 7
+              }
+            },
+            "required": [
+              "total",
+              "completed",
+              "active",
+              "archived"
+            ],
+            "description": "Task counts of the project: `progress` is `completed / total`; `active + archived = total`"
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "canView": {
+                "type": "boolean",
+                "description": "Whether the user can see the project",
+                "example": true
+              },
+              "canEdit": {
+                "type": "boolean",
+                "description": "Whether the user can edit the project",
+                "example": true
+              },
+              "canDuplicate": {
+                "type": "boolean",
+                "description": "Whether the user can duplicate the project",
+                "example": false
+              },
+              "canDelete": {
+                "type": "boolean",
+                "description": "Whether the user can delete the project",
+                "example": false
+              },
+              "canCreateTask": {
+                "type": "boolean",
+                "description": "Whether the user can create tasks in the project",
+                "example": true
+              },
+              "canAssignMembers": {
+                "type": "boolean"
+              },
+              "canClose": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canView",
+              "canEdit",
+              "canDuplicate",
+              "canDelete",
+              "canCreateTask",
+              "canAssignMembers",
+              "canClose"
+            ],
+            "description": "Permissions of the user on the project"
+          },
+          "group": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Id of the group, to send as `groupId`",
+                "example": "group-3"
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of the group",
+                "example": "Roads"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Group linked to the project, `null` without one"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "status",
+          "statusLabel",
+          "priority",
+          "priorityLabel",
+          "responsible",
+          "assignees",
+          "labels",
+          "progress",
+          "dueDate",
+          "createdAt",
+          "tasks",
+          "permissions",
+          "group"
         ],
         "description": "A project for the card, table or kanban views"
       },
@@ -732,6 +1087,12 @@
             "pattern": "^template-\\d+$",
             "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
             "example": "template-1"
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^group-\\d{1,15}$",
+            "description": "Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits",
+            "example": "group-3"
           }
         },
         "required": [
@@ -742,7 +1103,8 @@
           "responsibleId",
           "assigneeIds",
           "labels",
-          "dueDate"
+          "dueDate",
+          "groupId"
         ]
       },
       "UpdateProjectBody": {
@@ -867,6 +1229,12 @@
                 "dueDate"
               ]
             }
+          },
+          "groupId": {
+            "type": "string",
+            "pattern": "^group-\\d{1,15}$",
+            "description": "New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid",
+            "example": "group-3"
           }
         }
       },
@@ -1480,6 +1848,29 @@
                   "canClose"
                 ],
                 "description": "Permissions of the user on the project"
+              },
+              "group": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Id of the group, to send as `groupId`",
+                    "example": "group-3"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the group",
+                    "example": "Roads"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "description": "Group linked to the project, `null` without one"
               }
             },
             "required": [
@@ -1497,7 +1888,8 @@
               "dueDate",
               "createdAt",
               "tasks",
-              "permissions"
+              "permissions",
+              "group"
             ],
             "description": "A project for the card, table or kanban views"
           },
@@ -3262,6 +3654,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -3279,7 +3694,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -3578,7 +3994,7 @@
           "Projects"
         ],
         "summary": "Create a project",
-        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again.",
+        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3711,6 +4127,12 @@
                     "pattern": "^template-\\d+$",
                     "description": "Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template",
                     "example": "template-1"
+                  },
+                  "groupId": {
+                    "type": "string",
+                    "pattern": "^group-\\d{1,15}$",
+                    "description": "Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits",
+                    "example": "group-3"
                   }
                 },
                 "required": [
@@ -3721,7 +4143,8 @@
                   "responsibleId",
                   "assigneeIds",
                   "labels",
-                  "dueDate"
+                  "dueDate",
+                  "groupId"
                 ]
               }
             }
@@ -3953,6 +4376,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -3970,7 +4416,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -4202,6 +4649,16 @@
           },
           "403": {
             "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown group, or a group the caller may not link (`GET /project-groups`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4746,7 +5203,7 @@
           "Projects"
         ],
         "summary": "Partially update a project",
-        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.",
         "parameters": [
           {
             "schema": {
@@ -4886,6 +5343,12 @@
                         "dueDate"
                       ]
                     }
+                  },
+                  "groupId": {
+                    "type": "string",
+                    "pattern": "^group-\\d{1,15}$",
+                    "description": "New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid",
+                    "example": "group-3"
                   }
                 }
               }
@@ -5118,6 +5581,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -5135,7 +5621,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -5345,6 +5832,9 @@
               }
             }
           },
+          "204": {
+            "description": "Project updated, but the caller removed the group through which they saw it: they no longer see the project"
+          },
           "400": {
             "description": "Validation error",
             "content": {
@@ -5376,7 +5866,7 @@
             }
           },
           "404": {
-            "description": "Project not found",
+            "description": "Project not found, or a group the caller may not link",
             "content": {
               "application/json": {
                 "schema": {
@@ -5671,6 +6161,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -5688,7 +6201,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -6477,7 +6991,7 @@
           "Projects"
         ],
         "summary": "Duplicate a project",
-        "description": "Recreates the project with its members and its tasks; if a step fails, the partial duplicate is deleted again.",
+        "description": "Recreates the project with its group, its members and its tasks; if a step fails, the partial duplicate is deleted again. A source without a group answers `400`: pick a group for it first. A caller who may not link the source group (not one of their groups, unless Admin or Maire) gets `403` and nothing is created.",
         "parameters": [
           {
             "schema": {
@@ -6717,6 +7231,29 @@
                             "canClose"
                           ],
                           "description": "Permissions of the user on the project"
+                        },
+                        "group": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Id of the group, to send as `groupId`",
+                              "example": "group-3"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Name of the group",
+                              "example": "Roads"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "Group linked to the project, `null` without one"
                         }
                       },
                       "required": [
@@ -6734,7 +7271,8 @@
                         "dueDate",
                         "createdAt",
                         "tasks",
-                        "permissions"
+                        "permissions",
+                        "group"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -9787,6 +10325,224 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-groups": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists the groups a project can be linked to",
+        "description": "The caller's groups, or every group for the Admin and Maire roles, by name. Empty for a caller without group.",
+        "responses": {
+          "200": {
+            "description": "The groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Id of the group, to send as `groupId`",
+                            "example": "group-3"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Name of the group",
+                            "example": "Roads"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "description": "A group of agents linked to a project"
+                      },
+                      "description": "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles"
+                    }
+                  },
+                  "required": [
+                    "groups"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/project-groups/projects-without-group": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists the projects linked to no group",
+        "description": "Every project must have a group, but a project created before groups were required, or whose group was deleted in Core API, has none until a manager picks one. Restricted to the Admin and Maire roles (`403` otherwise), for the administration page.",
+        "responses": {
+          "200": {
+            "description": "The projects without a group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Id of the project",
+                            "example": "project-9"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Title of the project",
+                            "example": "LED street lighting"
+                          },
+                          "createdAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Creation date (ISO 8601), `null` when unknown",
+                            "example": "2026-03-03T09:12:00+00:00"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "createdAt"
+                        ]
+                      },
+                      "description": "Projects without a group, newest first; empty when every project has one"
+                    }
+                  },
+                  "required": [
+                    "projects"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
             "content": {
               "application/json": {
                 "schema": {

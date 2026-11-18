@@ -113,6 +113,8 @@ type Scenario = {
 };
 
 function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, createdTaskId = 30 }: Scenario = {}) {
+  // The groups the caller may link: the BFF checks them before writing a group (create, duplicate, PATCH).
+  projectApi.on('get', '/api/v1/project-groups/', { body: { groups: [{ id: 3, name: 'Roads' }, { id: 4, name: 'Administration' }, { id: 5, name: 'Green spaces' }] } });
   projectApi.on('get', PROJECT.projects, { body: projectsResult(projects) });
   projectApi.on('get', PROJECT.project, ({ pathParams }) => {
     const bundle = bundles[Number(pathParams.projectId)];
@@ -737,7 +739,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       const response = await as(request(app).post('/projects'), admin).send({
         title: 'Fête', description: 'Organisation', status: 'todo', priority: 'medium',
-        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z', groupId: 'group-3',
       });
 
       expect(response.status).toBe(502);
@@ -787,7 +789,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
   describe('writes', () => {
     const createBody = {
       title: 'Fête du village', description: 'Organisation de la fête', status: 'todo', priority: 'medium',
-      responsibleId: 'user-2', assigneeIds: ['user-3'], labels: ['événement'], dueDate: '2026-07-14T00:00:00Z',
+      responsibleId: 'user-2', assigneeIds: ['user-3'], labels: ['événement'], dueDate: '2026-07-14T00:00:00Z', groupId: 'group-3',
       taskItems: [{ title: 'Réserver la salle', status: 'todo', priority: 'high', assigneeIds: [], labels: ['Urgent'], dueDate: '2026-06-25T00:00:00Z' }],
     };
 
@@ -805,7 +807,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('post', '/projects', response);
       // The chosen status and priority go with the creation (MAIR-558).
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({
-        name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium',
+        name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium', group_id: 3,
       });
       expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
         .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
@@ -1009,7 +1011,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     test('POST /projects/:id/duplicate recreates the project, its members and its tasks', async () => {
       signIn(marie);
       mockProjectApi({ createdProjectId: 12, bundles: {
-        1: projectBundle(projetView(1, { name: 'Voirie' }), [taskView(2, { title: 'Appel d\u2019offres' })], [alice, marie]),
+        1: projectBundle(projetView(1, { name: 'Voirie', group: { id: 3, name: 'Roads' } }), [taskView(2, { title: 'Appel d\u2019offres' })], [alice, marie]),
         12: projectBundle(projetView(12, { name: 'Voirie' }), [taskView(30, { title: 'Appel d\u2019offres' })], [alice, marie]),
       } });
       // Le duplicata est vide tant que ses membres n'ont pas été ajoutés.
@@ -1206,7 +1208,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     const guest = { id: 5, first_name: 'Gaelle', last_name: 'Invitee', role: 'Guest' } as Agent;
     const createBody = {
       title: 'Fête du village', description: 'Organisation', status: 'todo', priority: 'medium',
-      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-07-14T00:00:00Z', taskItems: [],
+      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-07-14T00:00:00Z', taskItems: [], groupId: 'group-3',
     };
     const someoneElsesTask = () => projectBundle(projetView(1), [taskView(2, { assigned_to: marie.id })], [alice, marie, guest]);
 
@@ -1398,7 +1400,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       const response = await as(request(app).post('/projects'), admin).send({
         title: 'Fête', description: 'Organisation', status: 'todo', priority: 'high',
-        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+        responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z', groupId: 'group-3',
       });
 
       expect(response.status).toBe(201);
@@ -1416,7 +1418,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       const response = await as(request(app).post('/projects'), admin).send({
         title: 'Fête', description: 'Organisation', status: 'done', priority: 'high',
-        responsibleId: 'user-2', assigneeIds: [], labels: ['événement'], dueDate: '2030-07-14T00:00:00Z',
+        responsibleId: 'user-2', assigneeIds: [], labels: ['événement'], dueDate: '2030-07-14T00:00:00Z', groupId: 'group-3',
         taskItems: [{ title: 'Salle', status: 'done', priority: 'low', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
       });
 
@@ -1437,7 +1439,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       const response = await as(request(app).post('/projects'), admin).send({
         title: 'Fête', description: 'Organisation', status: 'todo', priority: 'medium',
-        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+        responsibleId: '', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z', groupId: 'group-3',
         taskItems: [{ title: 'Salle', status: 'todo', priority: 'low', assigneeIds: [], labels: [], dueDate: '2026-06-25T00:00:00Z' }],
       });
 
@@ -1463,7 +1465,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
           stderr.push(args.map((arg) => (arg instanceof Error ? `${arg.stack} ${JSON.stringify(arg)}` : typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '));
         });
       }
-      mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1), [taskView(2)], []) } });
+      mockProjectApi({ createdProjectId: 12, bundles: { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [taskView(2)], []) } });
       projectApi.on('post', PROJECT.tasks, textError(500, 'database is down'));
       projectApi.on('delete', PROJECT.project, textError(500, 'still down'));
 
@@ -1486,7 +1488,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     test('the access guards read the project bundle once per request, and a task guard only the task', async () => {
       signIn(admin);
       mockProjectApi({ createdProjectId: 12, bundles: {
-        1: projectBundle(projetView(1), [taskView(2)], [admin]),
+        1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [taskView(2)], [admin]),
         12: projectBundle(projetView(12), [taskView(30)], [admin]),
       } });
       const reads = () => projectApi.calls(PROJECT.project, 'GET').length;
@@ -1825,7 +1827,7 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
 
     const response = await as(request(app).post('/projects'), admin).send({
       title: 'Marché', description: 'Travaux', status: 'todo', priority: 'medium', templateId: 'template-3',
-      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z',
+      responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2030-07-14T00:00:00Z', groupId: 'group-3',
     });
 
     expect(response.status).toBe(201);
@@ -1862,5 +1864,261 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
 
     expect(response.status).toBe(400);
     expect(writes()).toEqual([]);
+  });
+});
+
+describe('MAIR-683 project linked to a group', () => {
+  const GROUPS = '/api/v1/project-groups/';
+  const createBody = {
+    title: 'Réfection de la place', description: 'Travaux 2027', status: 'todo', priority: 'medium',
+    responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2027-06-30T00:00:00Z',
+  };
+
+  test('GET /project-groups lists the linkable groups with group-<id> ids', async () => {
+    signIn(marie);
+    projectApi.on('get', GROUPS, { body: { groups: [{ id: 5, name: 'Green spaces' }, { id: 3, name: 'Roads' }] } });
+
+    const response = await as(request(app).get('/project-groups'), marie);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-groups', response);
+    expect(response.body).toEqual({ groups: [{ id: 'group-5', name: 'Green spaces' }, { id: 'group-3', name: 'Roads' }] });
+  });
+
+  const WITHOUT_GROUP = '/api/v1/project-groups/projects-without-group/';
+
+  test('mair_683 GET /project-groups/projects-without-group lists them with project ids for the administration', async () => {
+    signIn(admin);
+    projectApi.on('get', WITHOUT_GROUP, { body: { projects: [
+      { id: 9, name: 'LED street lighting', created_at: '2026-03-03T09:12:00+00:00' },
+      { id: 4, name: 'Gymnasium', created_at: null },
+    ] } });
+
+    const response = await as(request(app).get('/project-groups/projects-without-group'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/project-groups/projects-without-group', response);
+    expect(response.body).toEqual({ projects: [
+      { id: 'project-9', title: 'LED street lighting', createdAt: '2026-03-03T09:12:00+00:00' },
+      { id: 'project-4', title: 'Gymnasium', createdAt: null },
+    ] });
+  });
+
+  test('mair_683 GET /project-groups/projects-without-group relays the 403 of a caller outside Admin and Maire', async () => {
+    signIn(marie);
+    projectApi.on('get', WITHOUT_GROUP, textError(403, 'Forbidden.'));
+
+    const response = await as(request(app).get('/project-groups/projects-without-group'), marie);
+
+    expect(response.status).toBe(403);
+    expectBffContract('get', '/project-groups/projects-without-group', response);
+    expect(projectApi.calls(WITHOUT_GROUP, 'GET')).toHaveLength(1);
+  });
+
+  test('mair_683 GET /project-groups/projects-without-group refuses a call without session before any upstream call', async () => {
+    const response = await request(app).get('/project-groups/projects-without-group');
+
+    expect(response.status).toBe(401);
+    expect(projectApi.requests).toEqual([]);
+  });
+
+  test('GET /project-groups refuses a call without session before any upstream call', async () => {
+    const response = await request(app).get('/project-groups');
+
+    expect(response.status).toBe(401);
+    expect(projectApi.requests).toEqual([]);
+    expect(coreApi.requests).toEqual([]);
+  });
+
+  test('POST /projects sends the group to Project API and returns it with the project', async () => {
+    signIn(marie);
+    mockProjectApi({ createdProjectId: 12, bundles: {
+      12: projectBundle(projetView(12, { name: 'Réfection de la place', group: { id: 3, name: 'Roads' } }), [], [alice]),
+    } });
+    projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: 'group-3' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ group_id: 3 });
+    expect(response.body.project.group).toEqual({ id: 'group-3', name: 'Roads' });
+  });
+
+  test('POST /projects with a group the caller may not link answers 404 and writes nothing more', async () => {
+    signIn(marie);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projects, textError(404, 'Group not found.'));
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: 'group-99' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('post', '/projects', response);
+    expect(response.body.error.code).toBeDefined();
+    expect(JSON.stringify(response.body)).not.toContain('Group not found');
+    expect(projectApi.calls(PROJECT.users, 'POST')).toEqual([]);
+    expect(projectApi.calls(PROJECT.project, 'DELETE')).toEqual([]);
+  });
+
+  test('POST /projects refuses a malformed groupId before any upstream call', async () => {
+    signIn(marie);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects'), marie).send({ ...createBody, groupId: '3' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toEqual([]);
+  });
+
+  test('PATCH /projects/:id changes the group and keeps it when absent', async () => {
+    signIn(marie);
+    const patchAs = async (body: object, group: { id: number; name: string }) => {
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group }), [], [marie]) } });
+      const response = await as(request(app).patch('/projects/project-1'), marie).send(body);
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1', response);
+      return response;
+    };
+
+    const changed = await patchAs({ groupId: 'group-5' }, { id: 5, name: 'Green spaces' });
+    const kept = await patchAs({ title: 'Renommé' }, { id: 5, name: 'Green spaces' });
+
+    expect(changed.body.project.group).toEqual({ id: 'group-5', name: 'Green spaces' });
+    expect(kept.body.project.group).toEqual({ id: 'group-5', name: 'Green spaces' });
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+      { group_id: 5 }, { name: 'Renommé' },
+    ]);
+  });
+
+  test('mair_683 PATCH /projects/:id refuses to remove the group and writes nothing', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [marie]) } });
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé', groupId: null });
+
+    expect(response.status).toBe(400);
+    expectBffContract('patch', '/projects/project-1', response);
+    expect(response.body.error.details).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'body.groupId' })]));
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('mair_683 POST /projects refuses a project without a group and creates nothing', async () => {
+    signIn(marie);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects'), marie).send(createBody);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects', response);
+    expect(response.body.error.details).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'body.groupId' })]));
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
+  });
+
+  test('mair_683 POST /projects/:id/duplicate gives the copy the group of the source', async () => {
+    signIn(marie);
+    mockProjectApi({ createdProjectId: 12, bundles: {
+      1: projectBundle(projetView(1, { name: 'Voirie', group: { id: 3, name: 'Roads' } }), [], [marie]),
+      12: projectBundle(projetView(12, { name: 'Voirie', group: { id: 3, name: 'Roads' } }), [], [marie]),
+    } });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), marie).send({});
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ name: 'Voirie', group_id: 3 });
+    expect(response.body.project.group).toEqual({ id: 'group-3', name: 'Roads' });
+  });
+
+  test('mair_683 POST /projects/:id/duplicate refuses a source without a group and creates nothing', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: null }), [], [marie]) } });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), marie).send({});
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/duplicate', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
+  });
+
+  // A Responsable who sees the project only through its group loses it when replacing the group.
+  const loseProjectOnPatch = () => {
+    const bundles = { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice]) };
+    mockProjectApi({ bundles });
+    projectApi.on('patch', PROJECT.project, () => {
+      delete (bundles as Record<number, unknown>)[1];
+      return { status: 204 };
+    });
+  };
+
+  test('PATCH /projects/:id answers 204 when changing the group takes the project away from the caller', async () => {
+    signIn(marie);
+    loseProjectOnPatch();
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé', groupId: 'group-5' });
+
+    expect(response.status).toBe(204);
+    expectBffContract('patch', '/projects/project-1', response);
+    expect(response.text).toBe('');
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Renommé', group_id: 5 }]);
+  });
+
+  test('PATCH /projects/:id writes the members before changing the group, so a caller who joins keeps the project', async () => {
+    signIn(marie);
+    // Marie sees the project only through its group until she is added as a member.
+    const bundle = projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice]);
+    const bundles: Record<number, typeof bundle> = { 1: bundle };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.users, () => {
+      bundle.users = [...bundle.users, marie];
+      return { status: 200 };
+    });
+    projectApi.on('patch', PROJECT.project, () => {
+      if (!bundle.users.some((member) => member.id === marie.id)) delete bundles[1];
+      return { status: 204 };
+    });
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ responsibleId: `user-${marie.id}`, groupId: 'group-5' });
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1', response);
+    const writes = projectApi.requests.filter((call) => call.method !== 'GET').map((call) => `${call.method} ${call.template}`);
+    expect(writes).toEqual([`POST ${PROJECT.users}`, `PATCH ${PROJECT.project}`]);
+  });
+
+  test('PATCH /projects/:id still answers 404 when the project disappears without a group change', async () => {
+    signIn(marie);
+    loseProjectOnPatch();
+
+    const response = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Renommé' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('patch', '/projects/project-1', response);
+    // The 404 comes from the re-read after the write, not from an early refusal.
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Renommé' }]);
+    const sequence = projectApi.requests.filter((call) => call.template === PROJECT.project).map((call) => call.method);
+    expect(sequence.slice(-2)).toEqual(['PATCH', 'GET']);
+  });
+
+  test('mair_683 PATCH /projects/:id refuses a group the caller may not link before writing the members', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [], [alice, marie]) } });
+
+    const response = await as(request(app).patch('/projects/project-1'), marie)
+      .send({ responsibleId: `user-${marie.id}`, assigneeIds: [], groupId: 'group-99' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('patch', '/projects/project-1', response);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('mair_683 POST /projects/:id/duplicate refuses a source group the caller may not link and creates nothing', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { group: { id: 8, name: 'Finances' } }), [], [marie]) } });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), marie).send({});
+
+    expect(response.status).toBe(403);
+    expectBffContract('post', '/projects/project-1/duplicate', response);
+    expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
   });
 });

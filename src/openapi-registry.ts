@@ -46,6 +46,29 @@ export const Person = z.object({
 });
 
 
+// A Core API group linked to a project: its current and future members all see the project.
+export const ProjectGroup = z.object({
+    id: z.string().openapi({ description: 'Id of the group, to send as `groupId`', example: 'group-3' }),
+    name: z.string().openapi({ description: 'Name of the group', example: 'Roads' }),
+}).openapi({ description: 'A group of agents linked to a project' });
+
+export const ProjectGroups = z.object({
+    groups: z.array(ProjectGroup).openapi({
+      description: "Groups the caller may link to a project, by name: the caller's groups, every group for the Admin and Maire roles",
+    }),
+});
+
+// A project left without a group (created before groups were required, or its group was deleted in Core API).
+export const ProjectWithoutGroup = z.object({
+    id: z.string().openapi({ description: 'Id of the project', example: 'project-9' }),
+    title: z.string().openapi({ description: 'Title of the project', example: 'LED street lighting' }),
+    createdAt: z.string().nullable().openapi({ description: 'Creation date (ISO 8601), `null` when unknown', example: '2026-03-03T09:12:00+00:00' }),
+});
+
+export const ProjectsWithoutGroup = z.object({
+    projects: z.array(ProjectWithoutGroup).openapi({ description: 'Projects without a group, newest first; empty when every project has one' }),
+});
+
 // Schema -- Project for the card / table / kanban views
 
 
@@ -125,7 +148,16 @@ registry.register('ProjectStatus', ProjectStatus);
 registry.register('ProjectPriority', ProjectPriority);
 registry.register('ViewMode', ViewMode);
 registry.register('Person', Person);
+registry.register('ProjectGroup', ProjectGroup);
+registry.register('ProjectGroups', ProjectGroups);
+registry.register('ProjectsWithoutGroup', ProjectsWithoutGroup);
 registry.register('ProjectListItem', ProjectListItem);
+
+// A project as the detail answers return it: the list item plus its group (not in `GET /projects-page`).
+export const ProjectDetail = ProjectListItem.extend({
+  group: ProjectGroup.nullable().openapi({ description: 'Group linked to the project, `null` without one' }),
+});
+registry.register('ProjectDetail', ProjectDetail);
 registry.register('ProjectTask', ProjectTask);
 
 // =====================
@@ -238,6 +270,12 @@ const TemplateIdField = z.string().regex(/^template-\d+$/, 'Expected a template-
   description: 'Template the project is created from (`GET /project-templates`): its statuses are copied into the project. Absent: the default template',
   example: 'template-1',
 });
+// A Core API group (`group-<id>`, from `GET /project-groups`).
+// The id is a safe integer: at most 15 digits.
+const GroupIdField = z.string().regex(/^group-\d{1,15}$/, 'Expected a group-<id> identifier').openapi({
+  description: 'Group whose current and future members all see the project (`GET /project-groups`); the id has 1 to 15 digits',
+  example: 'group-3',
+});
 // A date picker sends a date alone (`2030-12-31`): accepted with an ISO 8601 date-time, or empty for "no due date".
 // The BFF turns it into the date-time Project API stores (MAIR-559).
 const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').openapi({
@@ -279,6 +317,9 @@ export const CreateProjectBody = z.object({
   taskItems: z.array(CreateProjectTaskInput).optional(),
 
   templateId: TemplateIdField.optional(),
+
+  // Required: every project has a group (`GET /project-groups`).
+  groupId: GroupIdField,
 });
 
 registry.register('CreateProjectBody', CreateProjectBody);
@@ -288,7 +329,13 @@ registry.register('CreateProjectBody', CreateProjectBody);
 // =====================
 
 // The template only applies at creation (its statuses are copied then): not part of a PATCH.
-export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true }).partial();
+// The group can be changed but not removed: `groupId: null` is refused in 400.
+export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true, groupId: true }).partial().extend({
+  groupId: GroupIdField.optional().openapi({
+    description: 'New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid',
+    example: 'group-3',
+  }),
+});
 
 registry.register('UpdateProjectBody', UpdateProjectBody);
 
@@ -397,7 +444,7 @@ registry.register('TaskCollaborationResponse', TaskCollaborationResponse);
 // =====================
 
 export const ProjectDetailsResponse = z.object({
-  project: ProjectListItem,
+  project: ProjectDetail,
 
   taskItems: z.array(ProjectTask),
 });

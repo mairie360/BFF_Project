@@ -115,6 +115,12 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "group_project_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ]
 }

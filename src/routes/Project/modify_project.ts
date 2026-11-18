@@ -1,20 +1,22 @@
 import { Router, Request, Response } from 'express';
+import { HttpError } from '@mairie360/bffs-lib';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, UpdateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import { parseRequest } from '@mairie360/bffs-lib';
 import {
     addProjectUsersOnApi,
     buildProjectDtoForUser,
     buildTaskDtoForUser,
-    fetchProjectBundle,
     mapPriorityToBackend,
     mapProjectStatusToBackend,
+    parseGroupIdField,
+    requireLinkableGroup,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
 } from './project_helpers';
 import { requireAssignableUsers, requireProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { callerOf, updateProjectRecord } from '../../services/projectData';
+import { callerOf, getProjectBundle, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
@@ -26,7 +28,7 @@ registry.registerPath({
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.',
 
     request: {
         params: ProjectIdParams,
@@ -51,6 +53,10 @@ registry.registerPath({
             },
         },
 
+        204: {
+            description: 'Project updated, but the caller removed the group through which they saw it: they no longer see the project',
+        },
+
         400: {
             description: 'Validation error',
             content: {
@@ -61,7 +67,7 @@ registry.registerPath({
         },
         
         404: {
-            description: 'Project not found',
+            description: 'Project not found, or a group the caller may not link',
             content: {
                 'application/json': {
                     schema: ErrorResponse,
@@ -83,28 +89,60 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         ...(body.assigneeIds ?? []),
     ]);
 
-    if (body.title !== undefined || body.description !== undefined || body.status !== undefined || body.priority !== undefined) {
-        await updateProjectRecord(caller, projectId, {
-            title: body.title,
-            description: body.description,
-            status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),
-            priority: body.priority === undefined ? undefined : mapPriorityToBackend(body.priority),
-        });
+    const groupId = body.groupId === undefined ? undefined : parseGroupIdField(body.groupId);
+    if (groupId !== undefined) {
+        await requireLinkableGroup(caller, groupId, new HttpError(404, 'Unknown group.'));
     }
+
+    const updateRecord = async () => {
+        if (
+            body.title !== undefined || body.description !== undefined || body.status !== undefined
+            || body.priority !== undefined || body.groupId !== undefined
+        ) {
+            await updateProjectRecord(caller, projectId, {
+                groupId,
+                title: body.title,
+                description: body.description,
+                status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),
+                priority: body.priority === undefined ? undefined : mapPriorityToBackend(body.priority),
+            });
+        }
+    };
 
     // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
     // the merged state (the current responsible, the first member, stays unless `responsibleId` is sent).
     // A `responsibleId` alone only adds that member and removes nobody.
-    if (body.assigneeIds !== undefined) {
-        const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
-        const responsible = body.responsibleId ?? currentResponsible;
-        await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
-    } else if (body.responsibleId) {
-        await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users);
+    const updateMembers = async () => {
+        if (body.assigneeIds !== undefined) {
+            const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
+            const responsible = body.responsibleId ?? currentResponsible;
+            await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
+        } else if (body.responsibleId) {
+            await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users);
+        }
+    };
+
+    // Changing the group can take the project away from a caller who saw it only through the former
+    // group: the members are then written first, while the caller still sees the project.
+    const changesGroup = body.groupId !== undefined;
+    if (changesGroup) {
+        await updateMembers();
+        await updateRecord();
+    } else {
+        await updateRecord();
+        await updateMembers();
     }
 
     // Only the state Project API persisted is returned (labels and dueDate are not stored).
-    const bundle = await fetchProjectBundle(caller, projectId);
+    const bundle = await getProjectBundle(caller, projectId);
+    if (!bundle) {
+        // Saved, but the caller no longer sees the project: only after replacing the group it came through.
+        if (changesGroup) {
+            res.status(204).end();
+            return;
+        }
+        throw new HttpError(404, 'Project not found.');
+    }
     res.status(200).json({
         project: buildProjectDtoForUser(user, bundle),
         taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),

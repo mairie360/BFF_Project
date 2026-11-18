@@ -19,6 +19,7 @@ import type {
 import {
   Person as PersonSchema,
   ProjectListItem as ProjectListItemSchema,
+  ProjectDetail as ProjectDetailSchema,
   ProjectPriority as ProjectPrioritySchema,
   ProjectStatus as ProjectStatusSchema,
   ProjectTask as ProjectTaskSchema,
@@ -43,6 +44,7 @@ export type BffProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export type BffProjectPriority = z.infer<typeof ProjectPrioritySchema>;
 export type BffPerson = z.infer<typeof PersonSchema>;
 export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
+export type BffProjectDetail = z.infer<typeof ProjectDetailSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
 
 // A member's name may be missing in Project API (deleted user): the BFF contract replaces it.
@@ -81,6 +83,7 @@ export interface BffCreateProjectInput {
   labels: string[];
   dueDate: string;
   templateId?: string;
+  groupId: string;
   taskItems?: Array<
     Pick<
       TaskInputLike,
@@ -449,7 +452,7 @@ export function mapProjectToDto(
     canAssignMembers: true,
     canClose: true,
   },
-): BffProjectListItem {
+): BffProjectDetail {
   const status = mapProjectStatus(project.status);
   // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
   const priority = mapTaskPriority(project.priority);
@@ -481,6 +484,7 @@ export function mapProjectToDto(
       active: tasks.length,
       archived: archivedTasks,
     },
+    group: project.group ? { id: groupPublicId(project.group.id), name: project.group.name } : null,
     permissions,
   };
 }
@@ -676,7 +680,49 @@ export function mapProjectCreateBodyToBackend(
     ...(body.status ? { status: mapProjectStatusToBackend(body.status) } : {}),
     ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
     ...templateIdToBackend(body.templateId),
+    group_id: parseGroupIdField(body.groupId),
   };
+}
+
+/** Public id of a Core API group. */
+export function groupPublicId(groupId: number): string {
+  return `group-${groupId}`;
+}
+
+/** The Core API id of a `group-<id>` already checked by the body schema. */
+export function parseGroupIdField(groupId: string): number {
+  const parsed = Number(groupId.slice('group-'.length));
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw validationError("body", [{ path: ["groupId"], message: "Expected a group-<id> identifier" }]);
+  }
+  return parsed;
+}
+
+/** Groups the caller may link to a project, as Project API lists them (by name). */
+export async function listProjectGroups(caller: Caller): Promise<Array<{ id: string; name: string }>> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options), true);
+  return data.groups.map((group) => ({ id: groupPublicId(group.id), name: group.name }));
+}
+
+/**
+ * Refuses, before any write, a group the caller may not link (not one of their groups, unless Admin or Maire), so
+ * that a request touching the members and the group never writes the members and then fails on the group.
+ */
+export async function requireLinkableGroup(caller: Caller, groupId: number, refusal: HttpError): Promise<void> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectGroups(options), true);
+  if (!data.groups.some((group) => group.id === groupId)) throw refusal;
+}
+
+/** Projects linked to no group, for the Admin and Maire roles (Project API answers 403 to the others). */
+export async function listProjectsWithoutGroup(
+  caller: Caller,
+): Promise<Array<{ id: string; title: string; createdAt: string | null }>> {
+  const { data } = await projectCall(caller, (options) => projectApi.getProjectsWithoutGroup(options), true);
+  return data.projects.map((project) => ({
+    id: projectPublicId(project.id),
+    title: project.name,
+    createdAt: project.created_at ?? null,
+  }));
 }
 
 /** `template_id` of a `templateId` (MAIR-566); absent, Project API uses the default template. */

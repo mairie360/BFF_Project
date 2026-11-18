@@ -55,8 +55,29 @@ INSERT INTO task_assignees (task_id, user_id)
 VALUES (1, 1), (2, 1)
 ON CONFLICT DO NOTHING;
 
+-- Group 3 (`group-3`, the contract example of `groupId`): the agent is its only member, so a project linked to it
+-- is visible to the agent without being a member of the project.
+INSERT INTO groups (id, owner_id, name, description)
+VALUES (3, 1, 'Roads', 'Road maintenance agents')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO group_members (group_id, user_id)
+VALUES (3, 2)
+ON CONFLICT DO NOTHING;
+
+-- Group 4 (`group-4`): the administrator alone. Every project needs a group, and the projects of the other folders
+-- use this one so that linking them gives nobody else access.
+INSERT INTO groups (id, owner_id, name, description)
+VALUES (4, 1, 'Administration', 'Administrator only')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO group_members (group_id, user_id)
+VALUES (4, 1)
+ON CONFLICT DO NOTHING;
+
 -- Explicit ids do not advance the sequences: move them past the seeded rows so that the
 -- rows created during the tests (users, projects, tasks) do not collide.
 SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT max(id) FROM users));
 SELECT setval(pg_get_serial_sequence('projects', 'id'), (SELECT max(id) FROM projects));
 SELECT setval(pg_get_serial_sequence('tasks', 'id'), (SELECT max(id) FROM tasks));
+SELECT setval(pg_get_serial_sequence('groups', 'id'), GREATEST((SELECT MAX(id) FROM groups), 1));
