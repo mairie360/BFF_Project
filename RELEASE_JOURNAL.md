@@ -1,16 +1,17 @@
 # Journal des releases — BFF_Project
 
-<!-- release-journal-state {"dev": "946ddd6b41494367251519b7d73c27833339f1f8", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-18 01:02 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
+<!-- release-journal-state {"dev": "60b586276b65d18033c72688055bb99c8346673a", "prod": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "prod_tag": "v1.2.0", "staging": "26cf27d4338af0c17b172d6de4d3caaf920d65f6", "updated": {"dev": "2026-11-18 11:28 UTC", "prod": "2026-11-13 00:45 UTC", "staging": "2026-11-13 00:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v1.2.0 | `26cf27d` | 2026-11-13 00:45 UTC |
 | staging | — | `26cf27d` | 2026-11-13 00:28 UTC |
-| dev | — | `946ddd6` | 2026-11-18 01:02 UTC |
+| dev | — | `60b5862` | 2026-11-18 11:28 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v1.2.0)
 
+- feat: MAIR-683 Link a group to a project (#275) ([#275](https://github.com/mairie360/BFF_Project/pull/275))
 - fix: MAIR-682 [Audit 23/10] All BFFs: graceful shutdown on SIGTERM (B7) (#274) ([#274](https://github.com/mairie360/BFF_Project/pull/274))
 - fix: MAIR-536 Test the business 403s and bound the pagination of BFF_Project ([#271](https://github.com/mairie360/BFF_Project/pull/271))
 - test: MAIR-538 Add cross-cutting timeout, 413 and token-refusal tests to the BFFs and the template ([#269](https://github.com/mairie360/BFF_Project/pull/269))
@@ -24,6 +25,7 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+- feat: MAIR-683 Link a group to a project (#275) ([#275](https://github.com/mairie360/BFF_Project/pull/275))
 - fix: MAIR-682 [Audit 23/10] All BFFs: graceful shutdown on SIGTERM (B7) (#274) ([#274](https://github.com/mairie360/BFF_Project/pull/274))
 - fix: MAIR-536 Test the business 403s and bound the pagination of BFF_Project ([#271](https://github.com/mairie360/BFF_Project/pull/271))
 - test: MAIR-538 Add cross-cutting timeout, 413 and token-refusal tests to the BFFs and the template ([#269](https://github.com/mairie360/BFF_Project/pull/269))
@@ -46,6 +48,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-18 11:28 UTC | dev | — | `60b5862` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44294305822) |
 | 2026-11-18 01:02 UTC | dev | — | `946ddd6` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44211957562) |
 | 2026-11-17 17:07 UTC | dev | — | `740990c` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44131455165) |
 | 2026-11-17 17:05 UTC | dev | — | `d02a442` | [run](https://github.com/mairie360/BFF_Project/actions/runs/44131468867) |
