@@ -24,6 +24,7 @@ const EXPECTED: Record<string, string[]> = {
   'bffs-lib-cicd.yml': BUILD,
   'database_cicd.yml': BUILD,
   'frontend-cicd.yml': BUILD,
+  'auto-approve.yml': [],
   'frontend-dev-exception.yml': [],
   'gdpr-pr-cicd.yml': REVIEW,
   'promote-prod.yml': ['ANTHROPIC_API_KEY', 'N8N_WEBHOOK_SECRET', ...REVIEW, ...RELEASE_APP],
