@@ -167,6 +167,15 @@ describe('MAIR-681 CI secrets', () => {
     expect(cicdCalls.some((job) => callee(job) === 'gdpr-pr-cicd.yml')).toBe(true);
   });
 
+  it('the nightly promotions run as dry runs', () => {
+    const live = cicdCalls.filter(
+      (job) =>
+        (callee(job) ?? '').endsWith('[dry-run]') &&
+        !job.lines.some((line) => /^ {6}dry_run:\s*['"]?true['"]?$/.test(line)),
+    );
+    expect(live.map((job) => job.where)).toEqual([]);
+  });
+
   it('the release journal is no longer tracked', () => {
     const tracked = execFileSync('git', ['ls-files', '--', 'RELEASE_JOURNAL.md'], { cwd: root, encoding: 'utf8' });
     expect(tracked.trim()).toBe('');
