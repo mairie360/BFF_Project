@@ -278,6 +278,90 @@
           "response": []
         },
         {
+          "name": "MAIR-689 The role Administrateur is the administrator",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_administrateur}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Administrateur is Admin: every project, may create one\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.access.role).to.eql('Admin');",
+                  "    pm.expect(body.access.scope).to.eql('all');",
+                  "    pm.expect(body.access.canCreateProject).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-689 A custom role is not a manager",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_custom_role}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"A custom role neither sees every project nor creates one\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.access.role).to.eql('Guest');",
+                  "    pm.expect(body.access.scope).to.eql('assigned');",
+                  "    pm.expect(body.access.canCreateProject).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "MAIR-680 EdDSA JWT signed with another key under Core's kid is rejected",
           "request": {
             "method": "GET",
@@ -525,7 +609,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"title\": \"Refused\", \"description\": \"An employee cannot create a project\", \"status\": \"todo\", \"priority\": \"medium\", \"responsibleId\": \"user-2\", \"assigneeIds\": [], \"labels\": [], \"dueDate\": \"2030-01-01T00:00:00Z\", \"taskItems\": []}"
+              "raw": "{\"title\": \"Refused\", \"description\": \"An employee cannot create a project\", \"status\": \"todo\", \"priority\": \"medium\", \"responsibleId\": \"user-2\", \"assigneeIds\": [], \"labels\": [], \"dueDate\": \"2030-01-01T00:00:00Z\", \"taskItems\": [], \"groupId\": \"group-4\"}"
             }
           },
           "event": [

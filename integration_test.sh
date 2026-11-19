@@ -32,7 +32,10 @@ source ./stack_secrets.sh || exit 1
 JWT_ADMIN="$ADMIN_JWT"
 JWT_AGENT="$(sign_jwt 2 user 3600)" || exit 1
 JWT_FORGED="$(sign_jwt 1 admin 3600 "$(openssl genpkey -algorithm ed25519 2>/dev/null)")" || exit 1
-export JWT_ADMIN JWT_AGENT JWT_FORGED
+# Same account as the administrator, other spellings of the role name (the BFF reads the `role` claim).
+JWT_ADMINISTRATEUR="$(sign_jwt 1 Administrateur 3600)" || exit 1
+JWT_CUSTOM_ROLE="$(sign_jwt 1 Stagiaire 3600)" || exit 1
+export JWT_ADMIN JWT_AGENT JWT_FORGED JWT_ADMINISTRATEUR JWT_CUSTOM_ROLE
 
 # The newman container (non-root) writes its junit report here; the CI job publishes it.
 rm -rf "$REPORT_DIR" && mkdir -p "$REPORT_DIR" && chmod a+rwx "$REPORT_DIR"

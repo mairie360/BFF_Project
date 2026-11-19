@@ -1,11 +1,13 @@
 import type { GetMeResponseView } from '@mairie360/core-api-openapi/model';
-import { asCaller, callUpstream, HttpError, sessionRole, sessionUserId } from '@mairie360/bffs-lib';
+import {
+  asCaller, callUpstream, canonicalRoles, CORE_ROLES, HttpError, sessionRole, sessionUserId, type CoreRole,
+} from '@mairie360/bffs-lib';
 import type { NextFunction, Request, Response } from 'express';
 import { coreApi } from '../clients/coreClient';
 
-export const PROJECT_ROLES = ['Admin', 'Maire', 'Responsable', 'User', 'Guest'] as const;
+export const PROJECT_ROLES = CORE_ROLES;
 
-export type ProjectRole = (typeof PROJECT_ROLES)[number];
+export type ProjectRole = CoreRole;
 
 /** Identity of the caller in Core: read only by the routes that show or filter by it. */
 export type ProjectUserProfile = {
@@ -25,40 +27,9 @@ export type ProjectUserContext = {
 /** Core API `GET /api/v1/user/me/` as read here: every field is checked before use. */
 type CoreMe = Partial<Record<keyof GetMeResponseView, unknown>>;
 
-const roleAliases: Record<string, ProjectRole> = {
-  admin: 'Admin',
-  administrateur: 'Admin',
-  administrator: 'Admin',
-  maire: 'Maire',
-  mayor: 'Maire',
-  responsable: 'Responsable',
-  manager: 'Responsable',
-  user: 'User',
-  utilisateur: 'User',
-  employe: 'User',
-  employee: 'User',
-  guest: 'Guest',
-  invite: 'Guest',
-};
-
-function normalizeRole(value: unknown): ProjectRole | null {
-  if (typeof value !== 'string') return null;
-
-  const key = value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, '')
-    .replace(/^role/, '');
-
-  return roleAliases[key] ?? null;
-}
-
-/** The project roles among `names`, ordered from the widest (Admin) to the narrowest (Guest). */
+/** The project roles among `names`, ordered from the widest (Admin) to the narrowest (Guest): the lib's one role rule. */
 function resolveRoles(names: readonly unknown[]): ProjectRole[] {
-  const resolved = new Set(names.map(normalizeRole).filter((role): role is ProjectRole => role !== null));
-  return PROJECT_ROLES.filter((role) => resolved.has(role));
+  return canonicalRoles(names);
 }
 
 /** Names of the roles Core lists (`roles`, or the deprecated `role` of an older Core). */
