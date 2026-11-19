@@ -245,6 +245,8 @@ services:
       --env-var jwt_admin=${JWT_ADMIN:?JWT_ADMIN must be set, run ./integration_test.sh}
       --env-var jwt_agent=${JWT_AGENT:?JWT_AGENT must be set, run ./integration_test.sh}
       --env-var jwt_forged=${JWT_FORGED:?JWT_FORGED must be set, run ./integration_test.sh}
+      --env-var jwt_administrateur=${JWT_ADMINISTRATEUR:?JWT_ADMINISTRATEUR must be set, run ./integration_test.sh}
+      --env-var jwt_custom_role=${JWT_CUSTOM_ROLE:?JWT_CUSTOM_ROLE must be set, run ./integration_test.sh}
       --bail
       --reporters cli,junit
       --reporter-junit-export /reports/newman.xml
