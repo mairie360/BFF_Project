@@ -1653,7 +1653,7 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
     statusView(33, 'À valider', 'InProgress', 2, 0),
   ];
   const template = (id: number, overrides: object = {}) => ({
-    id, name: `Modèle ${id}`, description: null, is_default: false, custom_fields: [],
+    id, name: `Modèle ${id}`, description: null, is_default: false, can_manage: false, custom_fields: [],
     statuses: [
       { name: 'Terminé', color: '#16A34A', category: 'Completed', position: 2 },
       { name: 'À faire', color: '#64748B', category: 'Todo', position: 0 },
@@ -1777,7 +1777,7 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
     expect(response.status).toBe(200);
     expectBffContract('get', '/project-templates', response);
     expect(response.body.templates[0]).toEqual({
-      id: 'template-1', name: 'Simple', description: null, isDefault: true, customFields: [],
+      id: 'template-1', name: 'Simple', description: null, isDefault: true, canManage: false, customFields: [],
       statuses: [
         { name: 'À faire', color: '#64748B', category: 'todo', position: 0 },
         { name: 'En cours', color: '#2563EB', category: 'in-progress', position: 1 },
@@ -1808,6 +1808,36 @@ describe('MAIR-566 per-project task statuses and project templates', () => {
       statuses: [{ name: 'Idée', category: 'Todo' }, { name: 'Fait', category: 'Completed' }],
     });
     expect(created.body.id).toBe('template-7');
+  });
+
+  test('mair_691 each template tells the caller whether it may modify or delete it', async () => {
+    signIn(marie);
+    mockStatuses();
+    projectApi.on('get', PROJECT.templates, { body: { templates: [
+      template(1, { name: 'Simple', is_default: true }), template(2, { can_manage: true }), template(3),
+    ] } });
+
+    const list = await as(request(app).get('/project-templates'), marie);
+    expect(list.status).toBe(200);
+    expectBffContract('get', '/project-templates', list);
+    expect(list.body.templates.map((item: { id: string; canManage: boolean }) => [item.id, item.canManage]))
+      .toEqual([['template-1', false], ['template-2', true], ['template-3', false]]);
+  });
+
+  test('mair_691 a Responsable who did not create the template gets Project API\'s 403 on update and delete', async () => {
+    signIn(marie);
+    mockStatuses();
+    projectApi.on('patch', PROJECT.template, textError(403, 'Forbidden.'));
+    projectApi.on('delete', PROJECT.template, textError(403, 'Forbidden.'));
+
+    const updated = await as(request(app).patch('/project-templates/template-2'), marie).send({ name: 'Autre' });
+    const deleted = await as(request(app).delete('/project-templates/template-2'), marie);
+
+    expect([updated.status, deleted.status]).toEqual([403, 403]);
+    expectBffContract('patch', '/project-templates/template-2', updated);
+    expectBffContract('delete', '/project-templates/template-2', deleted);
+    expect(projectApi.calls(PROJECT.template, 'PATCH')).toHaveLength(1);
+    expect(projectApi.calls(PROJECT.template, 'DELETE')).toHaveLength(1);
   });
 
   test('mair_566 deleting the default template relays Project API\'s 409', async () => {

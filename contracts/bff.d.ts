@@ -6668,6 +6668,11 @@ export interface components {
              * @example false
              */
             isDefault: boolean;
+            /**
+             * @description Whether the caller may modify this template: an Admin any template (the default one included), a Responsable only the ones they created, never the default one. Deleting it also needs isDefault to be false: the default template cannot be deleted by anyone
+             * @example true
+             */
+            canManage: boolean;
             /** @description Statuses copied into a project created from it, by position */
             statuses: {
                 /** @example À valider */
