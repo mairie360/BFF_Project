@@ -721,6 +721,7 @@
                   "    const templates = pm.response.json().templates;",
                   "    pm.expect(templates).to.be.an('array').and.not.empty;",
                   "    templates.forEach((t) => pm.expect(t.canManage, `${t.name} canManage`).to.eql(true));",
+                  "    pm.expect(templates.filter((t) => t.isDefault && t.canManage), 'the default template is modifiable by the Admin, deletable by nobody').to.have.lengthOf(1);",
                   "});"
                 ]
               }
