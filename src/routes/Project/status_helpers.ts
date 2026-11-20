@@ -118,6 +118,7 @@ export function mapProjectTemplate(template: ProjectTemplateView): z.infer<typeo
     name: template.name,
     description: template.description ?? null,
     isDefault: template.is_default,
+    canManage: template.can_manage,
     statuses: [...template.statuses].sort((a, b) => a.position - b.position).map(mapTemplateStatus),
     customFields: template.custom_fields.map(mapCustomField),
   };

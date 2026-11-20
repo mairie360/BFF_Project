@@ -642,6 +642,7 @@ export const ProjectTemplate = z.object({
   name: z.string().openapi({ example: 'Avec validation' }),
   description: z.string().nullable().openapi({ example: 'Tâches relues avant validation' }),
   isDefault: z.boolean().openapi({ description: 'Template of a project created without templateId; cannot be deleted', example: false }),
+  canManage: z.boolean().openapi({ description: 'Whether the caller may modify or delete it: an Admin any template, a Responsable only the ones they created, never the default one', example: true }),
   statuses: z.array(TemplateStatus).openapi({ description: 'Statuses copied into a project created from it, by position' }),
   customFields: z.array(TemplateCustomField).openapi({ description: 'Custom task fields copied into the project' }),
 }).openapi('ProjectTemplate', { description: 'A project template (MAIR-566)' });

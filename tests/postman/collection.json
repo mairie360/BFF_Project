@@ -677,6 +677,50 @@
                   "    templates.forEach((t) => ['todo', 'in-progress', 'done'].forEach((category) =>",
                   "        pm.expect(t.statuses.map((s) => s.category), `${t.name} covers ${category}`).to.include(category)));",
                   "    pm.environment.set('default_template_id', byDefault[0].id);",
+                  "});",
+                  "pm.test(\"A plain agent may manage no template\", function () {",
+                  "    pm.response.json().templates.forEach((t) => pm.expect(t.canManage, `${t.name} canManage`).to.eql(false));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "The Admin reads the templates it may manage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/project-templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "project-templates"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The Admin may manage every template, the default one included\", function () {",
+                  "    const templates = pm.response.json().templates;",
+                  "    pm.expect(templates).to.be.an('array').and.not.empty;",
+                  "    templates.forEach((t) => pm.expect(t.canManage, `${t.name} canManage`).to.eql(true));",
                   "});"
                 ]
               }
@@ -790,6 +834,7 @@
                   "    pm.expect(body.name).to.eql(`Newman template ${pm.environment.get('run_id')}`);",
                   "    pm.expect(body.description).to.eql('Template created by the integration tests');",
                   "    pm.expect(body.isDefault).to.eql(false);",
+                  "    pm.expect(body.canManage, 'the author manages its template').to.eql(true);",
                   "    pm.expect(body.statuses.map((s) => s.name)).to.eql(['À faire', 'En cours', 'Terminé']);",
                   "    pm.expect(body.statuses.map((s) => s.category)).to.eql(['todo', 'in-progress', 'done']);",
                   "    pm.expect(body.customFields).to.eql([]);",

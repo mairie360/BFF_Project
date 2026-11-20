@@ -3270,6 +3270,11 @@
             "description": "Template of a project created without templateId; cannot be deleted",
             "example": false
           },
+          "canManage": {
+            "type": "boolean",
+            "description": "Whether the caller may modify or delete it: an Admin any template, a Responsable only the ones they created, never the default one",
+            "example": true
+          },
           "statuses": {
             "type": "array",
             "items": {
@@ -3335,6 +3340,7 @@
           "name",
           "description",
           "isDefault",
+          "canManage",
           "statuses",
           "customFields"
         ],
