@@ -145,6 +145,36 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "coreUrl",
+      "value": "http://localhost:3000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "core_admin_email",
+      "value": "admin@example.invalid",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "core_admin_password",
+      "value": "password_template",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "jwt_session",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "refresh_token_session",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ]
 }

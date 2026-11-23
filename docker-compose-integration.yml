@@ -166,6 +166,10 @@ services:
     environment:
       <<: *db-env
       HOST: "0.0.0.0"
+      # The collection calls the API from the single BFF address faster than the default budget
+      # (20 per second per client address) allows.
+      RATE_LIMIT_PER_SECOND: "100000"
+      RATE_LIMIT_BURST: "100000"
       PORT: 3001
       REDIS_URL: redis://redis:6379
       PUBLIC_URL: http://project-api:3001
@@ -242,6 +246,7 @@ services:
       run /etc/newman/collection.json
       --environment /etc/newman/environment.json
       --env-var baseUrl=http://bff-project:4001
+      --env-var coreUrl=http://core-api:3000
       --env-var jwt_admin=${JWT_ADMIN:?JWT_ADMIN must be set, run ./integration_test.sh}
       --env-var jwt_agent=${JWT_AGENT:?JWT_AGENT must be set, run ./integration_test.sh}
       --env-var jwt_forged=${JWT_FORGED:?JWT_FORGED must be set, run ./integration_test.sh}
