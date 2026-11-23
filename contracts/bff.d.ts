@@ -227,6 +227,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                                members: components["schemas"]["ProjectMember"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -704,6 +711,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                                members: components["schemas"]["ProjectMember"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -1390,6 +1404,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                                members: components["schemas"]["ProjectMember"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -1953,6 +1974,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                                members: components["schemas"]["ProjectMember"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -2744,6 +2772,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                                members: components["schemas"]["ProjectMember"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -3500,6 +3535,13 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /** @description Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only */
+                                members: components["schemas"]["ProjectMemberSummary"][];
+                                /**
+                                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                                 * @enum {string|null}
+                                 */
+                                myRole: "manager" | "contributor" | "reader" | null;
                                 /**
                                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                                  * @example 1250000
@@ -4970,6 +5012,378 @@ export interface paths {
         };
         trace?: never;
     };
+    "/projects/{projectId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adds a member to a project
+         * @description Reserved to the project managers (a `manager` member included). The agent must be one the caller may assign (403 otherwise). `role` defaults to `contributor`; `409` when Project API refuses the member (already one).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Agent to add (`user-<id>`, one the caller may assign)
+                         * @example user-3
+                         */
+                        userId: string;
+                        role?: components["schemas"]["ProjectMemberRole"] & unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description Members of the project, the new one included */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectMembers"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Removes a member from a project
+         * @description Reserved to the project managers. Their tasks of the project are unassigned by Project API. `409` for the owner of the project.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                    /** @description Id of the member */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Member removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Changes the role of a member
+         * @description Reserved to the project managers. `404` for a user who is not a member, `409` for the owner of the project (always `manager`).
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                    /** @description Id of the member */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        role: components["schemas"]["ProjectMemberRole"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Members of the project, as re-read */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectMembers"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/project-templates": {
         parameters: {
             query?: never;
@@ -5847,6 +6261,13 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
+            /** @description Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only */
+            members: components["schemas"]["ProjectMemberSummary"][];
+            /**
+             * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+             * @enum {string|null}
+             */
+            myRole: "manager" | "contributor" | "reader" | null;
             /**
              * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
              * @example 1250000
@@ -5911,6 +6332,32 @@ export interface components {
                 canClose: boolean;
             };
         };
+        /** @description A member of a project and their role in it (MAIR-1088) */
+        ProjectMemberSummary: {
+            /**
+             * @description Unique id of the person
+             * @example 123e4567-e89b-12d3-a456-426614174000
+             */
+            id: string;
+            /**
+             * @description Name of the person
+             * @example John Doe
+             */
+            name: string;
+            /**
+             * Format: uri
+             * @description URL of the person's avatar
+             * @example https://example.com/avatar.jpg
+             */
+            avatarUrl: string | null;
+            role: components["schemas"]["ProjectMemberRole"];
+        };
+        /**
+         * @description Role of a member in the project: `manager` manages it (like the Responsable, Maire and Admin roles), `contributor` and `reader` have the rights of a member. The owner of the project is always `manager`
+         * @example contributor
+         * @enum {string}
+         */
+        ProjectMemberRole: "manager" | "contributor" | "reader";
         /** @description A project for the card, table or kanban views */
         ProjectDetail: {
             /**
@@ -6011,6 +6458,13 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
+            /** @description Every member of the project, their role and their load (MAIR-1088) */
+            members: components["schemas"]["ProjectMember"][];
+            /**
+             * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+             * @enum {string|null}
+             */
+            myRole: "manager" | "contributor" | "reader" | null;
             /**
              * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
              * @example 1250000
@@ -6094,6 +6548,22 @@ export interface components {
              * @example 3
              */
             milestonesTotal: number;
+        };
+        /** @description A member of a project, their role and their load in it (MAIR-1088) */
+        ProjectMember: components["schemas"]["ProjectMemberSummary"] & {
+            /** @description Load of the member in the project, counted on its active tasks */
+            load: {
+                /**
+                 * @description Active tasks of the project assigned to the member that are not done
+                 * @example 3
+                 */
+                tasksOpen: number;
+                /**
+                 * @description Active tasks of the project assigned to the member. Archived (done) tasks are not counted: the detail only holds their total
+                 * @example 3
+                 */
+                tasksTotal: number;
+            };
         };
         /** @description A milestone of a project (MAIR-1086) */
         Milestone: {
@@ -6667,6 +7137,13 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
+                /** @description Every member of the project, their role and their load (MAIR-1088) */
+                members: components["schemas"]["ProjectMember"][];
+                /**
+                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                 * @enum {string|null}
+                 */
+                myRole: "manager" | "contributor" | "reader" | null;
                 /**
                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                  * @example 1250000
@@ -7053,6 +7530,13 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
+                /** @description Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only */
+                members: components["schemas"]["ProjectMemberSummary"][];
+                /**
+                 * @description Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project
+                 * @enum {string|null}
+                 */
+                myRole: "manager" | "contributor" | "reader" | null;
                 /**
                  * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
                  * @example 1250000
@@ -7195,6 +7679,17 @@ export interface components {
                  */
                 category: "todo" | "in-progress" | "done";
             }[];
+        };
+        AddProjectMemberBody: {
+            /**
+             * @description Agent to add (`user-<id>`, one the caller may assign)
+             * @example user-3
+             */
+            userId: string;
+            role?: components["schemas"]["ProjectMemberRole"] & unknown;
+        };
+        UpdateProjectMemberBody: {
+            role: components["schemas"]["ProjectMemberRole"];
         };
         CreateMilestoneBody: {
             /** @example Scan milestone */
@@ -7417,6 +7912,10 @@ export interface components {
                 total: number;
                 hasNextPage: boolean;
             };
+        };
+        ProjectMembers: {
+            /** @description Every member of the project, as re-read from Project API */
+            members: components["schemas"]["ProjectMember"][];
         };
         ProjectTemplates: {
             templates: components["schemas"]["ProjectTemplate"][];

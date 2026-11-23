@@ -39,6 +39,7 @@ const CONSUMED = [
   { contract: projectApi, operationId: 'addTaskComment', method: 'post', url: projectApiUrls.getAddTaskCommentUrl(4, 2) },
   { contract: projectApi, operationId: 'getProjectUsers', method: 'get', url: projectApiUrls.getGetProjectUsersUrl(4) },
   { contract: projectApi, operationId: 'addUserToProject', method: 'post', url: projectApiUrls.getAddUserToProjectUrl(4) },
+  { contract: projectApi, operationId: 'updateMemberRole', method: 'patch', url: projectApiUrls.getUpdateMemberRoleUrl(4, 2) },
   { contract: projectApi, operationId: 'removeUserFromProject', method: 'delete', url: projectApiUrls.getRemoveUserFromProjectUrl(4, 2) },
   { contract: projectApi, operationId: 'getProjectMilestones', method: 'get', url: projectApiUrls.getGetProjectMilestonesUrl(4, { limit: 100, offset: 0 }) },
   { contract: projectApi, operationId: 'createProjectMilestone', method: 'post', url: projectApiUrls.getCreateProjectMilestoneUrl(4) },

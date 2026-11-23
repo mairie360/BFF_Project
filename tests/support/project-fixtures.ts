@@ -88,7 +88,8 @@ export function bearer(sub: string | number, claims: object = {}): string {
 export function projetView(id: number, overrides: Partial<ProjetView> = {}): ProjetView {
   return {
     id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active,
-    priority: TaskPriority.Medium, can_manage: true, ...overrides,
+    // Project API's `can_manage` for the caller (MAIR-1088): the BFF adds it to the rights of the caller's role.
+    priority: TaskPriority.Medium, can_manage: false, ...overrides,
   };
 }
 
@@ -97,7 +98,7 @@ export function projectListItem(id: number, overrides: Partial<ProjectListItemVi
   return {
     ...projetView(id),
     tasks_total: 0, tasks_completed: 0, priority: TaskPriority.Medium, due_date: null, members: [], members_total: 0,
-    can_manage: true,
+    can_manage: false,
     ...overrides,
   };
 }

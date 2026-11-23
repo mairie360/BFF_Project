@@ -2536,3 +2536,252 @@ describe('MAIR-1087 start date of a task', () => {
     expect(created).toEqual(['2026-09-01T00:00:00.000Z', undefined]);
   });
 });
+
+describe('MAIR-1088 member roles', () => {
+  /** Alice holds the User role but is a `manager` member of project 1: Project API says she manages it. */
+  const managedByAlice = () => ({
+    ...projectBundle(projetView(1, { can_manage: true, my_role: 'manager' }), [
+      taskView(2, { assigned_to: alice.id }),
+      taskView(3, { assigned_to: marie.id, status: 'InProgress' }),
+      taskView(4, { assigned_to: marie.id }),
+    ], [alice, marie]),
+    users: [member(alice, 'manager'), member(marie, 'contributor')],
+  });
+
+  test('the detail lists every member with their role and load, and the caller role', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const response = await as(request(app).get('/projects/project-1'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.myRole).toBe('manager');
+    expect(response.body.project.members).toEqual([
+      { id: 'user-2', name: 'Alice Martin', avatarUrl: null, role: 'manager', load: { tasksOpen: 1, tasksTotal: 1 } },
+      { id: 'user-3', name: 'Marie Durand', avatarUrl: null, role: 'contributor', load: { tasksOpen: 2, tasksTotal: 2 } },
+    ]);
+    // A manager member manages the project and sees every task, not only hers.
+    expect(response.body.project.permissions).toMatchObject({ canEdit: true, canDelete: true, canAssignMembers: true });
+    expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2', 'task-3', 'task-4']);
+    expect(response.body.taskItems[1].permissions).toMatchObject({ canEdit: true, canDelete: true });
+  });
+
+  test('the projects page carries the members roles, the caller role and the rights Project API gives', async () => {
+    signIn(alice);
+    mockProjectApi({ projects: [
+      projectListItem(1, { can_manage: true, my_role: 'manager', members: [member(alice, 'manager')], members_total: 1 }),
+      projectListItem(2, { can_manage: false, my_role: 'reader', members: [member(alice, 'reader')], members_total: 1 }),
+      projectListItem(3),
+    ] });
+
+    const response = await as(request(app).get('/projects-page'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects-page', response);
+    expect(response.body.projects.map((project: { myRole: string | null; permissions: { canEdit: boolean } }) =>
+      [project.myRole, project.permissions.canEdit])).toEqual([['manager', true], ['reader', false], [null, false]]);
+    expect(response.body.projects[0].members).toEqual([{ id: 'user-2', name: 'Alice Martin', avatarUrl: null, role: 'manager' }]);
+  });
+
+  test('a manager member updates the project and assigns a task to another member of it', async () => {
+    signIn(alice);
+    const bundles = { 1: managedByAlice() };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30, { assigned_to: marie.id }));
+      return { body: createTaskResult(30) };
+    });
+
+    const patched = await as(request(app).patch('/projects/project-1'), alice).send({ budgetVoted: 100 });
+    const created = await as(request(app).post('/projects/project-1/tasks'), alice).send({
+      title: 'Commander', status: 'todo', priority: 'low', responsibleId: `user-${marie.id}`, assigneeIds: [], labels: [], dueDate: '',
+    });
+
+    expect([patched.status, created.status]).toEqual([200, 201]);
+    expectBffContract('post', '/projects/project-1/tasks', created);
+    expect(created.body.permissions.canEdit).toBe(true);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ assigned_to: marie.id });
+  });
+
+  test("a manager member edits and deletes a task assigned to someone else, Project API's can_manage read with one task", async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const patched = await as(request(app).patch('/projects/project-1/tasks/task-3'), alice).send({ title: 'Renommée' });
+    const deleted = await as(request(app).delete('/projects/project-1/tasks/task-4'), alice);
+
+    expect([patched.status, deleted.status]).toEqual([200, 204]);
+    expectBffContract('patch', '/projects/project-1/tasks/task-3', patched);
+    expect(patched.body.permissions).toMatchObject({ canEdit: true, canDelete: true });
+    expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).limit)).toContain(1);
+  });
+
+  test('a manager member sees the archived tasks of the others', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+    projectApi.on('get', PROJECT.archivedTasks, { body: { tasks: [taskView(9, { status: 'Completed', assigned_to: marie.id })], total: 1 } });
+
+    const response = await as(request(app).get('/projects/project-1/archived-tasks'), alice);
+
+    expect(response.status).toBe(200);
+    expect(response.body.tasks.map((task: { id: string }) => task.id)).toEqual(['task-9']);
+  });
+
+  test('a contributor or reader member with the User role still cannot manage the project', async () => {
+    signIn(alice);
+    const bundle = managedByAlice();
+    bundle.project = projetView(1, { can_manage: false, my_role: 'contributor' });
+    mockProjectApi({ bundles: { 1: bundle } });
+
+    const responses = await Promise.all([
+      as(request(app).patch('/projects/project-1'), alice).send({ title: 'Non' }),
+      as(request(app).patch('/projects/project-1/tasks/task-3'), alice).send({ title: 'Non' }),
+      as(request(app).post('/projects/project-1/members'), alice).send({ userId: 'user-1' }),
+    ]);
+
+    // A task not assigned to her is not visible to her (404), as before MAIR-1088.
+    expect(responses.map((response) => response.status)).toEqual([403, 404, 403]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('a manager role reads no project to manage a task', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-3'), marie).send({ title: 'Renommée' });
+
+    expect(response.status).toBe(200);
+    expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+  });
+
+  describe('member routes', () => {
+    test('POST /projects/:id/members adds a member with a role and answers every member', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        const { user_id: id, role } = body as { user_id: number; role?: 'manager' };
+        bundle.users = [...bundle.users, { id, name: 'Alice Martin', role: role ?? 'contributor' }];
+        return { status: 200 };
+      });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2', role: 'manager' });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(projectApi.calls(PROJECT.users, 'POST')[0].body).toEqual({ user_id: 2, role: 'manager' });
+      expect(response.body.members.map((entry: { id: string; role: string }) => [entry.id, entry.role]))
+        .toEqual([['user-1', 'contributor'], ['user-2', 'manager']]);
+    });
+
+    test('POST without a role lets Project API make a contributor', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2' });
+
+      expect(response.status).toBe(201);
+      expect(projectApi.calls(PROJECT.users, 'POST')[0].body).toEqual({ user_id: 2 });
+    });
+
+    test('POST refuses an agent outside the team of a Responsable', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+      const response = await as(request(app).post('/projects/project-1/members'), marie).send({ userId: 'user-1' });
+
+      expect(response.status).toBe(403);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(projectApi.calls(PROJECT.users, 'POST')).toHaveLength(0);
+    });
+
+    test.each([
+      ['an unknown role', { userId: 'user-2', role: 'owner' }, 'body.role'],
+      ['a userId of another kind', { userId: 'project-2' }, 'body.userId'],
+    ])('POST refuses %s with a 400', async (_name, body, path) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send(body);
+
+      expect(response.status).toBe(400);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+    });
+
+    test('PATCH changes the role of a member', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin, alice]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('patch', PROJECT.user, ({ body }) => {
+        bundle.users = bundle.users.map((entry) => (entry.id === alice.id ? { ...entry, role: (body as { role: 'reader' }).role } : entry));
+        return { status: 204 };
+      });
+
+      const response = await as(request(app).patch('/projects/project-1/members/user-2'), admin).send({ role: 'reader' });
+
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1/members/user-2', response);
+      expect(projectApi.calls(PROJECT.user, 'PATCH')[0]).toMatchObject({ pathParams: { projectId: '1', userId: '2' }, body: { role: 'reader' } });
+      expect(response.body.members.find((entry: { id: string }) => entry.id === 'user-2').role).toBe('reader');
+    });
+
+    test.each([
+      [404, 'Not a member.'],
+      [409, 'The owner keeps the manager role.'],
+    ])('PATCH relays the %s of Project API', async (status, message) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+      projectApi.on('patch', PROJECT.user, textError(status, message));
+
+      const response = await as(request(app).patch('/projects/project-1/members/user-9'), admin).send({ role: 'reader' });
+
+      expect(response.status).toBe(status);
+      expectBffContract('patch', '/projects/project-1/members/user-9', response);
+      expect(JSON.stringify(response.body)).not.toContain(message);
+    });
+
+    test('DELETE removes a member, and relays the 409 of the owner', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
+
+      const removed = await as(request(app).delete('/projects/project-1/members/user-2'), admin);
+      projectApi.on('delete', PROJECT.user, textError(409, 'The owner cannot be removed.'));
+      const owner = await as(request(app).delete('/projects/project-1/members/user-1'), admin);
+
+      expect([removed.status, owner.status]).toEqual([204, 409]);
+      expectBffContract('delete', '/projects/project-1/members/user-2', removed);
+      expectBffContract('delete', '/projects/project-1/members/user-1', owner);
+    });
+
+    test('a plain member cannot change the members, and a malformed user id is a 400', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice]) } });
+
+      const refused = await Promise.all([
+        as(request(app).patch('/projects/project-1/members/user-2'), alice).send({ role: 'manager' }),
+        as(request(app).delete('/projects/project-1/members/user-2'), alice),
+      ]);
+      const malformed = await as(request(app).delete('/projects/project-1/members/task-2'), alice);
+
+      expect(refused.map((response) => response.status)).toEqual([403, 403]);
+      expect(malformed.status).toBe(400);
+      expectBffContract('delete', '/projects/project-1/members/task-2', malformed);
+      expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+    });
+
+    test('PATCH /projects/:id with assigneeIds keeps the owner Project API refuses to remove', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
+      projectApi.on('delete', PROJECT.user, ({ pathParams }) => (
+        pathParams.userId === String(admin.id) ? textError(409, 'The owner cannot be removed.') : { status: 204 }
+      ));
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-3', assigneeIds: [] });
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.user, 'DELETE').map((call) => call.pathParams.userId).sort()).toEqual(['1', '2']);
+    });
+  });
+});

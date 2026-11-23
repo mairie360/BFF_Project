@@ -3527,6 +3527,1198 @@
       ]
     },
     {
+      "name": "MAIR-1088 Member roles",
+      "item": [
+        {
+          "name": "MAIR-1088 Create a project for the member roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman member roles {{run_id}}\",\n  \"description\": \"\",\n  \"status\": \"todo\",\n  \"priority\": \"low\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"\",\n  \"groupId\": \"group-4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The creator manages the project\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.project.myRole).to.be.oneOf(['manager', null]);",
+                  "    pm.expect(body.project.permissions.canEdit).to.eql(true);",
+                  "    pm.environment.set('members_project_id', body.project.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The agent does not see the project yet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 A user who does not see the project cannot add a member (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{agent_user_id}}\",\n  \"role\": \"manager\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 An unknown role answers 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{agent_user_id}}\",\n  \"role\": \"owner\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});",
+                  "pm.test(\"The role field is named\", function () {",
+                  "    pm.expect(pm.response.json().error.details.map((detail) => detail.path)).to.include('body.role');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 Add the agent as a reader",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{agent_user_id}}\",\n  \"role\": \"reader\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The agent is a reader with a load\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const agent = body.members.find((entry) => entry.id === `user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(agent.role).to.eql('reader');",
+                  "    pm.expect(agent.load).to.eql({ tasksOpen: 0, tasksTotal: 0 });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 Adding the agent again answers 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{agent_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The reader sees the project without managing it",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Role reader, no management right\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.project.myRole).to.eql('reader');",
+                  "    pm.expect(body.project.permissions.canEdit).to.eql(false);",
+                  "    pm.expect(body.project.members.map((entry) => entry.role)).to.include('reader');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 A reader cannot change a role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{agent_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{agent_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"manager\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 A reader cannot add a milestone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/milestones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "milestones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman refused milestone\",\n  \"dueDate\": \"2027-01-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 Make the agent a manager of the project",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{agent_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{agent_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"manager\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent is a manager\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const agent = body.members.find((entry) => entry.id === `user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(agent.role).to.eql('manager');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The manager member manages the project",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Role manager and every management right\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.project.myRole).to.eql('manager');",
+                  "    pm.expect(body.project.permissions.canEdit).to.eql(true);",
+                  "    pm.expect(body.project.permissions.canCreateTask).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The manager member is a manager on the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman member roles {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman member roles {{run_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"myRole and the rights of the page item\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const project = body.projects.find((entry) => entry.id === pm.environment.get('members_project_id'));",
+                  "    pm.expect(project.myRole).to.eql('manager');",
+                  "    pm.expect(project.permissions.canEdit).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The manager member updates the project",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated by a manager member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The update is saved\", function () {",
+                  "    pm.expect(pm.response.json().project.description).to.eql('Updated by a manager member');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The manager member adds a milestone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/milestones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "milestones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman manager milestone\",\n  \"dueDate\": \"2027-01-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The manager member creates a task assigned to themselves",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "tasks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman manager task {{run_id}}\",\n  \"status\": \"todo\",\n  \"priority\": \"low\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The task is editable by the manager member\", function () {",
+                  "    pm.expect(pm.response.json().permissions.canEdit).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The load of the member counts the task",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"One open task for the agent\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const agent = body.project.members.find((entry) => entry.id === `user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(agent.load).to.eql({ tasksOpen: 1, tasksTotal: 1 });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The owner keeps the manager role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{admin_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{admin_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"reader\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The owner cannot be removed",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{admin_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{admin_user_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 A user id must be user-<id>",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/task-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "task-1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"reader\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 Remove the agent",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{agent_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{agent_user_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The role of a former member answers 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}/members/user-{{agent_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}",
+                "members",
+                "user-{{agent_user_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"reader\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 The former member no longer sees the project",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1088 Delete the member roles project",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{members_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{members_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Tasks",
       "item": [
         {

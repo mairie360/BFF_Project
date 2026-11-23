@@ -87,7 +87,8 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     await requireAssignableUsers(caller, user, [
         ...(body.responsibleId ? [body.responsibleId] : []),
         ...(body.assigneeIds ?? []),
-    ]);
+    // The current members stay assignable by whoever manages the project (MAIR-1088).
+    ], async () => current.users.map((member) => member.id));
 
     const groupId = body.groupId === undefined ? undefined : parseGroupIdField(body.groupId);
     if (groupId !== undefined) {
@@ -148,7 +149,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     }
     res.status(200).json({
         project: buildProjectDtoForUser(user, bundle),
-        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
     });
 });
 

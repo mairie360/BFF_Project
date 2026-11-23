@@ -155,6 +155,13 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - MAIR-1087: tasks carry `startDate` (Project API `start_date`, `null` without one) on every read; `POST …/tasks` and
   `PATCH …/tasks/{taskId}` take it (absent keeps, `null` / `""` clears on update); `requireStartBeforeDue` answers the
   400 on `body.startDate` when both dates are sent, Project API's 400 otherwise.
+- MAIR-1088: members carry their `role` (`manager` / `contributor` / `reader`; page items `members` + `myRole`, detail
+  `members` with a `load` counted on the active tasks). A `manager` member manages the project: `getProjectPermissions` /
+  `getTaskPermissions` take Project API's `can_manage` (`apiCanManage`) on top of the role, the project guards read it
+  from the bundle, the task guards from `callerManagesProject` (no call for a manager role, else `GET /projects/{id}/`
+  with one task), and `requireAssignableUsers` also accepts the members of the project. `src/routes/Project/members.ts`:
+  `POST /projects/{projectId}/members`, `PATCH` / `DELETE /projects/{projectId}/members/{userId}`; the `assigneeIds`
+  sync skips the owner Project API refuses to remove (409).
 
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
@@ -186,7 +193,8 @@ progress, dueDate) are **derived from a project's tasks**, not stored.
 ### Permissions & roles
 
 Roles: `Admin`, `Maire`, `Responsable`, `User`, `Guest`. `isGlobalProjectRole` = Admin/Maire (see
-everything); `canManageProjects` also includes Responsable. `getProjectPermissions` /
+everything); `canManageProjects` also includes Responsable; a `manager` member of a project (Project API's `can_manage`,
+MAIR-1088) manages that project whatever their role. `getProjectPermissions` /
 `getTaskPermissions` compute booleans per request (SQL visibility subqueries when DB access is on);
 `src/routes/Project/project_access.ts` wraps them into `require*` guards. Every response payload
 embeds the resolved `permissions` / `access` block for the frontend.

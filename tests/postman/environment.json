@@ -121,6 +121,24 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "milestone_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "planned_task_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "members_project_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ]
 }

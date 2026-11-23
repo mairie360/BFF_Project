@@ -3,6 +3,7 @@ import type { TaskView } from '@mairie360/project-api-openapi/model';
 import { parseUserId } from './project_helpers';
 import { canManageProjects, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
 import {
+  callerManagesProject,
   getProjectBundle,
   getProjectTask,
   getProjectPermissions,
@@ -31,6 +32,8 @@ export type TaskAccess = {
   permissions: ProjectPermissions;
   task: TaskView;
   taskPermissions: TaskPermissions;
+  /** Whether the caller manages the task's project (their role, or Project API's `can_manage`, MAIR-1088). */
+  projectCanManage: boolean;
 };
 
 export function requireManagerRole(user: ProjectUserContext): void {
@@ -39,19 +42,30 @@ export function requireManagerRole(user: ProjectUserContext): void {
   }
 }
 
+/**
+ * Refuses (403) agents the caller may not assign: the agents of their team (`listAssignableUsers`), plus, when given,
+ * the current members of the project (`projectMembers`, read only if needed): a member who manages the project
+ * (MAIR-1088) assigns its members whatever their team.
+ */
 export async function requireAssignableUsers(
   caller: Caller,
   user: ProjectUserContext,
   publicUserIds: string[],
+  projectMembers?: () => Promise<number[]>,
 ): Promise<void> {
   if (isGlobalProjectRole(user.role) || publicUserIds.length === 0) return;
 
   const assignableUsers = await listAssignableUsers(caller, user);
   const allowedIds = new Set(assignableUsers.map((entry) => entry.id));
-  const invalidIds = Array.from(new Set(publicUserIds)).filter((publicId) => {
+  const outside = (ids: Set<number>) => Array.from(new Set(publicUserIds)).filter((publicId) => {
     const userId = parseUserId(publicId);
-    return userId === null || !allowedIds.has(userId);
+    return userId === null || !ids.has(userId);
   });
+  let invalidIds = outside(allowedIds);
+  if (invalidIds.length > 0 && projectMembers) {
+    for (const id of await projectMembers()) allowedIds.add(id);
+    invalidIds = outside(allowedIds);
+  }
 
   if (invalidIds.length > 0) {
     throw new HttpError(403, 'You can only assign agents of your team.');
@@ -61,7 +75,7 @@ export async function requireAssignableUsers(
 async function loadProjectAccess(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess | null> {
   const bundle = await getProjectBundle(caller, projectId);
   if (!bundle) return null;
-  return { user, bundle, permissions: getProjectPermissions(user, true) };
+  return { user, bundle, permissions: getProjectPermissions(user, true, bundle.project.can_manage) };
 }
 
 export async function requireProjectView(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess> {
@@ -81,13 +95,18 @@ export async function requireProjectManagement(caller: Caller, user: ProjectUser
  * the task is not one of its tasks. Project API answers it only when the project is visible to the caller.
  */
 async function loadTaskAccess(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
-  const task = await getProjectTask(caller, projectId, taskId);
+  // A manager role needs no project read; another caller may still manage it as a `manager` member (MAIR-1088).
+  const [task, projectCanManage] = await Promise.all([
+    getProjectTask(caller, projectId, taskId),
+    callerManagesProject(caller, user, projectId),
+  ]);
   if (!task) throw new HttpError(404, 'Task not found or not visible.');
   return {
     user,
-    permissions: getProjectPermissions(user, true),
+    permissions: getProjectPermissions(user, true, projectCanManage),
     task,
-    taskPermissions: getTaskPermissions(user, task.assigned_to),
+    taskPermissions: getTaskPermissions(user, task.assigned_to, projectCanManage),
+    projectCanManage,
   };
 }
 

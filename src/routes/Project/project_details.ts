@@ -50,7 +50,7 @@ router.get('/:projectId', async (req: Request, res: Response) => {
 
   const { user, bundle } = await requireProjectView(caller, getProjectUserContext(res), projectId);
   const taskItems = bundle.tasks
-    .map((task) => buildTaskDtoForUser(user, task, bundle.users))
+    .map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage))
     .filter((task) => task.permissions.canView);
 
   res.status(200).json({
