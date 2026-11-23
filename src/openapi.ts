@@ -17,6 +17,9 @@ import './routes/Project/task_collaboration';
 import './routes/Project/archived_tasks';
 import './routes/Project/statuses';
 import './routes/Project/milestones';
+import './routes/Project/members';
+import './routes/Project/activity';
+import './routes/Project/bulk_delete';
 import './routes/Project/templates';
 import './routes/Project/groups';
 

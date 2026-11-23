@@ -90,9 +90,10 @@ router.get("/", async (req: Request, res: Response) => {
     // The members offered come from the Core directory, restricted to what the caller may assign.
     listAssignableUsers(caller, user),
   ]);
-  // Every listed project is visible to the caller.
-  const permissions = getProjectPermissions(user, true);
-  const projects = result.projects.map((project) => mapProjectListItemToDto(project, permissions));
+  // Every listed project is visible to the caller; Project API's `can_manage` adds the projects they manage as a
+  // `manager` member (MAIR-1088).
+  const projects = result.projects.map((project) =>
+    mapProjectListItemToDto(project, getProjectPermissions(user, true, project.can_manage)));
   const summary = summaryFromCounts(result);
   const members = collectMembers([assignable]);
 

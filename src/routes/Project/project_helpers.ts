@@ -19,6 +19,8 @@ import type {
 } from "@mairie360/project-api-openapi/model";
 import {
   Milestone as MilestoneSchema,
+  ProjectMember as ProjectMemberSchema,
+  ProjectMemberSummary as ProjectMemberSummarySchema,
   Person as PersonSchema,
   ProjectListItem as ProjectListItemSchema,
   ProjectDetail as ProjectDetailSchema,
@@ -49,6 +51,8 @@ export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
 export type BffProjectDetail = z.infer<typeof ProjectDetailSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
 export type BffMilestone = z.infer<typeof MilestoneSchema>;
+export type BffProjectMember = z.infer<typeof ProjectMemberSchema>;
+export type BffProjectMemberSummary = z.infer<typeof ProjectMemberSummarySchema>;
 
 // A member's name may be missing in Project API (deleted user): the BFF contract replaces it.
 export type User = ApiUser;
@@ -245,8 +249,22 @@ export async function syncProjectUsersOnApi(
       .map((userId) => projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId }, options))),
     ...members
       .filter((user) => !desiredUserIds.has(user.id))
-      .map((user) => projectCall(caller, (options) => projectApi.removeUserFromProject(projectId, user.id, options))),
+      .map((user) => removeMemberUnlessOwner(caller, projectId, user.id)),
   ]);
+}
+
+/**
+ * Removes a member; the owner of the project cannot be removed (Project API's 409, MAIR-1088) and simply stays, so that
+ * rewriting the members through `assigneeIds` keeps working.
+ */
+async function removeMemberUnlessOwner(caller: Caller, projectId: number, userId: number): Promise<void> {
+  try {
+    await projectCall({ ...caller, declared: [...caller.declared, 409] }, (options) =>
+      projectApi.removeUserFromProject(projectId, userId, options));
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 409) return;
+    throw error;
+  }
 }
 
 /** Adds the given members (public `user-<id>` ids) that are not already in `currentUsers`; removes nobody. */
@@ -499,9 +517,31 @@ export function mapProjectToDto(
       archived: archivedTasks,
     },
     group: project.group ? { id: groupPublicId(project.group.id), name: project.group.name } : null,
+    members: users.map((user) => mapProjectMember(user, tasks)),
+    myRole: project.my_role ?? null,
     milestones: milestones.items.map(mapMilestone),
     milestonesTotal: milestones.total,
     permissions,
+  };
+}
+
+/** A member and their role in the project (MAIR-1088). */
+export function mapProjectMemberSummary(user: User): BffProjectMemberSummary {
+  return { ...mapPerson(user), role: user.role };
+}
+
+/**
+ * A member, their role and their load (MAIR-1088), counted on the active tasks of the project (`tasks`): the archived
+ * (done) ones are only known by their total, not by assignee.
+ */
+export function mapProjectMember(user: User, tasks: TaskView[]): BffProjectMember {
+  const assigned = tasks.filter((task) => task.assigned_to === user.id);
+  return {
+    ...mapProjectMemberSummary(user),
+    load: {
+      tasksOpen: assigned.filter((task) => mapTaskStatus(task.status) !== "done").length,
+      tasksTotal: assigned.length,
+    },
   };
 }
 
@@ -559,6 +599,8 @@ export function mapProjectListItemToDto(
     responsible,
     // The first members only: the project detail lists them all.
     assignees: members.length > 0 ? members.map((member) => mapPerson(member)) : [responsible],
+    members: members.map(mapProjectMemberSummary),
+    myRole: project.my_role ?? null,
     labels: [],
     progress: project.tasks_total > 0 ? Math.round((project.tasks_completed / project.tasks_total) * 100) : 0,
     dueDate: project.due_date ?? nowIso(),
@@ -849,16 +891,19 @@ export function buildPagination(
 
 export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectDetail {
   // The project comes from a bundle already read: it is visible to the caller.
-  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, getProjectPermissions(user, true), {
+  const permissions = getProjectPermissions(user, true, bundle.project.can_manage);
+  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, permissions, {
     items: bundle.milestones,
     total: bundle.milestonesTotal,
   });
 }
 
+/** `projectCanManage`: Project API's `can_manage` of the task's project for the caller (MAIR-1088). */
 export function buildTaskDtoForUser(
   user: ProjectUserContext,
   task: TaskView,
   users: User[],
+  projectCanManage = false,
 ): BffProjectTask {
-  return mapTaskToDto(task, users, getTaskPermissions(user, task.assigned_to));
+  return mapTaskToDto(task, users, getTaskPermissions(user, task.assigned_to, projectCanManage));
 }

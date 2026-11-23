@@ -56,6 +56,10 @@ const MANAGERS = { first: 103001, count: 100 };
 const HOT_MANAGERS = 15;
 const HOT_PROJECT_ID = 'project-12';
 const HOT_TASK_ID = 'task-87';
+// Seeded agents of init-perf.sql added to the working project (MAIR-1088): one by prepare(), whose role PATCH
+// changes, one by POST .../members, removed by DELETE .../members/{userId}.
+const WORKING_MEMBER_ID = AGENTS.first;
+const DISPOSABLE_MEMBER_ID = AGENTS.first + 1;
 
 const PROFILES = {
   ci: { readVus: 30, crudVus: 2, rushRate: 30 },
@@ -344,6 +348,67 @@ const handlers = {
     });
   },
 
+  // --- Activity, comments and bulk deletion (MAIR-1089) ---
+  // The hot project's activity: the 1 000 history entries of its task 87 at least, read by a Responsable who sees it.
+  'GET /projects/{projectId}/activity': ({ request }) =>
+    check(request({ path: { projectId: HOT_PROJECT_ID }, query: { page: 1 + randomInt(10), limit: 50 }, headers: randomHotManager() }), {
+      'activity 200': (r) => r.status === 200,
+      'activity reads the hot project': (r) => r.status === 200 && r.json('items').length === 50 && r.json('pagination.total') >= 1000,
+    }),
+  'POST /projects/{projectId}/comments': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project') },
+      body: { message: 'Project comment posted by the k6 load test' },
+      headers: data.admin,
+    }), {
+      'project comment 201': (r) => r.status === 201,
+      'project comment is a comment entry': (r) => r.status === 201 && r.json('kind') === 'comment',
+    }),
+  // A project of its own, created here and deleted by the bulk deletion.
+  'POST /projects/bulk-delete': ({ request, data }) => {
+    const created = http.post(coverage.url('POST /projects'), JSON.stringify(projectBody(unique('k6 bulk-deleted project'))), {
+      headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin),
+      tags: { op: 'POST /projects' },
+    });
+    const projectId = need(((json(created) || {}).project || {}).id, 'project to bulk-delete');
+    check(request({ body: { projectIds: [projectId] }, headers: data.admin }), {
+      'bulk delete 200': (r) => r.status === 200,
+      'bulk delete deletes it': (r) => r.status === 200
+        && JSON.stringify(r.json('results')) === JSON.stringify([{ projectId, status: 'deleted' }]),
+    });
+  },
+
+  // --- Members of a project and their role (MAIR-1088) ---
+  // Disposable member of the working project (a seeded agent), removed by DELETE .../members/{userId}.
+  'POST /projects/{projectId}/members': ({ request, data }) => {
+    const res = request({
+      path: { projectId: need(state.projectId, 'working project') },
+      body: { userId: `user-${DISPOSABLE_MEMBER_ID}`, role: 'reader' },
+      headers: data.admin,
+    });
+    check(res, {
+      'add member 201': (r) => r.status === 201,
+      'add member lists them as a reader': (r) => r.status === 201
+        && r.json('members').some((m) => m.id === `user-${DISPOSABLE_MEMBER_ID}` && m.role === 'reader'),
+    });
+  },
+  'DELETE /projects/{projectId}/members/{userId}': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project'), userId: `user-${DISPOSABLE_MEMBER_ID}` },
+      headers: data.admin,
+    }), { 'remove member 204': (r) => r.status === 204 }),
+  // The working member added by prepare() becomes a manager of the working project.
+  'PATCH /projects/{projectId}/members/{userId}': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project'), userId: `user-${WORKING_MEMBER_ID}` },
+      body: { role: 'manager' },
+      headers: data.admin,
+    }), {
+      'member role 200': (r) => r.status === 200,
+      'member role is manager': (r) => r.status === 200
+        && r.json('members').some((m) => m.id === `user-${WORKING_MEMBER_ID}` && m.role === 'manager'),
+    }),
+
   // --- Milestones of a project (MAIR-1086) ---
   // The hot project's milestones, read by a Responsable who sees it (the volume seed has none: an empty page).
   'GET /projects/{projectId}/milestones': ({ request }) =>
@@ -438,6 +503,8 @@ const readOperations = coverage.operations.filter((o) => o.method === 'GET');
 function prepare(data) {
   const body = projectBody(unique('k6 working project'));
   body.taskItems = [taskBody(unique('k6 working task'))];
+  // The working member whose role PATCH /projects/{projectId}/members/{userId} changes (MAIR-1088).
+  body.assigneeIds = body.assigneeIds.concat(`user-${WORKING_MEMBER_ID}`);
   const res = http.post(coverage.url('POST /projects'), JSON.stringify(body), {
     headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin),
     tags: { op: 'POST /projects' },

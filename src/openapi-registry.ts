@@ -46,6 +46,29 @@ export const Person = z.object({
 });
 
 
+// Role of a member in a project (MAIR-1088): a `manager` manages the project like the Responsable, Maire and Admin roles.
+const MEMBER_ROLES = ['manager', 'contributor', 'reader'] as const;
+export const ProjectMemberRole = z.enum(MEMBER_ROLES).openapi('ProjectMemberRole', {
+  description: 'Role of a member in the project: `manager` manages it (like the Responsable, Maire and Admin roles), `contributor` and `reader` have the rights of a member. The owner of the project is always `manager`',
+  example: 'contributor',
+});
+
+// A member of a project with their role in it.
+export const ProjectMemberSummary = Person.extend({
+  role: ProjectMemberRole,
+}).openapi('ProjectMemberSummary', { description: 'A member of a project and their role in it (MAIR-1088)' });
+
+// A member of a project with their role and their load in it (project detail).
+export const ProjectMember = ProjectMemberSummary.extend({
+  load: z.object({
+    tasksOpen: z.number().int().openapi({ description: 'Active tasks of the project assigned to the member that are not done', example: 3 }),
+    tasksTotal: z.number().int().openapi({
+      description: 'Active tasks of the project assigned to the member. Archived (done) tasks are not counted: the detail only holds their total',
+      example: 3,
+    }),
+  }).openapi({ description: 'Load of the member in the project, counted on its active tasks' }),
+}).openapi('ProjectMember', { description: 'A member of a project, their role and their load in it (MAIR-1088)' });
+
 // A Core API group linked to a project: its current and future members all see the project.
 export const ProjectGroup = z.object({
     id: z.string().openapi({ description: 'Id of the group, to send as `groupId`', example: 'group-3' }),
@@ -88,6 +111,13 @@ export const ProjectListItem = z.object({
     progress: z.number().min(0).max(100).openapi({ description: 'Progress of the project, in percent', example: 75 }),
     dueDate: z.string().openapi({ description: 'Due date of the project, ISO 8601', example: '2024-12-31T23:59:59Z' }),
     createdAt: z.string().openapi({ description: 'Creation date of the project, ISO 8601', example: '2024-01-01T12:00:00Z' }),
+    members: z.array(ProjectMemberSummary).openapi({
+      description: 'Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only',
+    }),
+    // Inline: a nullable reference becomes an `allOf` that refuses `null`.
+    myRole: z.enum(MEMBER_ROLES).nullable().openapi({
+      description: 'Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project',
+    }),
     budgetVoted: z.number().int().nullable().openapi({
       description: 'Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in',
       example: 1250000,
@@ -173,6 +203,7 @@ export const Milestone = z.object({
 // A project as the detail answers return it: the list item plus its group and milestones (not in `GET /projects-page`).
 export const ProjectDetail = ProjectListItem.extend({
   group: ProjectGroup.nullable().openapi({ description: 'Group linked to the project, `null` without one' }),
+  members: z.array(ProjectMember).openapi({ description: 'Every member of the project, their role and their load (MAIR-1088)' }),
   milestones: z.array(Milestone).openapi({
     description: 'Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)',
   }),
@@ -720,6 +751,110 @@ export const DeletedProjectTemplateParams = ProjectTemplateParams.extend({
   // Not seeded: a scan replaying the example gets a 404 and deletes nothing.
   templateId: ProjectTemplateParams.shape.templateId.openapi({ example: 'template-999999' }),
 });
+
+// =====================
+// MEMBERS (MAIR-1088)
+// =====================
+
+const MemberUserId = z.string().regex(/^user-\d{1,15}$/, 'Expected a user-<id> identifier').openapi({ example: 'user-3' });
+
+export const ProjectMemberParams = z.object({
+  projectId: ProjectIdParams.shape.projectId,
+  userId: MemberUserId.openapi({ description: 'Id of the member', example: 'user-3' }),
+});
+
+export const DeletedProjectMemberParams = ProjectMemberParams.extend({
+  // Not a member of the seeded projects: a scan replaying the example removes nobody.
+  userId: ProjectMemberParams.shape.userId.openapi({ example: 'user-999999' }),
+});
+
+export const AddProjectMemberBody = z.object({
+  userId: MemberUserId.openapi({ description: 'Agent to add (`user-<id>`, one the caller may assign)', example: 'user-3' }),
+  role: ProjectMemberRole.optional().openapi({ description: 'Role in the project; absent: `contributor`' }),
+}).strict();
+registry.register('AddProjectMemberBody', AddProjectMemberBody);
+
+export const UpdateProjectMemberBody = z.object({
+  role: ProjectMemberRole,
+}).strict();
+registry.register('UpdateProjectMemberBody', UpdateProjectMemberBody);
+
+export const ProjectMembers = z.object({
+  members: z.array(ProjectMember).openapi({ description: 'Every member of the project, as re-read from Project API' }),
+}).openapi('ProjectMembers');
+
+// =====================
+// ACTIVITY, PROJECT COMMENTS AND BULK DELETION (MAIR-1089)
+// =====================
+
+export const ActivityKind = z.enum(['comment', 'task_created', 'task_updated', 'status_changed']).openapi('ActivityKind', {
+  description: 'A comment on the project, or an entry of the history of one of its tasks',
+  example: 'comment',
+});
+
+export const ActivityItem = z.object({
+  kind: ActivityKind,
+  id: z.string().openapi({
+    description: '`comment-<n>` for a comment, `history-<n>` for a history entry (two id spaces)',
+    example: 'comment-12',
+  }),
+  taskId: z.string().nullable().openapi({ description: 'Task the history entry is about, `null` for a comment', example: 'task-4' }),
+  taskTitle: z.string().nullable().openapi({ description: 'Current title of that task, `null` for a comment', example: 'Commander le mobilier' }),
+  author: z.object({
+    id: z.string().openapi({ example: 'user-2' }),
+    name: z.string().openapi({ example: 'Alice Martin' }),
+  }).nullable().openapi({ description: 'Author of the entry, `null` for a write of the platform itself or an author who no longer exists' }),
+  message: z.string().nullable().openapi({ description: 'Text of a comment, `null` for a history entry', example: 'Devis reçu.' }),
+  changes: z.record(z.string(), z.unknown()).nullable().openapi({
+    description: 'Changed fields of a history entry, `{ "<field>": { "from", "to" } }`; `null` for a comment and a task creation',
+  }),
+  label: z.string().openapi({ description: 'Human-readable label (`Comment` for a comment)', example: 'Status changed: À faire → En cours' }),
+  createdAt: z.string().openapi({ description: 'Date of the entry, ISO 8601', example: '2026-11-20T08:00:00.000Z' }),
+}).openapi('ActivityItem', { description: 'An entry of the activity of a project (MAIR-1089)' });
+
+export const ProjectActivity = z.object({
+  items: z.array(ActivityItem).openapi({ description: 'Entries of the page, newest first' }),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number().openapi({ description: 'Number of entries of the project (its comments and the history of all its tasks)' }),
+    hasNextPage: z.boolean(),
+  }),
+}).openapi('ProjectActivity');
+
+/** Page of the activity: `page` from 1, `limit` from 1 to 500 (50 by default). */
+export const ActivityQuery = z.object({
+  page: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_PAGE).optional().openapi({ example: 1 }),
+  limit: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_LIMIT).optional().openapi({ example: 50 }),
+});
+
+export const ProjectCommentBody = z.object({
+  message: noMarkup(z.string().trim().min(1).max(2_000)).openapi({
+    description: 'Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`',
+    example: 'Comment posted by the ZAP scan',
+  }),
+}).strict();
+registry.register('ProjectCommentBody', ProjectCommentBody);
+
+const ProjectPublicId = z.string().regex(/^project-\d{1,15}$/, 'Expected a project-<id> identifier').openapi({ example: 'project-999999' });
+
+export const BulkDeleteProjectsBody = z.object({
+  projectIds: z.array(ProjectPublicId).min(1).max(100).openapi({
+    description: 'Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once',
+    // Not seeded: a scan replaying the example deletes nothing.
+    example: ['project-999999'],
+  }),
+}).strict();
+registry.register('BulkDeleteProjectsBody', BulkDeleteProjectsBody);
+
+export const BulkDeleteProjectsResult = z.object({
+  results: z.array(z.object({
+    projectId: z.string().openapi({ example: 'project-9' }),
+    status: z.enum(['deleted', 'not_found', 'forbidden']).openapi({
+      description: '`deleted`; `not_found` for a project unknown or not visible to the caller; `forbidden` for one they see but may not delete',
+    }),
+  })).openapi({ description: 'One result per project, in the order Project API handled them' }),
+}).openapi('BulkDeleteProjectsResult');
 
 // =====================
 // MILESTONES (MAIR-1086)
