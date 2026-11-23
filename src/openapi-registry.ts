@@ -784,6 +784,79 @@ export const ProjectMembers = z.object({
 }).openapi('ProjectMembers');
 
 // =====================
+// ACTIVITY, PROJECT COMMENTS AND BULK DELETION (MAIR-1089)
+// =====================
+
+export const ActivityKind = z.enum(['comment', 'task_created', 'task_updated', 'status_changed']).openapi('ActivityKind', {
+  description: 'A comment on the project, or an entry of the history of one of its tasks',
+  example: 'comment',
+});
+
+export const ActivityItem = z.object({
+  kind: ActivityKind,
+  id: z.string().openapi({
+    description: '`comment-<n>` for a comment, `history-<n>` for a history entry (two id spaces)',
+    example: 'comment-12',
+  }),
+  taskId: z.string().nullable().openapi({ description: 'Task the history entry is about, `null` for a comment', example: 'task-4' }),
+  taskTitle: z.string().nullable().openapi({ description: 'Current title of that task, `null` for a comment', example: 'Commander le mobilier' }),
+  author: z.object({
+    id: z.string().openapi({ example: 'user-2' }),
+    name: z.string().openapi({ example: 'Alice Martin' }),
+  }).nullable().openapi({ description: 'Author of the entry, `null` for a write of the platform itself or an author who no longer exists' }),
+  message: z.string().nullable().openapi({ description: 'Text of a comment, `null` for a history entry', example: 'Devis reçu.' }),
+  changes: z.record(z.string(), z.unknown()).nullable().openapi({
+    description: 'Changed fields of a history entry, `{ "<field>": { "from", "to" } }`; `null` for a comment and a task creation',
+  }),
+  label: z.string().openapi({ description: 'Human-readable label (`Comment` for a comment)', example: 'Status changed: À faire → En cours' }),
+  createdAt: z.string().openapi({ description: 'Date of the entry, ISO 8601', example: '2026-11-20T08:00:00.000Z' }),
+}).openapi('ActivityItem', { description: 'An entry of the activity of a project (MAIR-1089)' });
+
+export const ProjectActivity = z.object({
+  items: z.array(ActivityItem).openapi({ description: 'Entries of the page, newest first' }),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number().openapi({ description: 'Number of entries of the project (its comments and the history of all its tasks)' }),
+    hasNextPage: z.boolean(),
+  }),
+}).openapi('ProjectActivity');
+
+/** Page of the activity: `page` from 1, `limit` from 1 to 500 (50 by default). */
+export const ActivityQuery = z.object({
+  page: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_PAGE).optional().openapi({ example: 1 }),
+  limit: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_LIMIT).optional().openapi({ example: 50 }),
+});
+
+export const ProjectCommentBody = z.object({
+  message: noMarkup(z.string().trim().min(1).max(2_000)).openapi({
+    description: 'Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`',
+    example: 'Comment posted by the ZAP scan',
+  }),
+}).strict();
+registry.register('ProjectCommentBody', ProjectCommentBody);
+
+const ProjectPublicId = z.string().regex(/^project-\d{1,15}$/, 'Expected a project-<id> identifier').openapi({ example: 'project-999999' });
+
+export const BulkDeleteProjectsBody = z.object({
+  projectIds: z.array(ProjectPublicId).min(1).max(100).openapi({
+    description: 'Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once',
+    // Not seeded: a scan replaying the example deletes nothing.
+    example: ['project-999999'],
+  }),
+}).strict();
+registry.register('BulkDeleteProjectsBody', BulkDeleteProjectsBody);
+
+export const BulkDeleteProjectsResult = z.object({
+  results: z.array(z.object({
+    projectId: z.string().openapi({ example: 'project-9' }),
+    status: z.enum(['deleted', 'not_found', 'forbidden']).openapi({
+      description: '`deleted`; `not_found` for a project unknown or not visible to the caller; `forbidden` for one they see but may not delete',
+    }),
+  })).openapi({ description: 'One result per project, in the order Project API handled them' }),
+}).openapi('BulkDeleteProjectsResult');
+
+// =====================
 // MILESTONES (MAIR-1086)
 // =====================
 

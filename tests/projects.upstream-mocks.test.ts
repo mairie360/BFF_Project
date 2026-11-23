@@ -40,6 +40,9 @@ const PROJECT = {
   status: '/api/v1/projects/{projectId}/statuses/{statusId}/',
   milestones: '/api/v1/projects/{projectId}/milestones/',
   milestone: '/api/v1/projects/{projectId}/milestones/{milestoneId}/',
+  activity: '/api/v1/projects/{projectId}/activity/',
+  projectComments: '/api/v1/projects/{projectId}/comments/',
+  bulkDelete: '/api/v1/projects/bulk-delete/',
   templates: '/api/v1/project-templates/',
   template: '/api/v1/project-templates/{templateId}/',
   health: '/health',
@@ -2783,5 +2786,131 @@ describe('MAIR-1088 member roles', () => {
       expect(response.status).toBe(200);
       expect(projectApi.calls(PROJECT.user, 'DELETE').map((call) => call.pathParams.userId).sort()).toEqual(['1', '2']);
     });
+  });
+});
+
+describe('MAIR-1089 activity, project comments and bulk deletion', () => {
+  const comment = {
+    kind: 'comment' as const, id: 12, task_id: null, task_title: null, author_id: alice.id, author_name: 'Alice Martin',
+    message: 'Devis reçu.', changes: null, label: 'Comment', created_at: '2026-11-20T08:00:00.000Z',
+  };
+  const statusChange = {
+    kind: 'status_changed' as const, id: 40, task_id: 4, task_title: 'Commander', author_id: null, author_name: null,
+    message: null, changes: { status: { from: 'Todo', to: 'InProgress' } }, label: 'Status changed: À faire → En cours',
+    created_at: '2026-11-19T08:00:00.000Z',
+  };
+
+  test('GET /projects/:id/activity pages the comments and the task history with public ids', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('get', PROJECT.activity, { body: { items: [comment, statusChange], total: 7 } });
+
+    const response = await as(request(app).get('/projects/project-1/activity?page=2&limit=2'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/activity', response);
+    expect(response.body.items).toEqual([
+      {
+        kind: 'comment', id: 'comment-12', taskId: null, taskTitle: null, author: { id: 'user-2', name: 'Alice Martin' },
+        message: 'Devis reçu.', changes: null, label: 'Comment', createdAt: '2026-11-20T08:00:00.000Z',
+      },
+      {
+        kind: 'status_changed', id: 'history-40', taskId: 'task-4', taskTitle: 'Commander', author: null, message: null,
+        changes: { status: { from: 'Todo', to: 'InProgress' } }, label: 'Status changed: À faire → En cours',
+        createdAt: '2026-11-19T08:00:00.000Z',
+      },
+    ]);
+    expect(response.body.pagination).toEqual({ page: 2, limit: 2, total: 7, hasNextPage: true });
+    expect(pageOf(projectApi.calls(PROJECT.activity, 'GET')[0].url)).toEqual({ limit: 2, offset: 2 });
+  });
+
+  test('GET /projects/:id/activity defaults to 50 entries and relays the 404 of an invisible project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('get', PROJECT.activity, textError(404, 'Unknown project.'));
+
+    const response = await as(request(app).get('/projects/project-1/activity'), alice);
+
+    expect(response.status).toBe(404);
+    expectBffContract('get', '/projects/project-1/activity', response);
+    expect(pageOf(projectApi.calls(PROJECT.activity, 'GET')[0].url)).toEqual({ limit: 50, offset: 0 });
+  });
+
+  test('POST /projects/:id/comments posts the trimmed comment and answers the activity entry', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projectComments, { status: 201, body: comment });
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: '  Devis reçu.  ' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/comments', response);
+    expect(projectApi.calls(PROJECT.projectComments, 'POST')[0].body).toEqual({ message: 'Devis reçu.' });
+    expect(response.body).toMatchObject({ kind: 'comment', id: 'comment-12', author: { id: 'user-2' } });
+  });
+
+  test.each([
+    ['a blank message', { message: '   ' }],
+    ['markup', { message: '<b>Devis</b>' }],
+    ['a message over 2000 characters', { message: 'a'.repeat(2_001) }],
+  ])('POST /projects/:id/comments refuses %s with a 400 before any call', async (_name, body) => {
+    signIn(alice);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/comments', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain('body.message');
+    expect(projectApi.requests).toEqual([]);
+  });
+
+  test('POST /projects/:id/comments relays the 404 of an invisible project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projectComments, textError(404, 'Unknown project.'));
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: 'Bonjour' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('post', '/projects/project-1/comments', response);
+  });
+
+  test('POST /projects/bulk-delete sends each id once and answers one result per project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.bulkDelete, { body: { results: [
+      { id: 4, status: 'deleted' }, { id: 5, status: 'forbidden' }, { id: 6, status: 'not_found' },
+    ] } });
+
+    const response = await as(request(app).post('/projects/bulk-delete'), alice)
+      .send({ projectIds: ['project-4', 'project-5', 'project-4', 'project-6'] });
+
+    expect(response.status).toBe(200);
+    expectBffContract('post', '/projects/bulk-delete', response);
+    expect(projectApi.calls(PROJECT.bulkDelete, 'POST')[0].body).toEqual({ ids: [4, 5, 6] });
+    expect(response.body.results).toEqual([
+      { projectId: 'project-4', status: 'deleted' },
+      { projectId: 'project-5', status: 'forbidden' },
+      { projectId: 'project-6', status: 'not_found' },
+    ]);
+    // Not taken for a project id by the `/:projectId` routes.
+    expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+  });
+
+  test.each([
+    ['no project', { projectIds: [] }],
+    ['more than 100 projects', { projectIds: Array.from({ length: 101 }, (_, i) => `project-${i + 1}`) }],
+    ['an id of another kind', { projectIds: ['task-4'] }],
+  ])('POST /projects/bulk-delete refuses %s with a 400 before any call', async (_name, body) => {
+    signIn(admin);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects/bulk-delete'), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/bulk-delete', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path.split('.').slice(0, 2).join('.'))).toContain('body.projectIds');
+    expect(projectApi.requests).toEqual([]);
   });
 });

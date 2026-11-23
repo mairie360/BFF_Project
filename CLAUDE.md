@@ -162,6 +162,10 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
   with one task), and `requireAssignableUsers` also accepts the members of the project. `src/routes/Project/members.ts`:
   `POST /projects/{projectId}/members`, `PATCH` / `DELETE /projects/{projectId}/members/{userId}`; the `assigneeIds`
   sync skips the owner Project API refuses to remove (409).
+- MAIR-1089: `src/routes/Project/activity.ts` (`GET /projects/{projectId}/activity`, `POST /projects/{projectId}/comments`,
+  Project API checks visibility: no BFF guard, its 404 is relayed; ids `comment-<n>` / `history-<n>`, `task-<n>`,
+  `user-<n>`) and `src/routes/Project/bulk_delete.ts` (`POST /projects/bulk-delete`, mounted before the `/:projectId`
+  routes, one result per project from Project API, no role check: a `manager` member may delete).
 
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
@@ -173,7 +177,8 @@ Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`)
 - `src/openapi.ts` imports **every route module** to populate the registry, then builds the document.
 - `src/app.ts` mounts **every route module** as an Express router.
 
-**Adding/removing a route means editing both `src/app.ts` and `src/openapi.ts`**, plus regenerating contracts.
+**Adding/removing a route means editing both `src/app.ts` and `src/openapi.ts`**, plus regenerating contracts. A route
+whose first segment after `/projects` is a fixed word (`bulk-delete`) is mounted before the `/:projectId` routers.
 `scripts/export-swagger.ts` writes `contracts/openapi.json` and a root `openapi.json` (the publish workflow's artifact path).
 
 ### Public ID convention

@@ -348,6 +348,36 @@ const handlers = {
     });
   },
 
+  // --- Activity, comments and bulk deletion (MAIR-1089) ---
+  // The hot project's activity: the 1 000 history entries of its task 87 at least, read by a Responsable who sees it.
+  'GET /projects/{projectId}/activity': ({ request }) =>
+    check(request({ path: { projectId: HOT_PROJECT_ID }, query: { page: 1 + randomInt(10), limit: 50 }, headers: randomHotManager() }), {
+      'activity 200': (r) => r.status === 200,
+      'activity reads the hot project': (r) => r.status === 200 && r.json('items').length === 50 && r.json('pagination.total') >= 1000,
+    }),
+  'POST /projects/{projectId}/comments': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project') },
+      body: { message: 'Project comment posted by the k6 load test' },
+      headers: data.admin,
+    }), {
+      'project comment 201': (r) => r.status === 201,
+      'project comment is a comment entry': (r) => r.status === 201 && r.json('kind') === 'comment',
+    }),
+  // A project of its own, created here and deleted by the bulk deletion.
+  'POST /projects/bulk-delete': ({ request, data }) => {
+    const created = http.post(coverage.url('POST /projects'), JSON.stringify(projectBody(unique('k6 bulk-deleted project'))), {
+      headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin),
+      tags: { op: 'POST /projects' },
+    });
+    const projectId = need(((json(created) || {}).project || {}).id, 'project to bulk-delete');
+    check(request({ body: { projectIds: [projectId] }, headers: data.admin }), {
+      'bulk delete 200': (r) => r.status === 200,
+      'bulk delete deletes it': (r) => r.status === 200
+        && JSON.stringify(r.json('results')) === JSON.stringify([{ projectId, status: 'deleted' }]),
+    });
+  },
+
   // --- Members of a project and their role (MAIR-1088) ---
   // Disposable member of the working project (a seeded agent), removed by DELETE .../members/{userId}.
   'POST /projects/{projectId}/members': ({ request, data }) => {

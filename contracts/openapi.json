@@ -3247,6 +3247,46 @@
         ],
         "additionalProperties": false
       },
+      "ProjectCommentBody": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "^[^<>]*$",
+            "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+            "example": "Comment posted by the ZAP scan"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "BulkDeleteProjectsBody": {
+        "type": "object",
+        "properties": {
+          "projectIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^project-\\d{1,15}$",
+              "example": "project-999999"
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once",
+            "example": [
+              "project-999999"
+            ]
+          }
+        },
+        "required": [
+          "projectIds"
+        ],
+        "additionalProperties": false
+      },
       "CreateMilestoneBody": {
         "type": "object",
         "properties": {
@@ -3752,6 +3792,179 @@
         },
         "required": [
           "members"
+        ]
+      },
+      "ProjectActivity": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "description": "Entries of the page, newest first"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number",
+                "description": "Number of entries of the project (its comments and the history of all its tasks)"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "hasNextPage"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ]
+      },
+      "ActivityItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ActivityKind"
+          },
+          "id": {
+            "type": "string",
+            "description": "`comment-<n>` for a comment, `history-<n>` for a history entry (two id spaces)",
+            "example": "comment-12"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Task the history entry is about, `null` for a comment",
+            "example": "task-4"
+          },
+          "taskTitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Current title of that task, `null` for a comment",
+            "example": "Commander le mobilier"
+          },
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "user-2"
+              },
+              "name": {
+                "type": "string",
+                "example": "Alice Martin"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Author of the entry, `null` for a write of the platform itself or an author who no longer exists"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Text of a comment, `null` for a history entry",
+            "example": "Devis reçu."
+          },
+          "changes": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {},
+            "description": "Changed fields of a history entry, `{ \"<field>\": { \"from\", \"to\" } }`; `null` for a comment and a task creation"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label (`Comment` for a comment)",
+            "example": "Status changed: À faire → En cours"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Date of the entry, ISO 8601",
+            "example": "2026-11-20T08:00:00.000Z"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "taskId",
+          "taskTitle",
+          "author",
+          "message",
+          "changes",
+          "label",
+          "createdAt"
+        ],
+        "description": "An entry of the activity of a project (MAIR-1089)"
+      },
+      "ActivityKind": {
+        "type": "string",
+        "enum": [
+          "comment",
+          "task_created",
+          "task_updated",
+          "status_changed"
+        ],
+        "description": "A comment on the project, or an entry of the history of one of its tasks",
+        "example": "comment"
+      },
+      "BulkDeleteProjectsResult": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "example": "project-9"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "deleted",
+                    "not_found",
+                    "forbidden"
+                  ],
+                  "description": "`deleted`; `not_found` for a project unknown or not visible to the caller; `forbidden` for one they see but may not delete"
+                }
+              },
+              "required": [
+                "projectId",
+                "status"
+              ]
+            },
+            "description": "One result per project, in the order Project API handled them"
+          }
+        },
+        "required": [
+          "results"
         ]
       },
       "ProjectTemplates": {
@@ -11713,6 +11926,371 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/activity": {
+      "get": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Lists the activity of a project",
+        "description": "One page of the comments of the project and of the history of all its tasks (archived ones included), newest first (MAIR-1089). Open to whoever sees the project (`404` otherwise).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "example": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entries of the page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectActivity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/comments": {
+      "post": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Comments a project",
+        "description": "Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000,
+                    "pattern": "^[^<>]*$",
+                    "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+                    "example": "Comment posted by the ZAP scan"
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The comment, as an activity entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/bulk-delete": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Deletes several projects",
+        "description": "Deletes each project the caller may delete, one by one (MAIR-1089), and answers one result per project: `deleted`, `not_found` (unknown or not visible) or `forbidden` (visible but not managed by the caller).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^project-\\d{1,15}$",
+                      "example": "project-999999"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "description": "Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once",
+                    "example": [
+                      "project-999999"
+                    ]
+                  }
+                },
+                "required": [
+                  "projectIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One result per project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDeleteProjectsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
             "content": {
               "application/json": {
                 "schema": {
