@@ -8,8 +8,8 @@ import { loadOrvalContract } from './support/orval-contract';
 import type { GetProjectResultView, ProjectListItemView } from '@mairie360/project-api-openapi/model';
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
-  agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
-  projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
+  agents, bearer, collaboration, member, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
+  milestoneView, projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
 import { captureLogs } from './support/logs';
 
@@ -38,6 +38,11 @@ const PROJECT = {
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
   statuses: '/api/v1/projects/{projectId}/statuses/',
   status: '/api/v1/projects/{projectId}/statuses/{statusId}/',
+  milestones: '/api/v1/projects/{projectId}/milestones/',
+  milestone: '/api/v1/projects/{projectId}/milestones/{milestoneId}/',
+  activity: '/api/v1/projects/{projectId}/activity/',
+  projectComments: '/api/v1/projects/{projectId}/comments/',
+  bulkDelete: '/api/v1/projects/bulk-delete/',
   templates: '/api/v1/project-templates/',
   template: '/api/v1/project-templates/{templateId}/',
   health: '/health',
@@ -393,7 +398,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       signIn(admin);
       const listed = projectListItem(1, {
         name: 'Rénovation de la médiathèque', tasks_total: 2, tasks_completed: 1, priority: 'High',
-        due_date: '2026-10-15T00:00:00Z', members: [{ id: alice.id, name: 'Alice Martin' }, { id: marie.id, name: 'Marie Durand' }],
+        due_date: '2026-10-15T00:00:00Z', members: [member(alice), member(marie)],
         members_total: 2,
       });
       mockProjectApi();
@@ -415,14 +420,14 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
       // The counts cover every matching project, the Kanban columns list the ids of the page. `todo` adds the
-      // statuses Project API does not interpret, `review` the suspended projects (MAIR-558).
+      // statuses Project API does not interpret; the suspended projects are on hold (MAIR-1084).
       expect(response.body.summary).toEqual({
         totalProjects: 41,
-        projectsByStatus: { todo: 3, 'in-progress': 30, review: 9, done: 4 },
+        projectsByStatus: { todo: 3, 'in-progress': 30, review: 3, 'on-hold': 6, done: 4 },
         projectsByPriority: { high: 26, medium: 10, low: 5 },
       });
       expect(response.body.kanban.columns.map(({ status, count, projectIds }: { status: string; count: number; projectIds: string[] }) => [status, count, projectIds]))
-        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 9, []], ['done', 4, []]]);
+        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 3, []], ['on-hold', 6, []], ['done', 4, []]]);
       expect(response.body.pagination).toEqual({ page: 3, limit: 10, total: 41, hasNextPage: true });
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
@@ -437,7 +442,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test.each([
       ['todo', { status: 'Todo' }],
-      ['review', { status: 'Review,Suspended' }],
+      ['review', { status: 'Review' }],
+      // MAIR-1084: the projects on hold have their own filter.
+      ['on-hold', { status: 'Suspended' }],
       ['done', { status: 'Completed' }],
     ])('GET /projects-page sends the status %s as Project API\'s', async (status, expected) => {
       signIn(admin);
@@ -576,7 +583,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       });
       projectApi.on('get', PROJECT.users, ({ url }) => {
         const { offset } = pageOf(url);
-        return { body: projectUsersResult(users.slice(offset, offset + 2).map((agent) => ({ id: agent.id, name: `${agent.first_name} ${agent.last_name}` })), 3) };
+        return { body: projectUsersResult(users.slice(offset, offset + 2).map((agent) => member(agent)), 3) };
       });
 
       const response = await as(request(app).get('/projects/project-1'), admin);
@@ -591,7 +598,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('MAIR-525: reads the member pages after the first one in parallel, in a constant number of waves', async () => {
       signIn(admin);
-      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}` }));
+      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}`, role: 'contributor' as const }));
       mockProjectApi();
       projectApi.on('get', PROJECT.project, { body: projectBundle(projetView(1), [], [admin], { users_total: 9 }) });
       projectApi.on('get', PROJECT.users, ({ url }) => {
@@ -827,16 +834,141 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.body.project.title).toBe('Voirie 2027');
     });
 
-    test('PATCH /projects/:id/close suspends or completes the project through Project API', async () => {
+    test.each([
+      // MAIR-1084: `on-hold` suspends the project and reads back as on hold; `review` is the Review status.
+      ['on-hold', 'Suspended', 'En pause'],
+      ['review', 'Review', 'En revue'],
+      ['done', 'Completed', 'Terminé'],
+    ] as const)('PATCH /projects/:id/close with %s writes %s through Project API', async (status, stored, label) => {
       signIn(marie);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { status: 'Suspended' }), [taskView(2)], [marie]) } });
+      // Starts in another status: the answer must be the re-read after the write, not the state before it.
+      const bundle = projectBundle(projetView(1, { status: 'Active' }), [taskView(2)], [marie]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('patch', PROJECT.project, ({ body }) => {
+        bundle.project = { ...bundle.project, status: (body as { status: typeof stored }).status };
+        return { status: 204 };
+      });
 
-      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'review' });
+      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status });
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1/close', response);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: stored });
+      expect(response.body.project).toMatchObject({ status, statusLabel: label });
+    });
+
+    test('MAIR-1085: the budget is read on the page and the detail, in cents of euro', async () => {
+      signIn(admin);
+      mockProjectApi({
+        projects: [projectListItem(1, { budget_voted: 1_250_000, budget_committed: 430_000 }), projectListItem(2)],
+        bundles: { 1: projectBundle(projetView(1, { budget_voted: 1_250_000, budget_committed: null }), [], [admin]) },
+      });
+
+      const page = await as(request(app).get('/projects-page'), admin);
+      expect(page.status).toBe(200);
+      expectBffContract('get', '/projects-page', page);
+      expect(page.body.projects.map(({ budgetVoted, budgetCommitted }: Record<string, unknown>) => [budgetVoted, budgetCommitted]))
+        .toEqual([[1_250_000, 430_000], [null, null]]);
+
+      const detail = await as(request(app).get('/projects/project-1'), admin);
+      expect(detail.status).toBe(200);
+      expectBffContract('get', '/projects/project-1', detail);
+      expect(detail.body.project).toMatchObject({ budgetVoted: 1_250_000, budgetCommitted: null });
+    });
+
+    test('MAIR-1085: PATCH keeps an absent budget, clears it with null and sets it in cents', async () => {
+      signIn(marie);
+      const bundle = projectBundle(projetView(1, { budget_voted: 500_000, budget_committed: 120_000 }), [], [marie]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      // Applies each PATCH like Project API: an absent field keeps its value.
+      projectApi.on('patch', PROJECT.project, ({ body }) => {
+        const { name, ...rest } = body as { name?: string; budget_voted?: number | null; budget_committed?: number | null };
+        bundle.project = { ...bundle.project, ...rest, ...(name !== undefined ? { name } : {}) };
+        return { status: 204 };
+      });
+
+      const cleared = await as(request(app).patch('/projects/project-1'), marie).send({ budgetVoted: 900_000, budgetCommitted: null });
+      const kept = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Voirie' });
+
+      expect([cleared.status, kept.status]).toEqual([200, 200]);
+      expectBffContract('patch', '/projects/project-1', cleared);
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+        { budget_voted: 900_000, budget_committed: null },
+        { name: 'Voirie' },
+      ]);
+      expect(cleared.body.project).toMatchObject({ budgetVoted: 900_000, budgetCommitted: null });
+      // The title-only PATCH keeps both amounts, the cleared one included.
+      expect(kept.body.project).toMatchObject({ title: 'Voirie', budgetVoted: 900_000, budgetCommitted: null });
+    });
+
+    test.each([
+      ['a negative amount', { budgetVoted: -1 }, 'body.budgetVoted'],
+      ['a fractional amount', { budgetCommitted: 12.5 }, 'body.budgetCommitted'],
+      ['a text amount', { budgetVoted: '1000' }, 'body.budgetVoted'],
+    ])('MAIR-1085: PATCH refuses %s with a 400 naming the field, before any write', async (_name, body, path) => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), marie).send(body);
+
+      expect(response.status).toBe(400);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toEqual([]);
+    });
+
+    test('MAIR-1085: Project API refusing the budget answers its 400', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+      projectApi.on('patch', PROJECT.project, textError(400, 'Invalid `budget_voted`: must be at least 0'));
+
+      const response = await as(request(app).patch('/projects/project-1'), marie).send({ budgetVoted: 5 });
+
+      expect(response.status).toBe(400);
+      expectBffContract('patch', '/projects/project-1', response);
+      // The 400 is Project API's: the BFF sent the PATCH once.
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ budget_voted: 5 }]);
+      expect(JSON.stringify(response.body)).not.toContain('budget_voted');
+    });
+
+    test('MAIR-1085: a plain agent cannot set the budget', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), alice).send({ budgetVoted: 5 });
+
+      expect(response.status).toBe(403);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toEqual([]);
+    });
+
+    test('MAIR-1084: a project on hold is read, created and updated as on-hold', async () => {
+      signIn(admin);
+      const bundles = { 1: projectBundle(projetView(1, { status: 'Suspended' }), [], [admin]) };
+      mockProjectApi({ bundles, projects: [projectListItem(1, { status: 'Suspended' })], createdProjectId: 1 });
+
+      const page = await as(request(app).get('/projects-page'), admin);
+      expect(page.status).toBe(200);
+      expectBffContract('get', '/projects-page', page);
+      expect(page.body.projects[0]).toMatchObject({ status: 'on-hold', statusLabel: 'En pause' });
+      expect(page.body.summary.projectsByStatus['on-hold']).toBe(1);
+      expect(page.body.kanban.columns.find((column: { status: string }) => column.status === 'on-hold'))
+        .toEqual({ status: 'on-hold', label: 'En pause', projectIds: ['project-1'], count: 1 });
+      expect(page.body.filters.statuses).toContainEqual({ label: 'En pause', value: 'on-hold' });
+
+      const patched = await as(request(app).patch('/projects/project-1'), admin).send({ status: 'on-hold' });
+      expect(patched.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1', patched);
       expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Suspended' });
-      expect(response.body.project.status).toBe('review');
+      expect(patched.body.project.status).toBe('on-hold');
+
+      const created = await as(request(app).post('/projects'), admin).send({
+        title: 'En attente', description: '', status: 'on-hold', priority: 'low', responsibleId: '', assigneeIds: [],
+        labels: [], dueDate: '', groupId: 'group-3',
+      });
+      expect(created.status).toBe(201);
+      expectBffContract('post', '/projects', created);
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Suspended' });
     });
 
     test('PATCH /projects/:id/tasks/:taskId patches the task and leaves the history to Project API', async () => {
@@ -930,9 +1062,12 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         ['a line break in a project title', 'patch', '/projects/project-1', { title: 'Fête\ndu village' }, 'body.title', 'Must not contain line breaks or control characters'],
         ['a blank task title of a new project', 'post', '/projects', { ...createBody, taskItems: [{ ...createBody.taskItems[0], title: '' }] }, 'body.taskItems.0.title', 'Must not be empty'],
         ['a 256-character task label', 'post', '/projects/project-1/tasks', { ...taskBody, labels: ['ok', 'a'.repeat(256)] }, 'body.labels.1', 'Must be at most 255 characters'],
-        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
-        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
-        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        // MAIR-1084: `on-hold` is a project status only.
+        ['the on-hold task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'on-hold' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the on-hold task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'on-hold' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
         ['an unknown task status', 'patch', '/projects/project-1/tasks/task-2', { status: 'blocked' }, 'body.status', ''],
         ['a malformed due date', 'patch', '/projects/project-1/tasks/task-2', { dueDate: '05/11/2026' }, 'body.dueDate', 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time'],
       ];
@@ -2099,7 +2234,7 @@ describe('MAIR-683 project linked to a group', () => {
     const bundles: Record<number, typeof bundle> = { 1: bundle };
     mockProjectApi({ bundles });
     projectApi.on('post', PROJECT.users, () => {
-      bundle.users = [...bundle.users, marie];
+      bundle.users = [...bundle.users, member(marie)];
       return { status: 200 };
     });
     projectApi.on('patch', PROJECT.project, () => {
@@ -2150,5 +2285,671 @@ describe('MAIR-683 project linked to a group', () => {
     expect(response.status).toBe(403);
     expectBffContract('post', '/projects/project-1/duplicate', response);
     expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
+  });
+});
+
+describe('MAIR-1086 milestones of a project', () => {
+  const vote = milestoneView(7, { title: 'Vote du conseil', due_date: '2027-03-15' });
+
+  test('the detail embeds the first milestones and their total', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice], { milestones: [vote], milestones_total: 3 }) } });
+
+    const response = await as(request(app).get('/projects/project-1'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.milestones).toEqual([{ id: 'milestone-7', title: 'Vote du conseil', dueDate: '2027-03-15', reached: false }]);
+    expect(response.body.project.milestonesTotal).toBe(3);
+  });
+
+  test('GET pages the milestones for whoever sees the project', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice]) } });
+    projectApi.on('get', PROJECT.milestones, { body: { milestones: [vote, milestoneView(8, { reached: true })], total: 5 } });
+
+    const response = await as(request(app).get('/projects/project-1/milestones?page=2&limit=2'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/milestones', response);
+    expect(response.body.milestones.map((milestone: { id: string; reached: boolean }) => [milestone.id, milestone.reached]))
+      .toEqual([['milestone-7', false], ['milestone-8', true]]);
+    expect(response.body.pagination).toEqual({ page: 2, limit: 2, total: 5, hasNextPage: true });
+    expect(pageOf(projectApi.calls(PROJECT.milestones, 'GET')[0].url)).toEqual({ limit: 2, offset: 2 });
+  });
+
+  test('GET answers 404 for a project the caller does not see, without reading the milestones', async () => {
+    signIn(alice);
+    mockProjectApi();
+
+    const response = await as(request(app).get('/projects/project-1/milestones'), alice);
+
+    expect(response.status).toBe(404);
+    expectBffContract('get', '/projects/project-1/milestones', response);
+    expect(projectApi.calls(PROJECT.milestones, 'GET')).toHaveLength(0);
+  });
+
+  test('POST creates a milestone for a manager and answers it', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('post', PROJECT.milestones, { status: 201, body: vote });
+
+    const response = await as(request(app).post('/projects/project-1/milestones'), marie)
+      .send({ title: 'Vote du conseil', dueDate: '2027-03-15' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/milestones', response);
+    expect(projectApi.calls(PROJECT.milestones, 'POST')[0].body).toEqual({ title: 'Vote du conseil', due_date: '2027-03-15' });
+    expect(response.body).toEqual({ id: 'milestone-7', title: 'Vote du conseil', dueDate: '2027-03-15', reached: false });
+  });
+
+  test.each([
+    ['a date-time', { title: 'Jalon', dueDate: '2027-03-15T00:00:00Z' }, 'body.dueDate'],
+    ['an impossible date', { title: 'Jalon', dueDate: '2027-02-30' }, 'body.dueDate'],
+    ['a blank title', { title: '   ', dueDate: '2027-03-15' }, 'body.title'],
+    ['an unknown field', { title: 'Jalon', dueDate: '2027-03-15', owner: 'user-1' }, 'body'],
+  ])('POST refuses %s with a 400 before any write', async (_name, body, path) => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+    const response = await as(request(app).post('/projects/project-1/milestones'), marie).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/milestones', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+    expect(projectApi.calls(PROJECT.milestones, 'POST')).toHaveLength(0);
+  });
+
+  test('a plain member cannot write the milestones (403 before any write)', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice]) } });
+
+    const responses = await Promise.all([
+      as(request(app).post('/projects/project-1/milestones'), alice).send({ title: 'Jalon', dueDate: '2027-03-15' }),
+      as(request(app).patch('/projects/project-1/milestones/milestone-7'), alice).send({ reached: true }),
+      as(request(app).delete('/projects/project-1/milestones/milestone-7'), alice),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
+    expectBffContract('post', '/projects/project-1/milestones', responses[0]);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-7', responses[1]);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-7', responses[2]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('PATCH sends the given fields only and answers the updated milestone', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('patch', PROJECT.milestone, { body: { ...vote, reached: true } });
+
+    const response = await as(request(app).patch('/projects/project-1/milestones/milestone-7'), marie).send({ reached: true });
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-7', response);
+    expect(projectApi.calls(PROJECT.milestone, 'PATCH')[0]).toMatchObject({ pathParams: { projectId: '1', milestoneId: '7' }, body: { reached: true } });
+    expect(response.body.reached).toBe(true);
+  });
+
+  test('PATCH and DELETE relay the 404 of an unknown milestone', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('patch', PROJECT.milestone, textError(404, 'Unknown milestone.'));
+    projectApi.on('delete', PROJECT.milestone, textError(404, 'Unknown milestone.'));
+
+    const patched = await as(request(app).patch('/projects/project-1/milestones/milestone-9'), marie).send({ title: 'Autre' });
+    const deleted = await as(request(app).delete('/projects/project-1/milestones/milestone-9'), marie);
+
+    expect([patched.status, deleted.status]).toEqual([404, 404]);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-9', patched);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-9', deleted);
+  });
+
+  test('DELETE removes a milestone with 204', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+    projectApi.on('delete', PROJECT.milestone, { status: 204 });
+
+    const response = await as(request(app).delete('/projects/project-1/milestones/milestone-7'), admin);
+
+    expect(response.status).toBe(204);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-7', response);
+    expect(projectApi.calls(PROJECT.milestone, 'DELETE')).toHaveLength(1);
+  });
+
+  test('a milestone id that is not milestone-<id> is a 400 before any call', async () => {
+    signIn(admin);
+    mockProjectApi();
+
+    const response = await as(request(app).delete('/projects/project-1/milestones/task-7'), admin);
+
+    expect(response.status).toBe(400);
+    expectBffContract('delete', '/projects/project-1/milestones/task-7', response);
+    expect(projectApi.requests).toEqual([]);
+  });
+});
+
+describe('MAIR-1087 start date of a task', () => {
+  const taskBody = {
+    title: 'Réserver la salle', status: 'todo', priority: 'high',
+    responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-20',
+  };
+
+  test('every task read carries its start date, null without one', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [
+      taskView(2, { start_date: '2026-09-01T00:00:00Z' }), taskView(3),
+    ], [admin]) } });
+    projectApi.on('get', PROJECT.archivedTasks, { body: { tasks: [taskView(4, { status: 'Completed', start_date: '2026-08-01T00:00:00Z' })], total: 1 } });
+
+    const detail = await as(request(app).get('/projects/project-1'), admin);
+    const archived = await as(request(app).get('/projects/project-1/archived-tasks'), admin);
+
+    expect([detail.status, archived.status]).toEqual([200, 200]);
+    expectBffContract('get', '/projects/project-1', detail);
+    expectBffContract('get', '/projects/project-1/archived-tasks', archived);
+    expect(detail.body.taskItems.map((task: { startDate: string | null }) => task.startDate)).toEqual(['2026-09-01T00:00:00Z', null]);
+    expect(archived.body.tasks[0].startDate).toBe('2026-08-01T00:00:00Z');
+  });
+
+  test('POST /projects/:id/tasks sends the start date as midnight UTC of that day', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles, createdTaskId: 30 });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30, { start_date: '2026-11-02T00:00:00.000Z', due_date: '2026-11-20T00:00:00.000Z' }));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: '2026-11-02' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/tasks', response);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({
+      start_date: '2026-11-02T00:00:00.000Z', due_date: '2026-11-20T00:00:00.000Z',
+    });
+    expect(response.body.startDate).toBe('2026-11-02T00:00:00.000Z');
+  });
+
+  test('POST without a start date sends none', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: null });
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).not.toHaveProperty('start_date');
+    expect(response.body.startDate).toBeNull();
+  });
+
+  test.each([
+    ['POST', 'post', '/projects/project-1/tasks', { ...taskBody, startDate: '2026-11-21' }],
+    ['PATCH', 'patch', '/projects/project-1/tasks/task-2', { startDate: '2026-12-01', dueDate: '2026-11-30' }],
+  ] as const)('%s refuses a start date after the due date with a 400 naming the field, before any write', async (_name, method, uri, body) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin, alice]) } });
+
+    const response = await as(request(app)[method](uri), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract(method, uri, response);
+    expect(response.body.error.details).toEqual([{ path: 'body.startDate', message: 'startDate must be at or before dueDate' }]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('POST refuses a start date that is not a date', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: 'demain' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/tasks', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain('body.startDate');
+    expect(projectApi.calls(PROJECT.tasks, 'POST')).toHaveLength(0);
+  });
+
+  test.each([
+    ['sets', { startDate: '2026-10-01' }, { start_date: '2026-10-01T00:00:00.000Z' }],
+    ['clears with null', { startDate: null }, { start_date: null }],
+    ['clears with an empty string', { startDate: '' }, { start_date: null }],
+    ['keeps when absent', { title: 'Autre titre' }, { name: 'Autre titre' }],
+  ] as const)('PATCH %s the start date', async (_name, body, expected) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send(body);
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual(expected);
+  });
+
+  test("PATCH relays Project API's 400 for a start date after the stored due date", async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+    projectApi.on('patch', PROJECT.task, textError(400, 'Invalid `start_date`: must be at or before `due_date`'));
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send({ startDate: '2027-01-01' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    // The 400 is Project API's: the BFF sent the PATCH once.
+    expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([{ start_date: '2027-01-01T00:00:00.000Z' }]);
+    expect(JSON.stringify(response.body)).not.toContain('start_date');
+  });
+
+  test('duplicating a project copies the start date of a task that has a due date', async () => {
+    signIn(admin);
+    const source = projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [
+      taskView(2, { start_date: '2026-09-01T00:00:00Z', due_date: '2026-10-01T00:00:00Z' }),
+      taskView(3, { start_date: '2026-09-01T00:00:00Z', due_date: null }),
+    ], [admin]);
+    mockProjectApi({ bundles: { 1: source, 12: projectBundle(projetView(12), [], [admin]) }, createdProjectId: 12 });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+    expect(response.status).toBe(201);
+    const created = projectApi.calls(PROJECT.tasks, 'POST').map((call) => (call.body as { start_date?: string }).start_date);
+    expect(created).toEqual(['2026-09-01T00:00:00.000Z', undefined]);
+  });
+});
+
+describe('MAIR-1088 member roles', () => {
+  /** Alice holds the User role but is a `manager` member of project 1: Project API says she manages it. */
+  const managedByAlice = () => ({
+    ...projectBundle(projetView(1, { can_manage: true, my_role: 'manager' }), [
+      taskView(2, { assigned_to: alice.id }),
+      taskView(3, { assigned_to: marie.id, status: 'InProgress' }),
+      taskView(4, { assigned_to: marie.id }),
+    ], [alice, marie]),
+    users: [member(alice, 'manager'), member(marie, 'contributor')],
+  });
+
+  test('the detail lists every member with their role and load, and the caller role', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const response = await as(request(app).get('/projects/project-1'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.myRole).toBe('manager');
+    expect(response.body.project.members).toEqual([
+      { id: 'user-2', name: 'Alice Martin', avatarUrl: null, role: 'manager', load: { tasksOpen: 1, tasksTotal: 1 } },
+      { id: 'user-3', name: 'Marie Durand', avatarUrl: null, role: 'contributor', load: { tasksOpen: 2, tasksTotal: 2 } },
+    ]);
+    // A manager member manages the project and sees every task, not only hers.
+    expect(response.body.project.permissions).toMatchObject({ canEdit: true, canDelete: true, canAssignMembers: true });
+    expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2', 'task-3', 'task-4']);
+    expect(response.body.taskItems[1].permissions).toMatchObject({ canEdit: true, canDelete: true });
+  });
+
+  test('the projects page carries the members roles, the caller role and the rights Project API gives', async () => {
+    signIn(alice);
+    mockProjectApi({ projects: [
+      projectListItem(1, { can_manage: true, my_role: 'manager', members: [member(alice, 'manager')], members_total: 1 }),
+      projectListItem(2, { can_manage: false, my_role: 'reader', members: [member(alice, 'reader')], members_total: 1 }),
+      projectListItem(3),
+    ] });
+
+    const response = await as(request(app).get('/projects-page'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects-page', response);
+    expect(response.body.projects.map((project: { myRole: string | null; permissions: { canEdit: boolean } }) =>
+      [project.myRole, project.permissions.canEdit])).toEqual([['manager', true], ['reader', false], [null, false]]);
+    expect(response.body.projects[0].members).toEqual([{ id: 'user-2', name: 'Alice Martin', avatarUrl: null, role: 'manager' }]);
+  });
+
+  test('a manager member updates the project and assigns a task to another member of it', async () => {
+    signIn(alice);
+    const bundles = { 1: managedByAlice() };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30, { assigned_to: marie.id }));
+      return { body: createTaskResult(30) };
+    });
+
+    const patched = await as(request(app).patch('/projects/project-1'), alice).send({ budgetVoted: 100 });
+    const created = await as(request(app).post('/projects/project-1/tasks'), alice).send({
+      title: 'Commander', status: 'todo', priority: 'low', responsibleId: `user-${marie.id}`, assigneeIds: [], labels: [], dueDate: '',
+    });
+
+    expect([patched.status, created.status]).toEqual([200, 201]);
+    expectBffContract('post', '/projects/project-1/tasks', created);
+    expect(created.body.permissions.canEdit).toBe(true);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ assigned_to: marie.id });
+  });
+
+  test("a manager member edits and deletes a task assigned to someone else, Project API's can_manage read with one task", async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const patched = await as(request(app).patch('/projects/project-1/tasks/task-3'), alice).send({ title: 'Renommée' });
+    const deleted = await as(request(app).delete('/projects/project-1/tasks/task-4'), alice);
+
+    expect([patched.status, deleted.status]).toEqual([200, 204]);
+    expectBffContract('patch', '/projects/project-1/tasks/task-3', patched);
+    expect(patched.body.permissions).toMatchObject({ canEdit: true, canDelete: true });
+    expect(projectApi.calls(PROJECT.project, 'GET').map((call) => pageOf(call.url).limit)).toContain(1);
+  });
+
+  test('a manager member sees the archived tasks of the others', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+    projectApi.on('get', PROJECT.archivedTasks, { body: { tasks: [taskView(9, { status: 'Completed', assigned_to: marie.id })], total: 1 } });
+
+    const response = await as(request(app).get('/projects/project-1/archived-tasks'), alice);
+
+    expect(response.status).toBe(200);
+    expect(response.body.tasks.map((task: { id: string }) => task.id)).toEqual(['task-9']);
+  });
+
+  test.each(['contributor', 'reader'] as const)('a %s member with the User role still cannot manage the project', async (role) => {
+    signIn(alice);
+    const bundle = managedByAlice();
+    bundle.project = projetView(1, { can_manage: false, my_role: role });
+    bundle.users = [member(alice, role), member(marie, 'contributor')];
+    mockProjectApi({ bundles: { 1: bundle } });
+
+    const responses = await Promise.all([
+      as(request(app).patch('/projects/project-1'), alice).send({ title: 'Non' }),
+      as(request(app).patch('/projects/project-1/tasks/task-3'), alice).send({ title: 'Non' }),
+      as(request(app).post('/projects/project-1/members'), alice).send({ userId: 'user-1' }),
+    ]);
+
+    // A task not assigned to her is not visible to her (404), as before MAIR-1088.
+    expect(responses.map((response) => response.status)).toEqual([403, 404, 403]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('a manager role reads no project to manage a task', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: managedByAlice() } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-3'), marie).send({ title: 'Renommée' });
+
+    expect(response.status).toBe(200);
+    expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+  });
+
+  describe('member routes', () => {
+    test('POST /projects/:id/members adds a member with a role and answers every member', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        const { user_id: id, role } = body as { user_id: number; role?: 'manager' };
+        bundle.users = [...bundle.users, { id, name: 'Alice Martin', role: role ?? 'contributor' }];
+        return { status: 200 };
+      });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2', role: 'manager' });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(projectApi.calls(PROJECT.users, 'POST')[0].body).toEqual({ user_id: 2, role: 'manager' });
+      expect(response.body.members.map((entry: { id: string; role: string }) => [entry.id, entry.role]))
+        .toEqual([['user-1', 'contributor'], ['user-2', 'manager']]);
+    });
+
+    test('POST without a role lets Project API make a contributor', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        const { user_id: id, role } = body as { user_id: number; role?: 'manager' };
+        bundle.users = [...bundle.users, { id, name: 'Alice Martin', role: role ?? 'contributor' }];
+        return { status: 200 };
+      });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2' });
+
+      expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(projectApi.calls(PROJECT.users, 'POST')[0].body).toEqual({ user_id: 2 });
+      expect(response.body.members).toContainEqual(expect.objectContaining({ id: 'user-2', role: 'contributor' }));
+    });
+
+    test('POST refuses an agent outside the team of a Responsable', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+      const response = await as(request(app).post('/projects/project-1/members'), marie).send({ userId: 'user-1' });
+
+      expect(response.status).toBe(403);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(projectApi.calls(PROJECT.users, 'POST')).toHaveLength(0);
+    });
+
+    test.each([
+      ['an unknown role', { userId: 'user-2', role: 'owner' }, 'body.role'],
+      ['a userId of another kind', { userId: 'project-2' }, 'body.userId'],
+    ])('POST refuses %s with a 400', async (_name, body, path) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+      const response = await as(request(app).post('/projects/project-1/members'), admin).send(body);
+
+      expect(response.status).toBe(400);
+      expectBffContract('post', '/projects/project-1/members', response);
+      expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+    });
+
+    test('PATCH changes the role of a member', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin, alice]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('patch', PROJECT.user, ({ body }) => {
+        bundle.users = bundle.users.map((entry) => (entry.id === alice.id ? { ...entry, role: (body as { role: 'reader' }).role } : entry));
+        return { status: 204 };
+      });
+
+      const response = await as(request(app).patch('/projects/project-1/members/user-2'), admin).send({ role: 'reader' });
+
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1/members/user-2', response);
+      expect(projectApi.calls(PROJECT.user, 'PATCH')[0]).toMatchObject({ pathParams: { projectId: '1', userId: '2' }, body: { role: 'reader' } });
+      expect(response.body.members.find((entry: { id: string }) => entry.id === 'user-2').role).toBe('reader');
+    });
+
+    test.each([
+      [404, 'Not a member.'],
+      [409, 'The owner keeps the manager role.'],
+    ])('PATCH relays the %s of Project API', async (status, message) => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+      projectApi.on('patch', PROJECT.user, textError(status, message));
+
+      const response = await as(request(app).patch('/projects/project-1/members/user-9'), admin).send({ role: 'reader' });
+
+      expect(response.status).toBe(status);
+      expectBffContract('patch', '/projects/project-1/members/user-9', response);
+      expect(JSON.stringify(response.body)).not.toContain(message);
+    });
+
+    test('DELETE removes a member, and relays the 409 of the owner', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
+
+      const removed = await as(request(app).delete('/projects/project-1/members/user-2'), admin);
+      projectApi.on('delete', PROJECT.user, textError(409, 'The owner cannot be removed.'));
+      const owner = await as(request(app).delete('/projects/project-1/members/user-1'), admin);
+
+      expect([removed.status, owner.status]).toEqual([204, 409]);
+      expectBffContract('delete', '/projects/project-1/members/user-2', removed);
+      expectBffContract('delete', '/projects/project-1/members/user-1', owner);
+    });
+
+    test('a plain member cannot change the members, and a malformed user id is a 400', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice]) } });
+
+      const refused = await Promise.all([
+        as(request(app).patch('/projects/project-1/members/user-2'), alice).send({ role: 'manager' }),
+        as(request(app).delete('/projects/project-1/members/user-2'), alice),
+      ]);
+      const malformed = await as(request(app).delete('/projects/project-1/members/task-2'), alice);
+
+      expect(refused.map((response) => response.status)).toEqual([403, 403]);
+      expect(malformed.status).toBe(400);
+      expectBffContract('delete', '/projects/project-1/members/task-2', malformed);
+      expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+    });
+
+    test('PATCH /projects/:id with assigneeIds keeps the owner Project API refuses to remove', async () => {
+      signIn(admin);
+      const bundle = projectBundle(projetView(1), [], [admin, alice]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      // Only a successful removal changes the members; the owner's 409 leaves them as they are.
+      projectApi.on('delete', PROJECT.user, ({ pathParams }) => {
+        if (pathParams.userId === String(admin.id)) return textError(409, 'The owner cannot be removed.');
+        bundle.users = bundle.users.filter((entry) => String(entry.id) !== pathParams.userId);
+        return { status: 204 };
+      });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        bundle.users = [...bundle.users, { id: (body as { user_id: number }).user_id, name: 'Marie Durand', role: 'contributor' }];
+        return { status: 200 };
+      });
+
+      const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-3', assigneeIds: [] });
+
+      expect(response.status).toBe(200);
+      expect(projectApi.calls(PROJECT.user, 'DELETE').map((call) => call.pathParams.userId).sort()).toEqual(['1', '2']);
+      const memberIds = response.body.project.members.map((entry: { id: string }) => entry.id);
+      expect(memberIds).toEqual(expect.arrayContaining(['user-1', 'user-3']));
+      expect(memberIds).not.toContain('user-2');
+    });
+  });
+});
+
+describe('MAIR-1089 activity, project comments and bulk deletion', () => {
+  const comment = {
+    kind: 'comment' as const, id: 12, task_id: null, task_title: null, author_id: alice.id, author_name: 'Alice Martin',
+    message: 'Devis reçu.', changes: null, label: 'Comment', created_at: '2026-11-20T08:00:00.000Z',
+  };
+  const statusChange = {
+    kind: 'status_changed' as const, id: 40, task_id: 4, task_title: 'Commander', author_id: null, author_name: null,
+    message: null, changes: { status: { from: 'Todo', to: 'InProgress' } }, label: 'Status changed: À faire → En cours',
+    created_at: '2026-11-19T08:00:00.000Z',
+  };
+
+  test('GET /projects/:id/activity pages the comments and the task history with public ids', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('get', PROJECT.activity, { body: { items: [comment, statusChange], total: 7 } });
+
+    const response = await as(request(app).get('/projects/project-1/activity?page=2&limit=2'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/activity', response);
+    expect(response.body.items).toEqual([
+      {
+        kind: 'comment', id: 'comment-12', taskId: null, taskTitle: null, author: { id: 'user-2', name: 'Alice Martin' },
+        message: 'Devis reçu.', changes: null, label: 'Comment', createdAt: '2026-11-20T08:00:00.000Z',
+      },
+      {
+        kind: 'status_changed', id: 'history-40', taskId: 'task-4', taskTitle: 'Commander', author: null, message: null,
+        changes: { status: { from: 'Todo', to: 'InProgress' } }, label: 'Status changed: À faire → En cours',
+        createdAt: '2026-11-19T08:00:00.000Z',
+      },
+    ]);
+    expect(response.body.pagination).toEqual({ page: 2, limit: 2, total: 7, hasNextPage: true });
+    expect(pageOf(projectApi.calls(PROJECT.activity, 'GET')[0].url)).toEqual({ limit: 2, offset: 2 });
+  });
+
+  test('GET /projects/:id/activity defaults to 50 entries and relays the 404 of an invisible project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('get', PROJECT.activity, textError(404, 'Unknown project.'));
+
+    const response = await as(request(app).get('/projects/project-1/activity'), alice);
+
+    expect(response.status).toBe(404);
+    expectBffContract('get', '/projects/project-1/activity', response);
+    expect(pageOf(projectApi.calls(PROJECT.activity, 'GET')[0].url)).toEqual({ limit: 50, offset: 0 });
+  });
+
+  test('POST /projects/:id/comments posts the trimmed comment and answers the activity entry', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projectComments, { status: 201, body: comment });
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: '  Devis reçu.  ' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/comments', response);
+    expect(projectApi.calls(PROJECT.projectComments, 'POST')[0].body).toEqual({ message: 'Devis reçu.' });
+    expect(response.body).toMatchObject({ kind: 'comment', id: 'comment-12', author: { id: 'user-2' } });
+  });
+
+  test.each([
+    ['a blank message', { message: '   ' }],
+    ['markup', { message: '<b>Devis</b>' }],
+    ['a message over 2000 characters', { message: 'a'.repeat(2_001) }],
+  ])('POST /projects/:id/comments refuses %s with a 400 before any call', async (_name, body) => {
+    signIn(alice);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/comments', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain('body.message');
+    expect(projectApi.requests).toEqual([]);
+  });
+
+  test('POST /projects/:id/comments relays the 404 of an invisible project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.projectComments, textError(404, 'Unknown project.'));
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: 'Bonjour' });
+
+    expect(response.status).toBe(404);
+    expectBffContract('post', '/projects/project-1/comments', response);
+  });
+
+  test('POST /projects/bulk-delete sends each id once and answers one result per project', async () => {
+    signIn(alice);
+    mockProjectApi();
+    projectApi.on('post', PROJECT.bulkDelete, { body: { results: [
+      { id: 4, status: 'deleted' }, { id: 5, status: 'forbidden' }, { id: 6, status: 'not_found' },
+    ] } });
+
+    const response = await as(request(app).post('/projects/bulk-delete'), alice)
+      .send({ projectIds: ['project-4', 'project-5', 'project-4', 'project-6'] });
+
+    expect(response.status).toBe(200);
+    expectBffContract('post', '/projects/bulk-delete', response);
+    expect(projectApi.calls(PROJECT.bulkDelete, 'POST')[0].body).toEqual({ ids: [4, 5, 6] });
+    expect(response.body.results).toEqual([
+      { projectId: 'project-4', status: 'deleted' },
+      { projectId: 'project-5', status: 'forbidden' },
+      { projectId: 'project-6', status: 'not_found' },
+    ]);
+    // Not taken for a project id by the `/:projectId` routes.
+    expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+  });
+
+  test.each([
+    ['no project', { projectIds: [] }],
+    ['more than 100 projects', { projectIds: Array.from({ length: 101 }, (_, i) => `project-${i + 1}`) }],
+    ['an id of another kind', { projectIds: ['task-4'] }],
+  ])('POST /projects/bulk-delete refuses %s with a 400 before any call', async (_name, body) => {
+    signIn(admin);
+    mockProjectApi();
+
+    const response = await as(request(app).post('/projects/bulk-delete'), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/bulk-delete', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path.split('.').slice(0, 2).join('.'))).toContain('body.projectIds');
+    expect(projectApi.requests).toEqual([]);
   });
 });

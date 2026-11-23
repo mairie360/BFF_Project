@@ -29,6 +29,10 @@ import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
 import archivedTasksRouter from './routes/Project/archived_tasks';
 import statusesRouter from './routes/Project/statuses';
+import milestonesRouter from './routes/Project/milestones';
+import membersRouter from './routes/Project/members';
+import activityRouter from './routes/Project/activity';
+import bulkDeleteRouter from './routes/Project/bulk_delete';
 import templatesRouter from './routes/Project/templates';
 import projectGroupsRouter from './routes/Project/groups';
 import { projectUserContextMiddleware } from './auth/project-user';
@@ -61,6 +65,8 @@ app.use('/check_apis', checkApis);
 // (Core API for an older token, never BFF User: MAIR-525). Project API checks that the session was not revoked.
 app.use(['/projects-page', '/projects', '/project-templates', '/project-groups'], noStore, requireSession, projectUserContextMiddleware);
 app.use('/projects-page', projectsPageRouter);
+// Before the `/:projectId` routes: `bulk-delete` is not a project id.
+app.use('/projects', bulkDeleteRouter);
 app.use('/projects', projectDetailsRouter);
 app.use('/projects', createProjectRouter);
 app.use('/projects', modifyProjectRouter);
@@ -74,6 +80,9 @@ app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
 app.use('/projects', archivedTasksRouter);
 app.use('/projects', statusesRouter);
+app.use('/projects', milestonesRouter);
+app.use('/projects', membersRouter);
+app.use('/projects', activityRouter);
 app.use('/project-templates', templatesRouter);
 app.use('/project-groups', projectGroupsRouter);
 

@@ -8,7 +8,7 @@ import {
   ProjectTask,
   registry,
 } from '../../openapi-registry';
-import { callerOf, listArchivedTasks, listProjectUsers } from '../../services/projectData';
+import { callerManagesProject, callerOf, listArchivedTasks, listProjectUsers } from '../../services/projectData';
 import { getProjectUserContext } from '../../auth/project-user';
 import { buildPagination, buildTaskDtoForUser, requireProjectIdParam } from './project_helpers';
 
@@ -60,18 +60,20 @@ router.get('/:projectId/archived-tasks', async (req: Request, res: Response) => 
   const user = getProjectUserContext(res);
 
   // Project API answers 404 for a project the caller cannot see; the members name the assignees.
-  const [archived, users] = await Promise.all([
+  // A member with the `manager` role sees every archived task, like a manager role (MAIR-1088).
+  const [archived, users, projectCanManage] = await Promise.all([
     listArchivedTasks(caller, projectId, { limit, offset: (page - 1) * limit }),
     listProjectUsers(caller, projectId).catch((error: unknown) => {
       if (error instanceof HttpError && error.status === 404) return [];
       throw error;
     }),
+    callerManagesProject(caller, user, projectId),
   ]);
   if (!archived) throw new HttpError(404, 'Project not found or not visible.');
 
   res.status(200).json({
     tasks: archived.tasks
-      .map((task) => buildTaskDtoForUser(user, task, users))
+      .map((task) => buildTaskDtoForUser(user, task, users, projectCanManage))
       .filter((task) => task.permissions.canView),
     pagination: buildPagination(archived.total, page, limit),
   });

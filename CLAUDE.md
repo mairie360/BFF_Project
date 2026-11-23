@@ -124,7 +124,8 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
   filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
   counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Todo`,
-  `in-progress` ↔ `Active`, `review` ↔ `Review` and reads `Suspended` as `review`, `done` ↔ `Completed`; an unknown
+  `in-progress` ↔ `Active`, `review` ↔ `Review`, `on-hold` ↔ `Suspended` (MAIR-1084: a project put on hold, its own
+  filter, Kanban column and count; before it `Suspended` read as `review`), `done` ↔ `Completed`; an unknown
   status reads as `todo`) and priorities (`high` covers `Urgent`, stored `High`). Since MAIR-558 Project API stores the
   project's status and priority as chosen; the Kanban columns count every match but list the ids of the page only.
 - `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
@@ -144,6 +145,30 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
   rights from the role and the bundle or task already read by the guards.
 
+- MAIR-1085: `budgetVoted` / `budgetCommitted` (integer cents of euro, `null` when not filled in) are read from Project
+  API's `budget_voted` / `budget_committed` on the page items and the detail, and written by `PATCH /projects/{projectId}`
+  (absent keeps, `null` clears, a negative or fractional amount is a BFF 400).
+- MAIR-1086: milestones (`milestone-<n>`, `{ id, title, dueDate (YYYY-MM-DD), reached }`) come embedded in the bundle
+  (`milestones`, first 100, + `milestonesTotal`) and from `src/routes/Project/milestones.ts`: `GET` / `POST
+  /projects/{projectId}/milestones`, `PATCH` / `DELETE /projects/{projectId}/milestones/{milestoneId}` (reads need the
+  project visible, writes `requireProjectManagement`; Project API's 404 for an unknown milestone is relayed).
+- MAIR-1087: tasks carry `startDate` (Project API `start_date`, `null` without one) on every read; `POST …/tasks` and
+  `PATCH …/tasks/{taskId}` take it (absent keeps, `null` / `""` clears on update); `requireStartBeforeDue` answers the
+  400 on `body.startDate` when both dates are sent. A partial PATCH sending one of them is checked by Project API against
+  the stored other one (a new `startDate` against the stored due date, a new `dueDate` against the stored start date):
+  its 400 (SQLSTATE 23514) is relayed.
+- MAIR-1088: members carry their `role` (`manager` / `contributor` / `reader`; page items `members` + `myRole`, detail
+  `members` with a `load` counted on the active tasks). A `manager` member manages the project: `getProjectPermissions` /
+  `getTaskPermissions` take Project API's `can_manage` (`apiCanManage`) on top of the role, the project guards read it
+  from the bundle, the task guards from `callerManagesProject` (no call for a manager role, else `GET /projects/{id}/`
+  with one task), and `requireAssignableUsers` also accepts the members of the project. `src/routes/Project/members.ts`:
+  `POST /projects/{projectId}/members`, `PATCH` / `DELETE /projects/{projectId}/members/{userId}`; the `assigneeIds`
+  sync skips the owner Project API refuses to remove (409).
+- MAIR-1089: `src/routes/Project/activity.ts` (`GET /projects/{projectId}/activity`, `POST /projects/{projectId}/comments`,
+  Project API checks visibility: no BFF guard, its 404 is relayed; ids `comment-<n>` / `history-<n>`, `task-<n>`,
+  `user-<n>`) and `src/routes/Project/bulk_delete.ts` (`POST /projects/bulk-delete`, mounted before the `/:projectId`
+  routes, one result per project from Project API, no role check: a `manager` member may delete).
+
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
@@ -154,7 +179,8 @@ Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`)
 - `src/openapi.ts` imports **every route module** to populate the registry, then builds the document.
 - `src/app.ts` mounts **every route module** as an Express router.
 
-**Adding/removing a route means editing both `src/app.ts` and `src/openapi.ts`**, plus regenerating contracts.
+**Adding/removing a route means editing both `src/app.ts` and `src/openapi.ts`**, plus regenerating contracts. A route
+whose first segment after `/projects` is a fixed word (`bulk-delete`) is mounted before the `/:projectId` routers.
 `scripts/export-swagger.ts` writes `contracts/openapi.json` and a root `openapi.json` (the publish workflow's artifact path).
 
 ### Public ID convention
@@ -165,16 +191,21 @@ trailing digits). Routes validate params, then `parsePublicId`, then 400 if null
 
 ### Vocabulary mapping (three layers)
 
-BFF (`todo` / `in-progress` / `review` / `done`, `high|medium|low`) ↔ Project API
-(`Todo`/`InProgress`/`Completed`/`Error`, `Low|Medium|High`) ↔ DB (`todo`/`in_progress`/`completed`).
-All the `*Map` tables are in `project_helpers.ts`. Mapping is lossy in
-places (e.g. BFF `review` ↔ backend `Error`), and several project-level fields (status, priority,
-progress, dueDate) are **derived from a project's tasks**, not stored.
+Project statuses: BFF `todo` / `in-progress` / `review` / `on-hold` / `done` ↔ Project API `Todo` / `Active` / `Review` /
+`Suspended` / `Completed` (`Error`, a value Project API cannot interpret, reads as `todo`). Since MAIR-558 Project API stores
+the status and the priority chosen for a project.
+
+Task categories: BFF `todo` / `in-progress` / `done` ↔ Project API `Todo` / `InProgress` / `Completed` (`Error` reads as
+`review`) ↔ DB `todo` / `in_progress` / `completed`. A task refuses `review` and `on-hold`, which are project statuses only.
+
+Priorities: BFF `high|medium|low` ↔ Project API `High` (and `Urgent`) / `Medium` / `Low`. All the `*Map` tables are in
+`project_helpers.ts`. A project's progress and dueDate are **derived from its tasks**, not stored.
 
 ### Permissions & roles
 
 Roles: `Admin`, `Maire`, `Responsable`, `User`, `Guest`. `isGlobalProjectRole` = Admin/Maire (see
-everything); `canManageProjects` also includes Responsable. `getProjectPermissions` /
+everything); `canManageProjects` also includes Responsable; a `manager` member of a project (Project API's `can_manage`,
+MAIR-1088) manages that project whatever their role. `getProjectPermissions` /
 `getTaskPermissions` compute booleans per request (SQL visibility subqueries when DB access is on);
 `src/routes/Project/project_access.ts` wraps them into `require*` guards. Every response payload
 embeds the resolved `permissions` / `access` block for the frontend.
@@ -290,7 +321,8 @@ The collection is split in two kinds of checks, both on the BFF's own routes:
   by the agent by `statusId` and by category), its collaboration (comments signed by both, 403 / 404 on a task
   not assigned to the agent, paged follow-up with the history Project API writes), archiving (a done task leaves
   the detail, is counted in the progress and paged by `/archived-tasks`), duplication (active tasks only),
-  suspension and closing (`review` then `done`, the `status` filter of the page), deletion of the duplicate, the
+  putting on hold, in review and closing (`on-hold`, `review` then `done` through `PATCH …/close`, the `status`
+  filter of the page; a task refuses `on-hold`), deletion of the duplicate, the
   project and the template (404 afterwards).
 
 The seeded accounts have no known password and the Postman sandbox cannot sign EdDSA: `integration_test.sh` signs

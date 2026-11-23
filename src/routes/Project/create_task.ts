@@ -72,8 +72,9 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
     const projectId = requireProjectIdParam(params.projectId);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
-    await requireAssignableUsers(caller, user, [body.responsibleId, ...body.assigneeIds]);
+    const { user, bundle: current } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    // The members of the project can be assigned by whoever manages it (MAIR-1088).
+    await requireAssignableUsers(caller, user, [body.responsibleId, ...body.assigneeIds], async () => current.users.map((member) => member.id));
     const createdTask = await createTaskOnApi(
         caller,
         projectId,
@@ -85,6 +86,7 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
             assigneeIds: body.assigneeIds,
             labels: body.labels,
             dueDate: body.dueDate,
+            startDate: body.startDate,
             statusId: body.statusId,
         }),
     );
@@ -93,7 +95,7 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
     const task = bundle.tasks.find((entry) => entry.id === createdTask.task_id);
     if (!task) throw new HttpError(404, 'Task not found after creation');
 
-    res.status(201).json(buildTaskDtoForUser(user, task, bundle.users));
+    res.status(201).json(buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage));
 });
 
 export default router;

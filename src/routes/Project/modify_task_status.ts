@@ -73,7 +73,7 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
     const { projectId, taskId } = requireTaskParams(params);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
+    const { user, projectCanManage } = await requireTaskStatusUpdate(caller, getProjectUserContext(res), projectId, taskId);
     // A status of the project (MAIR-566) wins; a category alone takes the first status of it in the project.
     const patch: PatchTaskView = body.statusId !== undefined
         ? statusIdToBackend(body.statusId)
@@ -84,7 +84,7 @@ router.patch('/:projectId/tasks/:taskId/status', async (req: Request, res: Respo
     const updated = await getTaskWithMembers(caller, projectId, taskId);
     if (!updated) throw new HttpError(404, 'Task not found after update');
 
-    res.status(200).json(buildTaskDtoForUser(user, updated.task, updated.users));
+    res.status(200).json(buildTaskDtoForUser(user, updated.task, updated.users, projectCanManage));
 });
 
 export default router;

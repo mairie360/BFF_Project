@@ -22,10 +22,11 @@ import { callerOf, getProjectPermissions, listAssignableUsers, listProjectsPage 
 const router = Router();
 
 
-// Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`;
-// `review` also covers the projects suspended by the close route (see `mapProjectStatus`); `high` covers
-// `Urgent` too (stored `High`).
-const STATUS_FILTER = { todo: 'Todo', 'in-progress': 'Active', review: 'Review,Suspended', done: 'Completed' } as const;
+// Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`; a project
+// on hold is `Suspended` (MAIR-1084, see `mapProjectStatus`); `high` covers `Urgent` too (stored `High`).
+const STATUS_FILTER = {
+  todo: 'Todo', 'in-progress': 'Active', review: 'Review', 'on-hold': 'Suspended', done: 'Completed',
+} as const;
 const PRIORITY_FILTER = { high: 'High', medium: 'Medium', low: 'Low' } as const;
 
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
@@ -89,9 +90,10 @@ router.get("/", async (req: Request, res: Response) => {
     // The members offered come from the Core directory, restricted to what the caller may assign.
     listAssignableUsers(caller, user),
   ]);
-  // Every listed project is visible to the caller.
-  const permissions = getProjectPermissions(user, true);
-  const projects = result.projects.map((project) => mapProjectListItemToDto(project, permissions));
+  // Every listed project is visible to the caller; Project API's `can_manage` adds the projects they manage as a
+  // `manager` member (MAIR-1088).
+  const projects = result.projects.map((project) =>
+    mapProjectListItemToDto(project, getProjectPermissions(user, true, project.can_manage)));
   const summary = summaryFromCounts(result);
   const members = collectMembers([assignable]);
 
@@ -124,6 +126,7 @@ router.get("/", async (req: Request, res: Response) => {
         { label: "À faire", value: "todo" },
         { label: "En cours", value: "in-progress" },
         { label: "En revue", value: "review" },
+        { label: "En pause", value: "on-hold" },
         { label: "Terminées", value: "done" },
       ],
       priorities: [

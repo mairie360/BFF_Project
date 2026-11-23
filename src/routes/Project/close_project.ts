@@ -8,6 +8,9 @@ import { callerOf, setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
+// Project API status written for each closing status (MAIR-1084).
+const CLOSE_STATUS = { done: 'Completed', 'on-hold': 'Suspended', review: 'Review' } as const;
+
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
@@ -15,7 +18,7 @@ registry.registerPath({
   method: 'patch',
   path: '/projects/{projectId}/close',
   tags: ['Projects'],
-  summary: 'Close or suspend a project',
+  summary: 'Close a project, put it on hold or in review',
   request: {
     params: ProjectIdParams,
     body: { required: true, content: { 'application/json': { schema: CloseProjectBody } } },
@@ -34,14 +37,14 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   const caller = callerOf(req, ERROR_STATUSES);
 
   const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
-  // Both statuses go through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
-  await setProjectClosed(caller, projectId, body.status === 'done' ? 'completed' : 'suspended');
+  // Every status goes through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
+  await setProjectClosed(caller, projectId, CLOSE_STATUS[body.status]);
 
   const bundle = await fetchProjectBundle(caller, projectId);
-  // The re-read status (Completed → done, Suspended → review) is returned, not the submitted one.
+  // The re-read status (Completed → done, Suspended → on-hold, Review → review) is returned, not the submitted one.
   res.status(200).json({
     project: buildProjectDtoForUser(user, bundle),
-    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
   });
 });
 

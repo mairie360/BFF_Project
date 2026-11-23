@@ -4,7 +4,7 @@ import type { JsonSchema, OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract, resolveOrvalPackage } from './support/orval-contract';
 import {
   agents, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle, projectListItem, projectUsersResult, projectsResult,
-  coreMe, group, projetView, taskView,
+  coreMe, group, milestoneView, projetView, taskView,
 } from './support/project-fixtures';
 
 // Les contrats amont sont reconstruits depuis les paquets @mairie360/*-openapi installés : monter la version
@@ -39,7 +39,15 @@ const CONSUMED = [
   { contract: projectApi, operationId: 'addTaskComment', method: 'post', url: projectApiUrls.getAddTaskCommentUrl(4, 2) },
   { contract: projectApi, operationId: 'getProjectUsers', method: 'get', url: projectApiUrls.getGetProjectUsersUrl(4) },
   { contract: projectApi, operationId: 'addUserToProject', method: 'post', url: projectApiUrls.getAddUserToProjectUrl(4) },
+  { contract: projectApi, operationId: 'updateMemberRole', method: 'patch', url: projectApiUrls.getUpdateMemberRoleUrl(4, 2) },
   { contract: projectApi, operationId: 'removeUserFromProject', method: 'delete', url: projectApiUrls.getRemoveUserFromProjectUrl(4, 2) },
+  { contract: projectApi, operationId: 'getProjectMilestones', method: 'get', url: projectApiUrls.getGetProjectMilestonesUrl(4, { limit: 100, offset: 0 }) },
+  { contract: projectApi, operationId: 'createProjectMilestone', method: 'post', url: projectApiUrls.getCreateProjectMilestoneUrl(4) },
+  { contract: projectApi, operationId: 'updateProjectMilestone', method: 'patch', url: projectApiUrls.getUpdateProjectMilestoneUrl(4, 7) },
+  { contract: projectApi, operationId: 'deleteProjectMilestone', method: 'delete', url: projectApiUrls.getDeleteProjectMilestoneUrl(4, 7) },
+  { contract: projectApi, operationId: 'getProjectActivity', method: 'get', url: projectApiUrls.getGetProjectActivityUrl(4, { limit: 50, offset: 0 }) },
+  { contract: projectApi, operationId: 'addProjectComment', method: 'post', url: projectApiUrls.getAddProjectCommentUrl(4) },
+  { contract: projectApi, operationId: 'bulkDeleteProjects', method: 'post', url: projectApiUrls.getBulkDeleteProjectsUrl() },
   { contract: projectApi, operationId: 'health', method: 'get', url: projectApiUrls.getHealthUrl() },
   { contract: coreApi, operationId: 'listDirectoryUsers', method: 'get', url: coreApiUrls.getListDirectoryUsersUrl({ group_ids: '1' }) },
   { contract: coreApi, operationId: 'health', method: 'get', url: coreApiUrls.getHealthUrl() },
@@ -93,12 +101,14 @@ describe('upstream contracts from the installed @mairie360 OpenAPI packages', ()
 
 describe('fixtures conform to the upstream contracts', () => {
   test.each([
-    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
+    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin', role: 'contributor' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
     ['Project API createProject 200', projectApi, 'post', projectApiUrls.getCreateProjectUrl(), createProjectResult(12)],
     ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })], total: 2 }],
     ['Project API createTask 200', projectApi, 'post', projectApiUrls.getCreateTaskUrl(1), createTaskResult(7, 'Tâche 7')],
-    ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1 }, { id: 2 }])],
+    ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1, role: 'manager' }, { id: 2, role: 'reader' }])],
     ['Project API getProject 200', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1), [taskView(1)], [agents.alice])],
+    ['Project API getProject 200 with milestones', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1, { budget_voted: 100, budget_committed: null }), [], [], { milestones: [milestoneView(1)], milestones_total: 1 })],
+    ['Project API getProjectMilestones 200', projectApi, 'get', projectApiUrls.getGetProjectMilestonesUrl(1), { milestones: [milestoneView(1), milestoneView(2, { reached: true })], total: 2 }],
     ['Core API listDirectoryUsers 200', coreApi, 'get', coreApiUrls.getListDirectoryUsersUrl(), coreDirectory([agents.admin, agents.alice])],
     ['Core API getMe 200', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice)],
     ['Core API getMe 200 without role nor group', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice, { role: '', roles: [], groups: [] })],
