@@ -88,6 +88,14 @@ export const ProjectListItem = z.object({
     progress: z.number().min(0).max(100).openapi({ description: 'Progress of the project, in percent', example: 75 }),
     dueDate: z.string().openapi({ description: 'Due date of the project, ISO 8601', example: '2024-12-31T23:59:59Z' }),
     createdAt: z.string().openapi({ description: 'Creation date of the project, ISO 8601', example: '2024-01-01T12:00:00Z' }),
+    budgetVoted: z.number().int().nullable().openapi({
+      description: 'Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in',
+      example: 1250000,
+    }),
+    budgetCommitted: z.number().int().nullable().openapi({
+      description: 'Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`',
+      example: 430000,
+    }),
     tasks: z.object({
         total: z.number().openapi({ description: 'Number of tasks of the project, the archived (done) ones included', example: 10 }),
         completed: z.number().openapi({ description: 'Number of done tasks of the project, the archived ones included', example: 7 }),
@@ -332,7 +340,15 @@ registry.register('CreateProjectBody', CreateProjectBody);
 
 // The template only applies at creation (its statuses are copied then): not part of a PATCH.
 // The group can be changed but not removed: `groupId: null` is refused in 400.
+// An amount in cents of euro (MAIR-1085): an integer from 0, `null` clears it.
+const BudgetAmount = (example: number, what: string) => z.number().int().min(0).nullable().optional().openapi({
+  description: `${what}, in cents of euro: absent keeps it, \`null\` clears it, an integer from 0 replaces it (a negative amount is a 400)`,
+  example,
+});
+
 export const UpdateProjectBody = CreateProjectBody.omit({ templateId: true, groupId: true }).partial().extend({
+  budgetVoted: BudgetAmount(1250000, 'Budget voted by the council'),
+  budgetCommitted: BudgetAmount(430000, 'Budget already committed'),
   groupId: GroupIdField.optional().openapi({
     description: 'New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid',
     example: 'group-3',

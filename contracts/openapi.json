@@ -314,6 +314,22 @@
             "description": "Creation date of the project, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
+          "budgetVoted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+            "example": 1250000
+          },
+          "budgetCommitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+            "example": 430000
+          },
           "tasks": {
             "type": "object",
             "properties": {
@@ -407,6 +423,8 @@
           "progress",
           "dueDate",
           "createdAt",
+          "budgetVoted",
+          "budgetCommitted",
           "tasks",
           "permissions"
         ],
@@ -554,6 +572,22 @@
             "description": "Creation date of the project, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
+          "budgetVoted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+            "example": 1250000
+          },
+          "budgetCommitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+            "example": 430000
+          },
           "tasks": {
             "type": "object",
             "properties": {
@@ -670,6 +704,8 @@
           "progress",
           "dueDate",
           "createdAt",
+          "budgetVoted",
+          "budgetCommitted",
           "tasks",
           "permissions",
           "group"
@@ -1240,6 +1276,24 @@
               ]
             }
           },
+          "budgetVoted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Budget voted by the council, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)",
+            "example": 1250000
+          },
+          "budgetCommitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Budget already committed, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)",
+            "example": 430000
+          },
           "groupId": {
             "type": "string",
             "pattern": "^group-\\d{1,15}$",
@@ -1787,6 +1841,22 @@
                 "description": "Creation date of the project, ISO 8601",
                 "example": "2024-01-01T12:00:00Z"
               },
+              "budgetVoted": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                "example": 1250000
+              },
+              "budgetCommitted": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                "example": 430000
+              },
               "tasks": {
                 "type": "object",
                 "properties": {
@@ -1903,6 +1973,8 @@
               "progress",
               "dueDate",
               "createdAt",
+              "budgetVoted",
+              "budgetCommitted",
               "tasks",
               "permissions",
               "group"
@@ -2548,6 +2620,22 @@
                   "description": "Creation date of the project, ISO 8601",
                   "example": "2024-01-01T12:00:00Z"
                 },
+                "budgetVoted": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                  "example": 1250000
+                },
+                "budgetCommitted": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                  "example": 430000
+                },
                 "tasks": {
                   "type": "object",
                   "properties": {
@@ -2641,6 +2729,8 @@
                 "progress",
                 "dueDate",
                 "createdAt",
+                "budgetVoted",
+                "budgetCommitted",
                 "tasks",
                 "permissions"
               ],
@@ -3606,6 +3696,22 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "budgetVoted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                          "example": 1250000
+                        },
+                        "budgetCommitted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                          "example": 430000
+                        },
                         "tasks": {
                           "type": "object",
                           "properties": {
@@ -3722,6 +3828,8 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "budgetVoted",
+                        "budgetCommitted",
                         "tasks",
                         "permissions",
                         "group"
@@ -4332,6 +4440,22 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "budgetVoted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                          "example": 1250000
+                        },
+                        "budgetCommitted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                          "example": 430000
+                        },
                         "tasks": {
                           "type": "object",
                           "properties": {
@@ -4448,6 +4572,8 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "budgetVoted",
+                        "budgetCommitted",
                         "tasks",
                         "permissions",
                         "group"
@@ -5239,7 +5365,7 @@
           "Projects"
         ],
         "summary": "Partially update a project",
-        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.",
         "parameters": [
           {
             "schema": {
@@ -5381,6 +5507,24 @@
                         "dueDate"
                       ]
                     }
+                  },
+                  "budgetVoted": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "description": "Budget voted by the council, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)",
+                    "example": 1250000
+                  },
+                  "budgetCommitted": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "description": "Budget already committed, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)",
+                    "example": 430000
                   },
                   "groupId": {
                     "type": "string",
@@ -5543,6 +5687,22 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "budgetVoted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                          "example": 1250000
+                        },
+                        "budgetCommitted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                          "example": 430000
+                        },
                         "tasks": {
                           "type": "object",
                           "properties": {
@@ -5659,6 +5819,8 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "budgetVoted",
+                        "budgetCommitted",
                         "tasks",
                         "permissions",
                         "group"
@@ -6125,6 +6287,22 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "budgetVoted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                          "example": 1250000
+                        },
+                        "budgetCommitted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                          "example": 430000
+                        },
                         "tasks": {
                           "type": "object",
                           "properties": {
@@ -6241,6 +6419,8 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "budgetVoted",
+                        "budgetCommitted",
                         "tasks",
                         "permissions",
                         "group"
@@ -7199,6 +7379,22 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "budgetVoted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                          "example": 1250000
+                        },
+                        "budgetCommitted": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                          "example": 430000
+                        },
                         "tasks": {
                           "type": "object",
                           "properties": {
@@ -7315,6 +7511,8 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "budgetVoted",
+                        "budgetCommitted",
                         "tasks",
                         "permissions",
                         "group"
@@ -8506,6 +8704,22 @@
                             "description": "Creation date of the project, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
+                          "budgetVoted": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in",
+                            "example": 1250000
+                          },
+                          "budgetCommitted": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "description": "Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`",
+                            "example": 430000
+                          },
                           "tasks": {
                             "type": "object",
                             "properties": {
@@ -8599,6 +8813,8 @@
                           "progress",
                           "dueDate",
                           "createdAt",
+                          "budgetVoted",
+                          "budgetCommitted",
                           "tasks",
                           "permissions"
                         ],

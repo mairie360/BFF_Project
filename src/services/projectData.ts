@@ -262,11 +262,20 @@ function toApiUsers(users: Array<{ id: number; first_name: string; last_name: st
   }));
 }
 
-/** Updates the title, the description, the status and/or the priority of a project (both stored, MAIR-558). */
+/** Updates the title, the description, the status, the priority (both stored, MAIR-558), the group and/or the budget of a project. */
 export async function updateProjectRecord(
   caller: Caller,
   projectId: number,
-  input: { title?: string; description?: string; status?: ProjectStatus; priority?: TaskPriority; groupId?: number },
+  input: {
+    title?: string;
+    description?: string;
+    status?: ProjectStatus;
+    priority?: TaskPriority;
+    groupId?: number;
+    /** In cents of euro (MAIR-1085): absent keeps it, `null` clears it. */
+    budgetVoted?: number | null;
+    budgetCommitted?: number | null;
+  },
 ): Promise<void> {
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
     // Absent, the group is kept.
@@ -275,6 +284,8 @@ export async function updateProjectRecord(
     ...(input.description !== undefined ? { description: input.description } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.priority !== undefined ? { priority: input.priority } : {}),
+    ...(input.budgetVoted !== undefined ? { budget_voted: input.budgetVoted } : {}),
+    ...(input.budgetCommitted !== undefined ? { budget_committed: input.budgetCommitted } : {}),
   }, options));
 }
 

@@ -846,6 +846,80 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.body.project).toMatchObject({ status, statusLabel: label });
     });
 
+    test('MAIR-1085: the budget is read on the page and the detail, in cents of euro', async () => {
+      signIn(admin);
+      mockProjectApi({
+        projects: [projectListItem(1, { budget_voted: 1_250_000, budget_committed: 430_000 }), projectListItem(2)],
+        bundles: { 1: projectBundle(projetView(1, { budget_voted: 1_250_000, budget_committed: null }), [], [admin]) },
+      });
+
+      const page = await as(request(app).get('/projects-page'), admin);
+      expect(page.status).toBe(200);
+      expectBffContract('get', '/projects-page', page);
+      expect(page.body.projects.map(({ budgetVoted, budgetCommitted }: Record<string, unknown>) => [budgetVoted, budgetCommitted]))
+        .toEqual([[1_250_000, 430_000], [null, null]]);
+
+      const detail = await as(request(app).get('/projects/project-1'), admin);
+      expect(detail.status).toBe(200);
+      expectBffContract('get', '/projects/project-1', detail);
+      expect(detail.body.project).toMatchObject({ budgetVoted: 1_250_000, budgetCommitted: null });
+    });
+
+    test('MAIR-1085: PATCH keeps an absent budget, clears it with null and sets it in cents', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { budget_voted: 900_000 }), [], [marie]) } });
+
+      const cleared = await as(request(app).patch('/projects/project-1'), marie).send({ budgetVoted: 900_000, budgetCommitted: null });
+      const kept = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Voirie' });
+
+      expect([cleared.status, kept.status]).toEqual([200, 200]);
+      expectBffContract('patch', '/projects/project-1', cleared);
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+        { budget_voted: 900_000, budget_committed: null },
+        { name: 'Voirie' },
+      ]);
+      expect(cleared.body.project.budgetVoted).toBe(900_000);
+    });
+
+    test.each([
+      ['a negative amount', { budgetVoted: -1 }, 'body.budgetVoted'],
+      ['a fractional amount', { budgetCommitted: 12.5 }, 'body.budgetCommitted'],
+      ['a text amount', { budgetVoted: '1000' }, 'body.budgetVoted'],
+    ])('MAIR-1085: PATCH refuses %s with a 400 naming the field, before any write', async (_name, body, path) => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), marie).send(body);
+
+      expect(response.status).toBe(400);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toEqual([]);
+    });
+
+    test('MAIR-1085: Project API refusing the budget answers its 400', async () => {
+      signIn(marie);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+      projectApi.on('patch', PROJECT.project, textError(400, 'Invalid `budget_voted`: must be at least 0'));
+
+      const response = await as(request(app).patch('/projects/project-1'), marie).send({ budgetVoted: 5 });
+
+      expect(response.status).toBe(400);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(JSON.stringify(response.body)).not.toContain('budget_voted');
+    });
+
+    test('MAIR-1085: a plain agent cannot set the budget', async () => {
+      signIn(alice);
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice]) } });
+
+      const response = await as(request(app).patch('/projects/project-1'), alice).send({ budgetVoted: 5 });
+
+      expect(response.status).toBe(403);
+      expectBffContract('patch', '/projects/project-1', response);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toEqual([]);
+    });
+
     test('MAIR-1084: a project on hold is read, created and updated as on-hold', async () => {
       signIn(admin);
       const bundles = { 1: projectBundle(projetView(1, { status: 'Suspended' }), [], [admin]) };

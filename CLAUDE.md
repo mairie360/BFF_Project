@@ -145,6 +145,10 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - `getProjectPermissions(user, visible)` / `getTaskPermissions(user, assignedUserId)` are pure: they derive the
   rights from the role and the bundle or task already read by the guards.
 
+- MAIR-1085: `budgetVoted` / `budgetCommitted` (integer cents of euro, `null` when not filled in) are read from Project
+  API's `budget_voted` / `budget_committed` on the page items and the detail, and written by `PATCH /projects/{projectId}`
+  (absent keeps, `null` clears, a negative or fractional amount is a BFF 400).
+
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 
 ### OpenAPI is generated from the code, in two places that must stay in sync
