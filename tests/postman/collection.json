@@ -264,7 +264,7 @@
                   "    pm.expect(body.access.canManageProjects).to.eql(true);",
                   "    pm.expect(body.page.defaultView).to.eql('kanban');",
                   "    pm.expect(body.projects).to.be.an('array');",
-                  "    pm.expect(body.kanban.columns.map((c) => c.status)).to.eql(['todo', 'in-progress', 'review', 'done']);",
+                  "    pm.expect(body.kanban.columns.map((c) => c.status)).to.eql(['todo', 'in-progress', 'review', 'on-hold', 'done']);",
                   "});",
                   "pm.test(\"The token is an EdDSA token under Core's kid (MAIR-680)\", function () {",
                   "    const header = JSON.parse(atob(pm.environment.get('jwt_admin').split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));",
@@ -7914,6 +7914,191 @@
         }
       ],
       "description": "The project is suspended, closed, then deleted with its duplicate and the template."
+    },
+    {
+      "name": "MAIR-772 A session closed in Core is refused",
+      "item": [
+        {
+          "name": "MAIR-772 Sign in through Core (seeded administrator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{coreUrl}}/api/v1/auth/login",
+              "host": [
+                "{{coreUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{core_admin_email}}\",\n  \"password\": \"{{core_admin_password}}\",\n  \"device_info\": \"newman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Core hands out a JWT and a refresh token\", function () {",
+                  "    const authorization = pm.response.headers.get('Authorization') || '';",
+                  "    pm.expect(authorization).to.match(/^Bearer [^.]+\\.[^.]+\\.[^.]+$/);",
+                  "    pm.expect(pm.response.json().refresh_token).to.be.a('string').and.not.empty;",
+                  "    pm.environment.set('jwt_session', authorization.replace(/^Bearer /, ''));",
+                  "    pm.environment.set('refresh_token_session', pm.response.json().refresh_token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-772 The open session reaches the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_session}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-772 Sign out through Core",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{coreUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{coreUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token_session}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-772 The JWT of the closed session is refused",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_session}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"The refusal is the error envelope, without data\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(Object.keys(body)).to.eql(['error']);",
+                  "    pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
     }
   ]
 }

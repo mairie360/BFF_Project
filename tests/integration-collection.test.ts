@@ -97,4 +97,18 @@ describe('newman integration collection (MAIR-262)', () => {
     const uncovered = operations.filter((operation) => !covered.has(operation));
     expect(uncovered).toEqual([]);
   });
+
+  it('MAIR-772: replays a session closed in Core against the upstream API (real sign-in, sign-out, then 401)', () => {
+    const journey = requests.filter(({ folder }) => folder === 'MAIR-772 A session closed in Core is refused');
+    expect(journey.map(({ request }) => `${request.method} ${request.url.raw}`)).toEqual([
+      'POST {{coreUrl}}/api/v1/auth/login',
+      'GET {{baseUrl}}/projects-page',
+      'POST {{coreUrl}}/api/v1/auth/logout',
+      'GET {{baseUrl}}/projects-page',
+    ]);
+    expect(journey[3].tests.join('\n')).toContain('have.status(401)');
+    const byKey = Object.fromEntries(environment.values.map(({ key, value }) => [key, value]));
+    expect(byKey.jwt_session).toBe('');
+    expect(byKey.refresh_token_session).toBe('');
+  });
 });
