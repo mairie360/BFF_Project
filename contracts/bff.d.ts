@@ -571,11 +571,11 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                             * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                            status: "todo" | "in-progress" | "done";
                             /**
                              * @description Priority of the project
                              * @example high
@@ -1033,11 +1033,11 @@ export interface paths {
                         /** @example Scan task */
                         title: string;
                         /**
-                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                         * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                          * @example todo
                          * @enum {string}
                          */
-                        status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                        status: "todo" | "in-progress" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -1829,11 +1829,11 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                             * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                            status: "todo" | "in-progress" | "done";
                             /**
                              * @description Priority of the project
                              * @example high
@@ -2400,11 +2400,11 @@ export interface paths {
                         /** @example Scan task */
                         title?: string;
                         /**
-                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                         * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                          * @example todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                        status?: "todo" | "in-progress" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -3098,11 +3098,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
-                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                         * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                          * @example todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                        status?: "todo" | "in-progress" | "done";
                         /**
                          * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
                          * @example status-1
@@ -4679,7 +4679,8 @@ export interface paths {
                         /** @example Scan milestone */
                         title: string;
                         /**
-                         * @description Day the milestone is due, `YYYY-MM-DD`
+                         * Format: date
+                         * @description Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)
                          * @example 2027-03-15
                          */
                         dueDate: string;
@@ -4914,13 +4915,14 @@ export interface paths {
                         /** @example Scan milestone */
                         title?: string;
                         /**
-                         * @description Day the milestone is due, `YYYY-MM-DD`
+                         * Format: date
+                         * @description Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)
                          * @example 2027-03-15
                          */
                         dueDate?: string;
                         /**
-                         * @description Already reached; absent: `false`
-                         * @example false
+                         * @description `true` marks the milestone reached, `false` reopens it; absent, the current value is kept
+                         * @example true
                          */
                         reached?: boolean;
                     };
@@ -5519,7 +5521,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
-                         * @description Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`
+                         * @description Text of the comment. Leading and trailing whitespace is removed first; what remains must hold 1 to 2000 characters (a blank message is a 400) and no `<` or `>`
                          * @example Comment posted by the ZAP scan
                          */
                         message: string;
@@ -7116,11 +7118,11 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                 * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                status: "todo" | "in-progress" | "done";
                 /**
                  * @description Priority of the project
                  * @example high
@@ -7176,11 +7178,11 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+                 * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+                status: "todo" | "in-progress" | "done";
                 /**
                  * @description Priority of the project
                  * @example high
@@ -7215,11 +7217,11 @@ export interface components {
             /** @example Scan task */
             title: string;
             /**
-             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+             * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
+            status: "todo" | "in-progress" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -7250,11 +7252,11 @@ export interface components {
             /** @example Scan task */
             title?: string;
             /**
-             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+             * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
              * @example todo
              * @enum {string}
              */
-            status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
+            status?: "todo" | "in-progress" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -7283,11 +7285,11 @@ export interface components {
         };
         UpdateTaskStatusBody: {
             /**
-             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
+             * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
              * @example todo
              * @enum {string}
              */
-            status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
+            status?: "todo" | "in-progress" | "done";
             /**
              * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
              * @example status-1
@@ -8021,7 +8023,7 @@ export interface components {
         };
         ProjectCommentBody: {
             /**
-             * @description Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`
+             * @description Text of the comment. Leading and trailing whitespace is removed first; what remains must hold 1 to 2000 characters (a blank message is a 400) and no `<` or `>`
              * @example Comment posted by the ZAP scan
              */
             message: string;
@@ -8039,7 +8041,8 @@ export interface components {
             /** @example Scan milestone */
             title: string;
             /**
-             * @description Day the milestone is due, `YYYY-MM-DD`
+             * Format: date
+             * @description Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)
              * @example 2027-03-15
              */
             dueDate: string;
@@ -8053,13 +8056,14 @@ export interface components {
             /** @example Scan milestone */
             title?: string;
             /**
-             * @description Day the milestone is due, `YYYY-MM-DD`
+             * Format: date
+             * @description Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)
              * @example 2027-03-15
              */
             dueDate?: string;
             /**
-             * @description Already reached; absent: `false`
-             * @example false
+             * @description `true` marks the milestone reached, `false` reopens it; absent, the current value is kept
+             * @example true
              */
             reached?: boolean;
         };

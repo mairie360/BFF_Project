@@ -154,7 +154,9 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
   project visible, writes `requireProjectManagement`; Project API's 404 for an unknown milestone is relayed).
 - MAIR-1087: tasks carry `startDate` (Project API `start_date`, `null` without one) on every read; `POST …/tasks` and
   `PATCH …/tasks/{taskId}` take it (absent keeps, `null` / `""` clears on update); `requireStartBeforeDue` answers the
-  400 on `body.startDate` when both dates are sent, Project API's 400 otherwise.
+  400 on `body.startDate` when both dates are sent. A partial PATCH sending one of them is checked by Project API against
+  the stored other one (a new `startDate` against the stored due date, a new `dueDate` against the stored start date):
+  its 400 (SQLSTATE 23514) is relayed.
 - MAIR-1088: members carry their `role` (`manager` / `contributor` / `reader`; page items `members` + `myRole`, detail
   `members` with a `load` counted on the active tasks). A `manager` member manages the project: `getProjectPermissions` /
   `getTaskPermissions` take Project API's `can_manage` (`apiCanManage`) on top of the role, the project guards read it
@@ -189,11 +191,15 @@ trailing digits). Routes validate params, then `parsePublicId`, then 400 if null
 
 ### Vocabulary mapping (three layers)
 
-BFF (`todo` / `in-progress` / `review` / `on-hold` / `done`, `high|medium|low`) ↔ Project API
-(`Todo`/`InProgress`/`Completed`/`Error`, `Low|Medium|High`) ↔ DB (`todo`/`in_progress`/`completed`).
-All the `*Map` tables are in `project_helpers.ts`. Mapping is lossy in
-places (e.g. BFF `review` ↔ backend `Error`), and several project-level fields (status, priority,
-progress, dueDate) are **derived from a project's tasks**, not stored.
+Project statuses: BFF `todo` / `in-progress` / `review` / `on-hold` / `done` ↔ Project API `Todo` / `Active` / `Review` /
+`Suspended` / `Completed` (`Error`, a value Project API cannot interpret, reads as `todo`). Since MAIR-558 Project API stores
+the status and the priority chosen for a project.
+
+Task categories: BFF `todo` / `in-progress` / `done` ↔ Project API `Todo` / `InProgress` / `Completed` (`Error` reads as
+`review`) ↔ DB `todo` / `in_progress` / `completed`. A task refuses `review` and `on-hold`, which are project statuses only.
+
+Priorities: BFF `high|medium|low` ↔ Project API `High` (and `Urgent`) / `Medium` / `Low`. All the `*Map` tables are in
+`project_helpers.ts`. A project's progress and dueDate are **derived from its tasks**, not stored.
 
 ### Permissions & roles
 

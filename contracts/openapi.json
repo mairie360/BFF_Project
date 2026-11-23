@@ -1256,11 +1256,9 @@
                   "enum": [
                     "todo",
                     "in-progress",
-                    "review",
-                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                  "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                   "example": "todo"
                 },
                 "priority": {
@@ -1406,11 +1404,9 @@
                   "enum": [
                     "todo",
                     "in-progress",
-                    "review",
-                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                  "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                   "example": "todo"
                 },
                 "priority": {
@@ -1494,11 +1490,9 @@
             "enum": [
               "todo",
               "in-progress",
-              "review",
-              "on-hold",
               "done"
             ],
-            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+            "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
             "example": "todo"
           },
           "priority": {
@@ -1575,11 +1569,9 @@
             "enum": [
               "todo",
               "in-progress",
-              "review",
-              "on-hold",
               "done"
             ],
-            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+            "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
             "example": "todo"
           },
           "priority": {
@@ -1642,11 +1634,9 @@
             "enum": [
               "todo",
               "in-progress",
-              "review",
-              "on-hold",
               "done"
             ],
-            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+            "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
             "example": "todo"
           },
           "statusId": {
@@ -3252,10 +3242,8 @@
         "properties": {
           "message": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 2000,
             "pattern": "^[^<>]*$",
-            "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+            "description": "Text of the comment. Leading and trailing whitespace is removed first; what remains must hold 1 to 2000 characters (a blank message is a 400) and no `<` or `>`",
             "example": "Comment posted by the ZAP scan"
           }
         },
@@ -3297,8 +3285,9 @@
           },
           "dueDate": {
             "type": "string",
+            "format": "date",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "Day the milestone is due, `YYYY-MM-DD`",
+            "description": "Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)",
             "example": "2027-03-15"
           },
           "reached": {
@@ -3323,14 +3312,15 @@
           },
           "dueDate": {
             "type": "string",
+            "format": "date",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-            "description": "Day the milestone is due, `YYYY-MM-DD`",
+            "description": "Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)",
             "example": "2027-03-15"
           },
           "reached": {
             "type": "boolean",
-            "description": "Already reached; absent: `false`",
-            "example": false
+            "description": "`true` marks the milestone reached, `false` reopens it; absent, the current value is kept",
+            "example": true
           }
         },
         "additionalProperties": false
@@ -4882,11 +4872,9 @@
                           "enum": [
                             "todo",
                             "in-progress",
-                            "review",
-                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                          "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                           "example": "todo"
                         },
                         "priority": {
@@ -5620,11 +5608,9 @@
                     "enum": [
                       "todo",
                       "in-progress",
-                      "review",
-                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                    "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                     "example": "todo"
                   },
                   "priority": {
@@ -6190,11 +6176,9 @@
                           "enum": [
                             "todo",
                             "in-progress",
-                            "review",
-                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                          "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                           "example": "todo"
                         },
                         "priority": {
@@ -7690,11 +7674,9 @@
                     "enum": [
                       "todo",
                       "in-progress",
-                      "review",
-                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                    "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                     "example": "todo"
                   },
                   "priority": {
@@ -8734,11 +8716,9 @@
                     "enum": [
                       "todo",
                       "in-progress",
-                      "review",
-                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
+                    "description": "Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)",
                     "example": "todo"
                   },
                   "statusId": {
@@ -11156,8 +11136,9 @@
                   },
                   "dueDate": {
                     "type": "string",
+                    "format": "date",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                    "description": "Day the milestone is due, `YYYY-MM-DD`",
+                    "description": "Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)",
                     "example": "2027-03-15"
                   },
                   "reached": {
@@ -11314,14 +11295,15 @@
                   },
                   "dueDate": {
                     "type": "string",
+                    "format": "date",
                     "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                    "description": "Day the milestone is due, `YYYY-MM-DD`",
+                    "description": "Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)",
                     "example": "2027-03-15"
                   },
                   "reached": {
                     "type": "boolean",
-                    "description": "Already reached; absent: `false`",
-                    "example": false
+                    "description": "`true` marks the milestone reached, `false` reopens it; absent, the current value is kept",
+                    "example": true
                   }
                 },
                 "additionalProperties": false
@@ -12132,10 +12114,8 @@
                 "properties": {
                   "message": {
                     "type": "string",
-                    "minLength": 1,
-                    "maxLength": 2000,
                     "pattern": "^[^<>]*$",
-                    "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+                    "description": "Text of the comment. Leading and trailing whitespace is removed first; what remains must hold 1 to 2000 characters (a blank message is a 400) and no `<` or `>`",
                     "example": "Comment posted by the ZAP scan"
                   }
                 },

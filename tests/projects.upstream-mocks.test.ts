@@ -841,7 +841,13 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       ['done', 'Completed', 'Terminé'],
     ] as const)('PATCH /projects/:id/close with %s writes %s through Project API', async (status, stored, label) => {
       signIn(marie);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { status: stored }), [taskView(2)], [marie]) } });
+      // Starts in another status: the answer must be the re-read after the write, not the state before it.
+      const bundle = projectBundle(projetView(1, { status: 'Active' }), [taskView(2)], [marie]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('patch', PROJECT.project, ({ body }) => {
+        bundle.project = { ...bundle.project, status: (body as { status: typeof stored }).status };
+        return { status: 204 };
+      });
 
       const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status });
 
@@ -872,7 +878,14 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('MAIR-1085: PATCH keeps an absent budget, clears it with null and sets it in cents', async () => {
       signIn(marie);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { budget_voted: 900_000 }), [], [marie]) } });
+      const bundle = projectBundle(projetView(1, { budget_voted: 500_000, budget_committed: 120_000 }), [], [marie]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      // Applies each PATCH like Project API: an absent field keeps its value.
+      projectApi.on('patch', PROJECT.project, ({ body }) => {
+        const { name, ...rest } = body as { name?: string; budget_voted?: number | null; budget_committed?: number | null };
+        bundle.project = { ...bundle.project, ...rest, ...(name !== undefined ? { name } : {}) };
+        return { status: 204 };
+      });
 
       const cleared = await as(request(app).patch('/projects/project-1'), marie).send({ budgetVoted: 900_000, budgetCommitted: null });
       const kept = await as(request(app).patch('/projects/project-1'), marie).send({ title: 'Voirie' });
@@ -883,7 +896,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         { budget_voted: 900_000, budget_committed: null },
         { name: 'Voirie' },
       ]);
-      expect(cleared.body.project.budgetVoted).toBe(900_000);
+      expect(cleared.body.project).toMatchObject({ budgetVoted: 900_000, budgetCommitted: null });
+      // The title-only PATCH keeps both amounts, the cleared one included.
+      expect(kept.body.project).toMatchObject({ title: 'Voirie', budgetVoted: 900_000, budgetCommitted: null });
     });
 
     test.each([
@@ -911,6 +926,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(400);
       expectBffContract('patch', '/projects/project-1', response);
+      // The 400 is Project API's: the BFF sent the PATCH once.
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ budget_voted: 5 }]);
       expect(JSON.stringify(response.body)).not.toContain('budget_voted');
     });
 
@@ -2521,6 +2538,8 @@ describe('MAIR-1087 start date of a task', () => {
 
     expect(response.status).toBe(400);
     expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    // The 400 is Project API's: the BFF sent the PATCH once.
+    expect(projectApi.calls(PROJECT.task, 'PATCH').map((call) => call.body)).toEqual([{ start_date: '2027-01-01T00:00:00.000Z' }]);
     expect(JSON.stringify(response.body)).not.toContain('start_date');
   });
 
@@ -2631,10 +2650,11 @@ describe('MAIR-1088 member roles', () => {
     expect(response.body.tasks.map((task: { id: string }) => task.id)).toEqual(['task-9']);
   });
 
-  test('a contributor or reader member with the User role still cannot manage the project', async () => {
+  test.each(['contributor', 'reader'] as const)('a %s member with the User role still cannot manage the project', async (role) => {
     signIn(alice);
     const bundle = managedByAlice();
-    bundle.project = projetView(1, { can_manage: false, my_role: 'contributor' });
+    bundle.project = projetView(1, { can_manage: false, my_role: role });
+    bundle.users = [member(alice, role), member(marie, 'contributor')];
     mockProjectApi({ bundles: { 1: bundle } });
 
     const responses = await Promise.all([
@@ -2680,12 +2700,20 @@ describe('MAIR-1088 member roles', () => {
 
     test('POST without a role lets Project API make a contributor', async () => {
       signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+      const bundle = projectBundle(projetView(1), [], [admin]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        const { user_id: id, role } = body as { user_id: number; role?: 'manager' };
+        bundle.users = [...bundle.users, { id, name: 'Alice Martin', role: role ?? 'contributor' }];
+        return { status: 200 };
+      });
 
       const response = await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2' });
 
       expect(response.status).toBe(201);
+      expectBffContract('post', '/projects/project-1/members', response);
       expect(projectApi.calls(PROJECT.users, 'POST')[0].body).toEqual({ user_id: 2 });
+      expect(response.body.members).toContainEqual(expect.objectContaining({ id: 'user-2', role: 'contributor' }));
     });
 
     test('POST refuses an agent outside the team of a Responsable', async () => {
@@ -2776,15 +2804,26 @@ describe('MAIR-1088 member roles', () => {
 
     test('PATCH /projects/:id with assigneeIds keeps the owner Project API refuses to remove', async () => {
       signIn(admin);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin, alice]) } });
-      projectApi.on('delete', PROJECT.user, ({ pathParams }) => (
-        pathParams.userId === String(admin.id) ? textError(409, 'The owner cannot be removed.') : { status: 204 }
-      ));
+      const bundle = projectBundle(projetView(1), [], [admin, alice]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      // Only a successful removal changes the members; the owner's 409 leaves them as they are.
+      projectApi.on('delete', PROJECT.user, ({ pathParams }) => {
+        if (pathParams.userId === String(admin.id)) return textError(409, 'The owner cannot be removed.');
+        bundle.users = bundle.users.filter((entry) => String(entry.id) !== pathParams.userId);
+        return { status: 204 };
+      });
+      projectApi.on('post', PROJECT.users, ({ body }) => {
+        bundle.users = [...bundle.users, { id: (body as { user_id: number }).user_id, name: 'Marie Durand', role: 'contributor' }];
+        return { status: 200 };
+      });
 
       const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-3', assigneeIds: [] });
 
       expect(response.status).toBe(200);
       expect(projectApi.calls(PROJECT.user, 'DELETE').map((call) => call.pathParams.userId).sort()).toEqual(['1', '2']);
+      const memberIds = response.body.project.members.map((entry: { id: string }) => entry.id);
+      expect(memberIds).toEqual(expect.arrayContaining(['user-1', 'user-3']));
+      expect(memberIds).not.toContain('user-2');
     });
   });
 });

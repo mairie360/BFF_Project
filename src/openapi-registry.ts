@@ -311,8 +311,14 @@ const Labels = z.array(textField({ max: 255, min: 1, noMarkup: true }).openapi({
 // a clear detail instead of Project API's bare 400; a review step is a status of the project (`statusId`), e.g. the
 // "À valider" status of the "Avec validation" template, in the `in-progress` category.
 // `on-hold` is a project status only (MAIR-1084).
+// The published enum is the task categories only, so the clients cannot pick `review` or `on-hold`; the runtime schema
+// still parses them to answer the field-level message below instead of a bare enum error.
 const TaskStatus = ProjectStatus.refine((status) => status !== 'review' && status !== 'on-hold', {
   message: 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project',
+}).openapi({
+  enum: ['todo', 'in-progress', 'done'],
+  description: 'Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)',
+  example: 'todo',
 });
 // A status of the task's project (`status-<id>`, from `GET /projects/{projectId}/statuses`, MAIR-566).
 const StatusIdField = z.string().regex(/^status-\d+$/, 'Expected a status-<id> identifier').openapi({
@@ -829,8 +835,10 @@ export const ActivityQuery = z.object({
 });
 
 export const ProjectCommentBody = z.object({
-  message: noMarkup(z.string().trim().min(1).max(2_000)).openapi({
-    description: 'Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`',
+  // Trimmed first, then checked: the published schema is the raw string, so it carries no length limit of its own.
+  message: z.string().transform((value) => value.trim()).pipe(noMarkup(z.string().min(1).max(2_000))).openapi({
+    description: 'Text of the comment. Leading and trailing whitespace is removed first; what remains must hold 1 to 2000 characters (a blank message is a 400) and no `<` or `>`',
+    pattern: '^[^<>]*$',
     example: 'Comment posted by the ZAP scan',
   }),
 }).strict();
@@ -879,7 +887,11 @@ export const MilestonesQuery = z.object({
 // A day alone, a valid calendar date: Project API stores a DATE.
 const MilestoneDueDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date (YYYY-MM-DD)')
   .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value), 'Expected a date (YYYY-MM-DD)')
-  .openapi({ description: 'Day the milestone is due, `YYYY-MM-DD`', example: '2027-03-15' });
+  .openapi({
+    format: 'date',
+    description: 'Day the milestone is due, `YYYY-MM-DD`: a valid calendar day (`2027-02-30` is a 400)',
+    example: '2027-03-15',
+  });
 
 export const CreateMilestoneBody = z.object({
   title: Title('Scan milestone'),
@@ -888,7 +900,13 @@ export const CreateMilestoneBody = z.object({
 }).strict();
 registry.register('CreateMilestoneBody', CreateMilestoneBody);
 
-export const UpdateMilestoneBody = CreateMilestoneBody.partial().strict();
+// Every field is optional and an absent one keeps its value: without `reached` the milestone stays reached or not.
+export const UpdateMilestoneBody = CreateMilestoneBody.partial().extend({
+  reached: z.boolean().optional().openapi({
+    description: '`true` marks the milestone reached, `false` reopens it; absent, the current value is kept',
+    example: true,
+  }),
+}).strict();
 registry.register('UpdateMilestoneBody', UpdateMilestoneBody);
 
 export const ProjectMilestones = z.object({

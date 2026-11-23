@@ -364,17 +364,22 @@ const handlers = {
       'project comment 201': (r) => r.status === 201,
       'project comment is a comment entry': (r) => r.status === 201 && r.json('kind') === 'comment',
     }),
-  // A project of its own, created here and deleted by the bulk deletion.
+  // A project of its own, created here and deleted by the bulk deletion. It stays tracked in `state` until the answer
+  // confirms its deletion, so that cleanup() deletes it when the bulk deletion did not.
   'POST /projects/bulk-delete': ({ request, data }) => {
     const created = http.post(coverage.url('POST /projects'), JSON.stringify(projectBody(unique('k6 bulk-deleted project'))), {
       headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin),
       tags: { op: 'POST /projects' },
     });
     const projectId = need(((json(created) || {}).project || {}).id, 'project to bulk-delete');
-    check(request({ body: { projectIds: [projectId] }, headers: data.admin }), {
+    state.bulkDeletedProjectId = projectId;
+    const res = request({ body: { projectIds: [projectId] }, headers: data.admin });
+    const deleted = res.status === 200
+      && JSON.stringify((json(res) || {}).results) === JSON.stringify([{ projectId, status: 'deleted' }]);
+    if (deleted) state.bulkDeletedProjectId = undefined;
+    check(res, {
       'bulk delete 200': (r) => r.status === 200,
-      'bulk delete deletes it': (r) => r.status === 200
-        && JSON.stringify(r.json('results')) === JSON.stringify([{ projectId, status: 'deleted' }]),
+      'bulk delete deletes it': () => deleted,
     });
   },
 
@@ -529,9 +534,11 @@ function prepare(data) {
   }
 }
 
-// Deletes the working project and its duplicate (their tasks and statuses go with them), and the working template.
+// Deletes the working project, its duplicate and a project the bulk deletion left (their tasks and statuses go with
+// them), and the working template.
 function cleanup(data) {
-  for (const projectId of [state.projectId, state.duplicateProjectId]) {
+  // The bulk-deleted project is still there only when its bulk deletion was not confirmed.
+  for (const projectId of [state.projectId, state.duplicateProjectId, state.bulkDeletedProjectId]) {
     if (!projectId) continue;
     http.del(coverage.url('DELETE /projects/{projectId}', { projectId }), null, {
       headers: data.admin,
