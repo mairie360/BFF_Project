@@ -96,7 +96,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Close or suspend a project */
+        /** Close a project, put it on hold or in review */
         patch: {
             parameters: {
                 query?: never;
@@ -111,10 +111,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
+                         * @description `done` closes the project, `on-hold` puts it on hold, `review` puts it in review
                          * @default done
                          * @enum {string}
                          */
-                        status?: "done" | "review";
+                        status?: "done" | "review" | "on-hold";
                     };
                 };
             };
@@ -144,11 +145,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -305,11 +306,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the task status
                                  * @example À faire
@@ -517,11 +518,11 @@ export interface paths {
                         /** @example Project created by the ZAP scan */
                         description: string;
                         /**
-                         * @description Status of the project
+                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                          * @example todo
                          * @enum {string}
                          */
-                        status: "todo" | "in-progress" | "review" | "done";
+                        status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -541,11 +542,11 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Status of the project
+                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "done";
+                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                             /**
                              * @description Priority of the project
                              * @example high
@@ -599,11 +600,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -760,11 +761,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the task status
                                  * @example À faire
@@ -974,11 +975,11 @@ export interface paths {
                         /** @example Scan task */
                         title: string;
                         /**
-                         * @description Status of the project
+                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                          * @example todo
                          * @enum {string}
                          */
-                        status: "todo" | "in-progress" | "review" | "done";
+                        status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -1021,11 +1022,11 @@ export interface paths {
                              */
                             title: string;
                             /**
-                             * @description Status of the project
+                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "done";
+                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                             /**
                              * @description Label of the task status
                              * @example À faire
@@ -1253,11 +1254,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -1414,11 +1415,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the task status
                                  * @example À faire
@@ -1707,11 +1708,11 @@ export interface paths {
                         /** @example Project created by the ZAP scan */
                         description?: string;
                         /**
-                         * @description Status of the project
+                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                          * @example todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in-progress" | "review" | "done";
+                        status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -1731,11 +1732,11 @@ export interface paths {
                             /** @example Scan task */
                             title: string;
                             /**
-                             * @description Status of the project
+                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "done";
+                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                             /**
                              * @description Priority of the project
                              * @example high
@@ -1784,11 +1785,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -1945,11 +1946,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the task status
                                  * @example À faire
@@ -2263,11 +2264,11 @@ export interface paths {
                         /** @example Scan task */
                         title?: string;
                         /**
-                         * @description Status of the project
+                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                          * @example todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in-progress" | "review" | "done";
+                        status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
                         /**
                          * @description Priority of the project
                          * @example high
@@ -2310,11 +2311,11 @@ export interface paths {
                              */
                             title: string;
                             /**
-                             * @description Status of the project
+                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "done";
+                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                             /**
                              * @description Label of the task status
                              * @example À faire
@@ -2543,11 +2544,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -2704,11 +2705,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the task status
                                  * @example À faire
@@ -2922,11 +2923,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
-                         * @description Status of the project
+                         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                          * @example todo
                          * @enum {string}
                          */
-                        status?: "todo" | "in-progress" | "review" | "done";
+                        status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
                         /**
                          * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
                          * @example status-1
@@ -2954,11 +2955,11 @@ export interface paths {
                              */
                             title: string;
                             /**
-                             * @description Status of the project
+                             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
                              * @enum {string}
                              */
-                            status: "todo" | "in-progress" | "review" | "done";
+                            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                             /**
                              * @description Label of the task status
                              * @example À faire
@@ -3153,7 +3154,8 @@ export interface paths {
                 query?: {
                     /** @description Case-insensitive text searched in the name and the description */
                     q?: string;
-                    status?: "all" | "todo" | "in-progress" | "review" | "done";
+                    /** @description Status filter; `on-hold` keeps the projects put on hold (MAIR-1084) */
+                    status?: "all" | "todo" | "in-progress" | "review" | "on-hold" | "done";
                     priority?: "all" | "high" | "medium" | "low";
                     dueBefore?: string;
                     dueAfter?: string;
@@ -3242,11 +3244,11 @@ export interface paths {
                             kanban: {
                                 columns: {
                                     /**
-                                     * @description Status of the project
+                                     * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                      * @example todo
                                      * @enum {string}
                                      */
-                                    status: "todo" | "in-progress" | "review" | "done";
+                                    status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                     label: string;
                                     /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                                     projectIds: string[];
@@ -3271,11 +3273,11 @@ export interface paths {
                                  */
                                 description: string;
                                 /**
-                                 * @description Status of the project
+                                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
                                  */
-                                status: "todo" | "in-progress" | "review" | "done";
+                                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                                 /**
                                  * @description Label of the project status
                                  * @example À faire
@@ -5052,11 +5054,11 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
-         * @description Status of the project
+         * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
          * @example todo
          * @enum {string}
          */
-        ProjectStatus: "todo" | "in-progress" | "review" | "done";
+        ProjectStatus: "todo" | "in-progress" | "review" | "on-hold" | "done";
         /**
          * @description Priority of the project
          * @example high
@@ -5154,11 +5156,11 @@ export interface components {
              */
             description: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Label of the project status
              * @example À faire
@@ -5308,11 +5310,11 @@ export interface components {
              */
             description: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Label of the project status
              * @example À faire
@@ -5470,11 +5472,11 @@ export interface components {
              */
             title: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Label of the task status
              * @example À faire
@@ -5600,8 +5602,11 @@ export interface components {
              * @example scan
              */
             q?: string;
-            /** @enum {string} */
-            status?: "all" | "todo" | "in-progress" | "review" | "done";
+            /**
+             * @description Status filter; `on-hold` keeps the projects put on hold (MAIR-1084)
+             * @enum {string}
+             */
+            status?: "all" | "todo" | "in-progress" | "review" | "on-hold" | "done";
             /** @enum {string} */
             priority?: "all" | "high" | "medium" | "low";
             /** @example 2030-12-31 */
@@ -5625,11 +5630,11 @@ export interface components {
             /** @example Project created by the ZAP scan */
             description: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -5649,11 +5654,11 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Priority of the project
                  * @example high
@@ -5685,11 +5690,11 @@ export interface components {
             /** @example Project created by the ZAP scan */
             description?: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status?: "todo" | "in-progress" | "review" | "done";
+            status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -5709,11 +5714,11 @@ export interface components {
                 /** @example Scan task */
                 title: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Priority of the project
                  * @example high
@@ -5738,11 +5743,11 @@ export interface components {
             /** @example Scan task */
             title: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status: "todo" | "in-progress" | "review" | "done";
+            status: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -5768,11 +5773,11 @@ export interface components {
             /** @example Scan task */
             title?: string;
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status?: "todo" | "in-progress" | "review" | "done";
+            status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description Priority of the project
              * @example high
@@ -5796,11 +5801,11 @@ export interface components {
         };
         UpdateTaskStatusBody: {
             /**
-             * @description Status of the project
+             * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
              */
-            status?: "todo" | "in-progress" | "review" | "done";
+            status?: "todo" | "in-progress" | "review" | "on-hold" | "done";
             /**
              * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
              * @example status-1
@@ -5809,10 +5814,11 @@ export interface components {
         };
         CloseProjectBody: {
             /**
+             * @description `done` closes the project, `on-hold` puts it on hold, `review` puts it in review
              * @default done
              * @enum {string}
              */
-            status: "done" | "review";
+            status: "done" | "review" | "on-hold";
         };
         TaskCommentBody: {
             /** @example Comment posted by the ZAP scan */
@@ -5895,11 +5901,11 @@ export interface components {
                  */
                 description: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Label of the project status
                  * @example À faire
@@ -6056,11 +6062,11 @@ export interface components {
                  */
                 title: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Label of the task status
                  * @example À faire
@@ -6230,11 +6236,11 @@ export interface components {
             kanban: {
                 columns: {
                     /**
-                     * @description Status of the project
+                     * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                      * @example todo
                      * @enum {string}
                      */
-                    status: "todo" | "in-progress" | "review" | "done";
+                    status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                     label: string;
                     /** @description Ids of the projects of the current page in this column (the only ones the response holds) */
                     projectIds: string[];
@@ -6259,11 +6265,11 @@ export interface components {
                  */
                 description: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Label of the project status
                  * @example À faire
@@ -6513,11 +6519,11 @@ export interface components {
                  */
                 title: string;
                 /**
-                 * @description Status of the project
+                 * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
                  * @enum {string}
                  */
-                status: "todo" | "in-progress" | "review" | "done";
+                status: "todo" | "in-progress" | "review" | "on-hold" | "done";
                 /**
                  * @description Label of the task status
                  * @example À faire

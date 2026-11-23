@@ -8,7 +8,7 @@ import { loadOrvalContract } from './support/orval-contract';
 import type { GetProjectResultView, ProjectListItemView } from '@mairie360/project-api-openapi/model';
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
-  agents, bearer, collaboration, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
+  agents, bearer, collaboration, member, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
   projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
 import { captureLogs } from './support/logs';
@@ -393,7 +393,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       signIn(admin);
       const listed = projectListItem(1, {
         name: 'Rénovation de la médiathèque', tasks_total: 2, tasks_completed: 1, priority: 'High',
-        due_date: '2026-10-15T00:00:00Z', members: [{ id: alice.id, name: 'Alice Martin' }, { id: marie.id, name: 'Marie Durand' }],
+        due_date: '2026-10-15T00:00:00Z', members: [member(alice), member(marie)],
         members_total: 2,
       });
       mockProjectApi();
@@ -415,14 +415,14 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
       })]);
       // The counts cover every matching project, the Kanban columns list the ids of the page. `todo` adds the
-      // statuses Project API does not interpret, `review` the suspended projects (MAIR-558).
+      // statuses Project API does not interpret; the suspended projects are on hold (MAIR-1084).
       expect(response.body.summary).toEqual({
         totalProjects: 41,
-        projectsByStatus: { todo: 3, 'in-progress': 30, review: 9, done: 4 },
+        projectsByStatus: { todo: 3, 'in-progress': 30, review: 3, 'on-hold': 6, done: 4 },
         projectsByPriority: { high: 26, medium: 10, low: 5 },
       });
       expect(response.body.kanban.columns.map(({ status, count, projectIds }: { status: string; count: number; projectIds: string[] }) => [status, count, projectIds]))
-        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 9, []], ['done', 4, []]]);
+        .toEqual([['todo', 3, []], ['in-progress', 30, ['project-1']], ['review', 3, []], ['on-hold', 6, []], ['done', 4, []]]);
       expect(response.body.pagination).toEqual({ page: 3, limit: 10, total: 41, hasNextPage: true });
       // Les membres proposés viennent de l'annuaire Core, pas des projets.
       expect(response.body.options.members.map((option: { value: string }) => option.value)).toEqual(['user-1', 'user-2', 'user-3']);
@@ -437,7 +437,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test.each([
       ['todo', { status: 'Todo' }],
-      ['review', { status: 'Review,Suspended' }],
+      ['review', { status: 'Review' }],
+      // MAIR-1084: the projects on hold have their own filter.
+      ['on-hold', { status: 'Suspended' }],
       ['done', { status: 'Completed' }],
     ])('GET /projects-page sends the status %s as Project API\'s', async (status, expected) => {
       signIn(admin);
@@ -576,7 +578,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       });
       projectApi.on('get', PROJECT.users, ({ url }) => {
         const { offset } = pageOf(url);
-        return { body: projectUsersResult(users.slice(offset, offset + 2).map((agent) => ({ id: agent.id, name: `${agent.first_name} ${agent.last_name}` })), 3) };
+        return { body: projectUsersResult(users.slice(offset, offset + 2).map((agent) => member(agent)), 3) };
       });
 
       const response = await as(request(app).get('/projects/project-1'), admin);
@@ -591,7 +593,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
     test('MAIR-525: reads the member pages after the first one in parallel, in a constant number of waves', async () => {
       signIn(admin);
-      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}` }));
+      const users = Array.from({ length: 9 }, (_, i) => ({ id: 10 + i, name: `Agent ${i}`, role: 'contributor' as const }));
       mockProjectApi();
       projectApi.on('get', PROJECT.project, { body: projectBundle(projetView(1), [], [admin], { users_total: 9 }) });
       projectApi.on('get', PROJECT.users, ({ url }) => {
@@ -827,16 +829,50 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.body.project.title).toBe('Voirie 2027');
     });
 
-    test('PATCH /projects/:id/close suspends or completes the project through Project API', async () => {
+    test.each([
+      // MAIR-1084: `on-hold` suspends the project and reads back as on hold; `review` is the Review status.
+      ['on-hold', 'Suspended', 'En pause'],
+      ['review', 'Review', 'En revue'],
+      ['done', 'Completed', 'Terminé'],
+    ] as const)('PATCH /projects/:id/close with %s writes %s through Project API', async (status, stored, label) => {
       signIn(marie);
-      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { status: 'Suspended' }), [taskView(2)], [marie]) } });
+      mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { status: stored }), [taskView(2)], [marie]) } });
 
-      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'review' });
+      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status });
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1/close', response);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: stored });
+      expect(response.body.project).toMatchObject({ status, statusLabel: label });
+    });
+
+    test('MAIR-1084: a project on hold is read, created and updated as on-hold', async () => {
+      signIn(admin);
+      const bundles = { 1: projectBundle(projetView(1, { status: 'Suspended' }), [], [admin]) };
+      mockProjectApi({ bundles, projects: [projectListItem(1, { status: 'Suspended' })], createdProjectId: 1 });
+
+      const page = await as(request(app).get('/projects-page'), admin);
+      expect(page.status).toBe(200);
+      expectBffContract('get', '/projects-page', page);
+      expect(page.body.projects[0]).toMatchObject({ status: 'on-hold', statusLabel: 'En pause' });
+      expect(page.body.summary.projectsByStatus['on-hold']).toBe(1);
+      expect(page.body.kanban.columns.find((column: { status: string }) => column.status === 'on-hold'))
+        .toEqual({ status: 'on-hold', label: 'En pause', projectIds: ['project-1'], count: 1 });
+      expect(page.body.filters.statuses).toContainEqual({ label: 'En pause', value: 'on-hold' });
+
+      const patched = await as(request(app).patch('/projects/project-1'), admin).send({ status: 'on-hold' });
+      expect(patched.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1', patched);
       expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Suspended' });
-      expect(response.body.project.status).toBe('review');
+      expect(patched.body.project.status).toBe('on-hold');
+
+      const created = await as(request(app).post('/projects'), admin).send({
+        title: 'En attente', description: '', status: 'on-hold', priority: 'low', responsibleId: '', assigneeIds: [],
+        labels: [], dueDate: '', groupId: 'group-3',
+      });
+      expect(created.status).toBe(201);
+      expectBffContract('post', '/projects', created);
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Suspended' });
     });
 
     test('PATCH /projects/:id/tasks/:taskId patches the task and leaves the history to Project API', async () => {
@@ -930,9 +966,12 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         ['a line break in a project title', 'patch', '/projects/project-1', { title: 'Fête\ndu village' }, 'body.title', 'Must not contain line breaks or control characters'],
         ['a blank task title of a new project', 'post', '/projects', { ...createBody, taskItems: [{ ...createBody.taskItems[0], title: '' }] }, 'body.taskItems.0.title', 'Must not be empty'],
         ['a 256-character task label', 'post', '/projects/project-1/tasks', { ...taskBody, labels: ['ok', 'a'.repeat(256)] }, 'body.labels.1', 'Must be at most 255 characters'],
-        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
-        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
-        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status on update', 'patch', '/projects/project-1/tasks/task-2', { status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the review task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'review' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        // MAIR-1084: `on-hold` is a project status only.
+        ['the on-hold task status', 'post', '/projects/project-1/tasks', { ...taskBody, status: 'on-hold' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
+        ['the on-hold task status of the status route', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'on-hold' }, 'body.status', 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project'],
         ['an unknown task status', 'patch', '/projects/project-1/tasks/task-2', { status: 'blocked' }, 'body.status', ''],
         ['a malformed due date', 'patch', '/projects/project-1/tasks/task-2', { dueDate: '05/11/2026' }, 'body.dueDate', 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time'],
       ];
@@ -2099,7 +2138,7 @@ describe('MAIR-683 project linked to a group', () => {
     const bundles: Record<number, typeof bundle> = { 1: bundle };
     mockProjectApi({ bundles });
     projectApi.on('post', PROJECT.users, () => {
-      bundle.users = [...bundle.users, marie];
+      bundle.users = [...bundle.users, member(marie)];
       return { status: 200 };
     });
     projectApi.on('patch', PROJECT.project, () => {

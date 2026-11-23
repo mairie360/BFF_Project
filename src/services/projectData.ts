@@ -229,11 +229,14 @@ async function listDirectoryUsers(caller: Caller, groupIds: number[] = []) {
   return data.users;
 }
 
+/** An agent the caller may assign: their Core id and name. */
+export type AssignableUser = { id: number; name?: string | null };
+
 /**
  * Agents the caller may assign: everyone for an Admin or a Maire, the members of their groups for a
  * Responsable, themselves otherwise.
  */
-export async function listAssignableUsers(caller: Caller, user: ProjectUserContext): Promise<User[]> {
+export async function listAssignableUsers(caller: Caller, user: ProjectUserContext): Promise<AssignableUser[]> {
   if (isGlobalProjectRole(user.role)) {
     return toApiUsers(await listDirectoryUsers(caller));
   }
@@ -248,11 +251,11 @@ export async function listAssignableUsers(caller: Caller, user: ProjectUserConte
   return selfOnly(user, profile);
 }
 
-function selfOnly(user: ProjectUserContext, profile: ProjectUserProfile): User[] {
+function selfOnly(user: ProjectUserContext, profile: ProjectUserProfile): AssignableUser[] {
   return [{ id: user.id, name: profile.name }];
 }
 
-function toApiUsers(users: Array<{ id: number; first_name: string; last_name: string }>): User[] {
+function toApiUsers(users: Array<{ id: number; first_name: string; last_name: string }>): AssignableUser[] {
   return users.map((user) => ({
     id: user.id,
     name: `${user.first_name} ${user.last_name}`.trim(),
@@ -275,15 +278,13 @@ export async function updateProjectRecord(
   }, options));
 }
 
-/** Closes (`completed`) or suspends (`suspended`) a project. */
+/** Closes (`Completed`), puts on hold (`Suspended`, MAIR-1084) or in review (`Review`) a project. */
 export async function setProjectClosed(
   caller: Caller,
   projectId: number,
-  status: 'completed' | 'suspended',
+  status: 'Completed' | 'Suspended' | 'Review',
 ): Promise<void> {
-  await projectCall(caller, (options) => projectApi.updateProject(projectId, {
-    status: status === 'completed' ? 'Completed' : 'Suspended',
-  }, options));
+  await projectCall(caller, (options) => projectApi.updateProject(projectId, { status }, options));
 }
 
 /** Comments and history of a task, as Project API assembles them (every page of both lists). */

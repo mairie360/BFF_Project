@@ -93,11 +93,11 @@ describe('upstream contracts from the installed @mairie360 OpenAPI packages', ()
 
 describe('fixtures conform to the upstream contracts', () => {
   test.each([
-    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
+    ['Project API getProjects 200', projectApi, 'get', projectApiUrls.getGetProjectsUrl(), projectsResult([projectListItem(1, { tasks_total: 3, tasks_completed: 1, priority: 'High', due_date: '2026-10-15T00:00:00Z', members: [{ id: 2, name: 'Alice Martin', role: 'contributor' }], members_total: 1 }), projectListItem(2, { status: 'Suspended' })])],
     ['Project API createProject 200', projectApi, 'post', projectApiUrls.getCreateProjectUrl(), createProjectResult(12)],
     ['Project API getProjectTasks 200', projectApi, 'get', projectApiUrls.getGetProjectTasksUrl(1), { tasks: [taskView(1), taskView(2, { assigned_to: 2, status: 'Completed', priority: 'Urgent' })], total: 2 }],
     ['Project API createTask 200', projectApi, 'post', projectApiUrls.getCreateTaskUrl(1), createTaskResult(7, 'Tâche 7')],
-    ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1 }, { id: 2 }])],
+    ['Project API getProjectUsers 200', projectApi, 'get', projectApiUrls.getGetProjectUsersUrl(1), projectUsersResult([{ id: 1, role: 'manager' }, { id: 2, role: 'reader' }])],
     ['Project API getProject 200', projectApi, 'get', projectApiUrls.getGetProjectUrl(1), projectBundle(projetView(1), [taskView(1)], [agents.alice])],
     ['Core API listDirectoryUsers 200', coreApi, 'get', coreApiUrls.getListDirectoryUsersUrl(), coreDirectory([agents.admin, agents.alice])],
     ['Core API getMe 200', coreApi, 'get', coreApiUrls.getGetMeUrl(), coreMe(agents.alice)],

@@ -24,9 +24,10 @@
           "todo",
           "in-progress",
           "review",
+          "on-hold",
           "done"
         ],
-        "description": "Status of the project",
+        "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
         "example": "todo"
       },
       "ProjectPriority": {
@@ -195,9 +196,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "statusLabel": {
@@ -434,9 +436,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "statusLabel": {
@@ -692,9 +695,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "statusLabel": {
@@ -915,8 +919,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
-            ]
+            ],
+            "description": "Status filter; `on-hold` keeps the projects put on hold (MAIR-1084)"
           },
           "priority": {
             "type": "string",
@@ -978,9 +984,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "priority": {
@@ -1035,9 +1042,10 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project",
+                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                   "example": "todo"
                 },
                 "priority": {
@@ -1126,9 +1134,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "priority": {
@@ -1183,9 +1192,10 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project",
+                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                   "example": "todo"
                 },
                 "priority": {
@@ -1252,9 +1262,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "priority": {
@@ -1324,9 +1335,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "priority": {
@@ -1382,9 +1394,10 @@
               "todo",
               "in-progress",
               "review",
+              "on-hold",
               "done"
             ],
-            "description": "Status of the project",
+            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
             "example": "todo"
           },
           "statusId": {
@@ -1402,9 +1415,11 @@
             "type": "string",
             "enum": [
               "done",
-              "review"
+              "review",
+              "on-hold"
             ],
-            "default": "done"
+            "default": "done",
+            "description": "`done` closes the project, `on-hold` puts it on hold, `review` puts it in review"
           }
         }
       },
@@ -1654,9 +1669,10 @@
                   "todo",
                   "in-progress",
                   "review",
+                  "on-hold",
                   "done"
                 ],
-                "description": "Status of the project",
+                "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                 "example": "todo"
               },
               "statusLabel": {
@@ -1914,9 +1930,10 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project",
+                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                   "example": "todo"
                 },
                 "statusLabel": {
@@ -2353,9 +2370,10 @@
                         "todo",
                         "in-progress",
                         "review",
+                        "on-hold",
                         "done"
                       ],
-                      "description": "Status of the project",
+                      "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                       "example": "todo"
                     },
                     "label": {
@@ -2412,9 +2430,10 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project",
+                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                   "example": "todo"
                 },
                 "statusLabel": {
@@ -2966,9 +2985,10 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "on-hold",
                     "done"
                   ],
-                  "description": "Status of the project",
+                  "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                   "example": "todo"
                 },
                 "statusLabel": {
@@ -3400,7 +3420,7 @@
         "tags": [
           "Projects"
         ],
-        "summary": "Close or suspend a project",
+        "summary": "Close a project, put it on hold or in review",
         "parameters": [
           {
             "schema": {
@@ -3425,9 +3445,11 @@
                     "type": "string",
                     "enum": [
                       "done",
-                      "review"
+                      "review",
+                      "on-hold"
                     ],
-                    "default": "done"
+                    "default": "done",
+                    "description": "`done` closes the project, `on-hold` puts it on hold, `review` puts it in review"
                   }
                 }
               }
@@ -3466,9 +3488,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "statusLabel": {
@@ -3726,9 +3749,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {
@@ -4024,9 +4048,10 @@
                       "todo",
                       "in-progress",
                       "review",
+                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project",
+                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                     "example": "todo"
                   },
                   "priority": {
@@ -4081,9 +4106,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "priority": {
@@ -4188,9 +4214,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "statusLabel": {
@@ -4448,9 +4475,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {
@@ -4753,9 +4781,10 @@
                       "todo",
                       "in-progress",
                       "review",
+                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project",
+                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                     "example": "todo"
                   },
                   "priority": {
@@ -4838,9 +4867,10 @@
                         "todo",
                         "in-progress",
                         "review",
+                        "on-hold",
                         "done"
                       ],
-                      "description": "Status of the project",
+                      "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                       "example": "todo"
                     },
                     "statusLabel": {
@@ -5246,9 +5276,10 @@
                       "todo",
                       "in-progress",
                       "review",
+                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project",
+                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                     "example": "todo"
                   },
                   "priority": {
@@ -5303,9 +5334,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "priority": {
@@ -5393,9 +5425,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "statusLabel": {
@@ -5653,9 +5686,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {
@@ -5973,9 +6007,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "statusLabel": {
@@ -6233,9 +6268,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {
@@ -6654,9 +6690,10 @@
                       "todo",
                       "in-progress",
                       "review",
+                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project",
+                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                     "example": "todo"
                   },
                   "priority": {
@@ -6730,9 +6767,10 @@
                         "todo",
                         "in-progress",
                         "review",
+                        "on-hold",
                         "done"
                       ],
-                      "description": "Status of the project",
+                      "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                       "example": "todo"
                     },
                     "statusLabel": {
@@ -7043,9 +7081,10 @@
                             "todo",
                             "in-progress",
                             "review",
+                            "on-hold",
                             "done"
                           ],
-                          "description": "Status of the project",
+                          "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                           "example": "todo"
                         },
                         "statusLabel": {
@@ -7303,9 +7342,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {
@@ -7614,9 +7654,10 @@
                       "todo",
                       "in-progress",
                       "review",
+                      "on-hold",
                       "done"
                     ],
-                    "description": "Status of the project",
+                    "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                     "example": "todo"
                   },
                   "statusId": {
@@ -7654,9 +7695,10 @@
                         "todo",
                         "in-progress",
                         "review",
+                        "on-hold",
                         "done"
                       ],
-                      "description": "Status of the project",
+                      "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                       "example": "todo"
                     },
                     "statusLabel": {
@@ -7943,10 +7985,13 @@
                 "todo",
                 "in-progress",
                 "review",
+                "on-hold",
                 "done"
-              ]
+              ],
+              "description": "Status filter; `on-hold` keeps the projects put on hold (MAIR-1084)"
             },
             "required": false,
+            "description": "Status filter; `on-hold` keeps the projects put on hold (MAIR-1084)",
             "name": "status",
             "in": "query"
           },
@@ -8283,9 +8328,10 @@
                                   "todo",
                                   "in-progress",
                                   "review",
+                                  "on-hold",
                                   "done"
                                 ],
-                                "description": "Status of the project",
+                                "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                                 "example": "todo"
                               },
                               "label": {
@@ -8342,9 +8388,10 @@
                               "todo",
                               "in-progress",
                               "review",
+                              "on-hold",
                               "done"
                             ],
-                            "description": "Status of the project",
+                            "description": "Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`",
                             "example": "todo"
                           },
                           "statusLabel": {

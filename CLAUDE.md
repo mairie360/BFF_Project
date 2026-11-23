@@ -124,7 +124,8 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - `listProjectsPage(caller, params)` → `GET /api/v1/projects/` once per `/projects-page` (MAIR-474): Project API
   filters (`search`, `status`, `priority`, `due_before`, `due_after`), pages, aggregates the tasks of each project and
   counts every match per status and priority (`summary`). The BFF maps its statuses (`todo` ↔ `Todo`,
-  `in-progress` ↔ `Active`, `review` ↔ `Review` and reads `Suspended` as `review`, `done` ↔ `Completed`; an unknown
+  `in-progress` ↔ `Active`, `review` ↔ `Review`, `on-hold` ↔ `Suspended` (MAIR-1084: a project put on hold, its own
+  filter, Kanban column and count; before it `Suspended` read as `review`), `done` ↔ `Completed`; an unknown
   status reads as `todo`) and priorities (`high` covers `Urgent`, stored `High`). Since MAIR-558 Project API stores the
   project's status and priority as chosen; the Kanban columns count every match but list the ids of the page only.
 - `updateProjectRecord`, `setProjectClosed`, `getTaskCollaboration`,
@@ -165,7 +166,7 @@ trailing digits). Routes validate params, then `parsePublicId`, then 400 if null
 
 ### Vocabulary mapping (three layers)
 
-BFF (`todo` / `in-progress` / `review` / `done`, `high|medium|low`) ↔ Project API
+BFF (`todo` / `in-progress` / `review` / `on-hold` / `done`, `high|medium|low`) ↔ Project API
 (`Todo`/`InProgress`/`Completed`/`Error`, `Low|Medium|High`) ↔ DB (`todo`/`in_progress`/`completed`).
 All the `*Map` tables are in `project_helpers.ts`. Mapping is lossy in
 places (e.g. BFF `review` ↔ backend `Error`), and several project-level fields (status, priority,
@@ -290,7 +291,8 @@ The collection is split in two kinds of checks, both on the BFF's own routes:
   by the agent by `statusId` and by category), its collaboration (comments signed by both, 403 / 404 on a task
   not assigned to the agent, paged follow-up with the history Project API writes), archiving (a done task leaves
   the detail, is counted in the progress and paged by `/archived-tasks`), duplication (active tasks only),
-  suspension and closing (`review` then `done`, the `status` filter of the page), deletion of the duplicate, the
+  putting on hold, in review and closing (`on-hold`, `review` then `done` through `PATCH …/close`, the `status`
+  filter of the page; a task refuses `on-hold`), deletion of the duplicate, the
   project and the template (404 afterwards).
 
 The seeded accounts have no known password and the Postman sandbox cannot sign EdDSA: `integration_test.sh` signs

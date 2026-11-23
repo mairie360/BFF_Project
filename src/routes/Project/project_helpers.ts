@@ -106,6 +106,7 @@ const projectStatusLabelMap: Record<BffProjectStatus, string> = {
   todo: "À faire",
   "in-progress": "En cours",
   review: "En revue",
+  "on-hold": "En pause",
   done: "Terminé",
 };
 
@@ -119,8 +120,8 @@ const backendProjectStatusToBffMap: Record<string, BffProjectStatus> = {
   Todo: "todo",
   Active: "in-progress",
   Review: "review",
-  // Written by the close route ("suspend") and by the BFF before MAIR-558: still shown as review.
-  Suspended: "review",
+  // A project put on hold (MAIR-1084); before it, the BFF showed it as review.
+  Suspended: "on-hold",
   Completed: "done",
   Error: "todo",
 };
@@ -130,6 +131,7 @@ const bffProjectStatusToBackendMap: Record<BffProjectStatus, ApiProjectStatus> =
   todo: "Todo",
   "in-progress": "Active",
   review: "Review",
+  "on-hold": "Suspended",
   done: "Completed",
 };
 
@@ -140,10 +142,12 @@ const backendTaskStatusToBffMap: Record<string, BffProjectStatus> = {
   Error: "review",
 };
 
+// `review` and `on-hold` are refused for tasks by the body schemas (`TaskStatus`); listed for the type only.
 const bffTaskStatusToBackendMap: Record<BffProjectStatus, ApiTaskStatus> = {
   todo: "Todo",
   "in-progress": "InProgress",
   review: "Error",
+  "on-hold": "Error",
   done: "Completed",
 };
 
@@ -347,7 +351,7 @@ export function userPublicId(userId: number): string {
 }
 
 export function mapPerson(
-  user?: User | null,
+  user?: Pick<User, "id" | "name"> | null,
   fallbackId = "user-0",
   fallbackName = "Inconnu",
 ): BffPerson {
@@ -542,11 +546,12 @@ export function summaryFromCounts(result: GetProjectsResultView): {
   return {
     totalProjects: result.total,
     // Same mapping as `mapProjectStatus`: a status Project API does not interpret (`other`) is `todo`, a
-    // suspended project is in review.
+    // suspended project is on hold (MAIR-1084).
     projectsByStatus: {
       todo: status.todo + status.other,
       "in-progress": status.active,
-      review: status.review + status.suspended,
+      review: status.review,
+      "on-hold": status.suspended,
       done: status.completed,
     },
     projectsByPriority: { high: priority.high, medium: priority.medium, low: priority.low },
@@ -561,7 +566,7 @@ export function kanbanColumnsOfPage(
   projects: BffProjectListItem[],
   counts: Record<BffProjectStatus, number>,
 ): Array<{ status: BffProjectStatus; label: string; projectIds: string[]; count: number }> {
-  const statuses: BffProjectStatus[] = ["todo", "in-progress", "review", "done"];
+  const statuses: BffProjectStatus[] = ["todo", "in-progress", "review", "on-hold", "done"];
   return statuses.map((status) => ({
     status,
     label: projectStatusLabelMap[status],
@@ -733,7 +738,7 @@ function templateIdToBackend(templateId: string | undefined): { template_id?: nu
   return { template_id: parsed };
 }
 
-export function collectMembers(usersByProject: User[][]): Array<{
+export function collectMembers(usersByProject: Array<Array<Pick<User, "id" | "name">>>): Array<{
   label: string;
   value: string;
   name: string;

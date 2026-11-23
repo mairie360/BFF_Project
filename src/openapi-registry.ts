@@ -20,8 +20,8 @@ export const bearerAuth = registry.registerComponent('securitySchemes', 'bearerA
 
 // Schema -- ENUMS
 
-export const ProjectStatus = z.enum(['todo', 'in-progress', 'review', 'done']).openapi({
-  description: 'Status of the project',
+export const ProjectStatus = z.enum(['todo', 'in-progress', 'review', 'on-hold', 'done']).openapi({
+  description: 'Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`',
   example: 'todo',
 });
 
@@ -217,8 +217,9 @@ export const ProjectsPageQuery = z.object({
   q: z.string().max(255).optional().openapi({ description: 'Case-insensitive text searched in the name and the description', example: 'scan' }),
 
   status: z
-    .enum(['all', 'todo', 'in-progress', 'review', 'done'])
-    .optional(),
+    .enum(['all', 'todo', 'in-progress', 'review', 'on-hold', 'done'])
+    .optional()
+    .openapi({ description: 'Status filter; `on-hold` keeps the projects put on hold (MAIR-1084)' }),
 
   priority: z
     .enum(['all', 'high', 'medium', 'low'])
@@ -257,8 +258,9 @@ const Labels = z.array(textField({ max: 255, min: 1, noMarkup: true }).openapi({
 // A task's `status` is the category of its status (MAIR-566): `todo`, `in-progress` or `done`. `review` is refused with
 // a clear detail instead of Project API's bare 400; a review step is a status of the project (`statusId`), e.g. the
 // "À valider" status of the "Avec validation" template, in the `in-progress` category.
-const TaskStatus = ProjectStatus.refine((status) => status !== 'review', {
-  message: 'review is not available for tasks: use todo, in-progress or done, or a statusId of the project',
+// `on-hold` is a project status only (MAIR-1084).
+const TaskStatus = ProjectStatus.refine((status) => status !== 'review' && status !== 'on-hold', {
+  message: 'review and on-hold are not available for tasks: use todo, in-progress or done, or a statusId of the project',
 });
 // A status of the task's project (`status-<id>`, from `GET /projects/{projectId}/statuses`, MAIR-566).
 const StatusIdField = z.string().regex(/^status-\d+$/, 'Expected a status-<id> identifier').openapi({
@@ -389,8 +391,12 @@ registry.register(
   UpdateTaskStatusBody,
 );
 
+// `on-hold` puts the project on hold (Project API `Suspended`), `review` in review (`Review`), `done` closes it
+// (MAIR-1084: `review` used to suspend the project and read back as `review`).
 export const CloseProjectBody = z.object({
-  status: z.enum(['done', 'review']).default('done'),
+  status: z.enum(['done', 'review', 'on-hold']).default('done').openapi({
+    description: '`done` closes the project, `on-hold` puts it on hold, `review` puts it in review',
+  }),
 });
 
 export const TaskCommentBody = z.object({
