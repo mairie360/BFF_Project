@@ -60,6 +60,8 @@ export interface PatchTaskView {
   priority?: ApiTaskPriority;
   assigned_to?: number | null;
   due_date?: string;
+  /** Start date (MAIR-1087): `null` clears it. */
+  start_date?: string | null;
   /** A status of the task's project (MAIR-566); Project API sets `status` to its category. */
   status_id?: number;
 }
@@ -72,6 +74,8 @@ export interface TaskInputLike {
   assigneeIds: string[];
   labels: string[];
   dueDate: string;
+  /** Start date (MAIR-1087): empty or `null` for none. */
+  startDate?: string | null;
   /** `status-<id>` of the task's project (MAIR-566): wins over `status`, the task takes its category. */
   statusId?: string;
 }
@@ -643,6 +647,7 @@ export function mapTaskToDto(
     labels: [],
     // The BFF contract requires a due date: a task without one shows today's date.
     dueDate: task.due_date ?? nowIso(),
+    startDate: task.start_date ?? null,
     completed: status === "done",
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
@@ -664,11 +669,20 @@ export function statusIdToBackend(statusId: string | undefined): { status_id?: n
   return { status_id: parsed };
 }
 
+/** A start date after the due date is the 400 of a validation failure on `body.startDate` (MAIR-1087). */
+export function requireStartBeforeDue(startDate: string | null, dueDate: string | null): void {
+  if (startDate && dueDate && Date.parse(startDate) > Date.parse(dueDate)) {
+    throw validationError("body", [{ path: ["startDate"], message: "startDate must be at or before dueDate" }]);
+  }
+}
+
 export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
   const assignedTo = task.responsibleId
     ? parseUserId(task.responsibleId)
     : null;
   const dueDate = toBackendDueDate(task.dueDate);
+  const startDate = task.startDate ? toBackendDueDate(task.startDate) : null;
+  requireStartBeforeDue(startDate, dueDate);
 
   return {
     name: task.title,
@@ -678,6 +692,7 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
     assigned_to: assignedTo,
     description: null,
     due_date: dueDate,
+    ...(startDate ? { start_date: startDate } : {}),
     fields: [
       {
         label: "Date",
@@ -707,6 +722,10 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
   // An empty due date changes nothing: Project API reads `null` as "unchanged" and cannot clear it.
   const dueDate = typeof task.dueDate === "string" ? toBackendDueDate(task.dueDate) : null;
   if (dueDate) body.due_date = dueDate;
+  // Absent keeps the start date, `null` or an empty string clears it (MAIR-1087).
+  if (task.startDate !== undefined) body.start_date = task.startDate ? toBackendDueDate(task.startDate) : null;
+  // Both sent: checked here; one alone is checked by Project API against the stored other one (its 400 is relayed).
+  requireStartBeforeDue(body.start_date ?? null, dueDate);
 
   return body;
 }

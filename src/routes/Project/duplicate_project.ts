@@ -95,6 +95,8 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                     assigneeIds: [],
                     labels: [],
                     dueDate: task.due_date ?? new Date().toISOString(),
+                    // Copied only with its due date: a task without one gets today's, maybe before its start.
+                    startDate: task.due_date ? task.start_date : null,
                 }),
             );
         }

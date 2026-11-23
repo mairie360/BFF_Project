@@ -396,6 +396,11 @@ export interface paths {
                                  */
                                 dueDate: string;
                                 /**
+                                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                                 * @example 2024-12-01T00:00:00Z
+                                 */
+                                startDate: string | null;
+                                /**
                                  * @description Whether the task is completed
                                  * @example false
                                  */
@@ -868,6 +873,11 @@ export interface paths {
                                  */
                                 dueDate: string;
                                 /**
+                                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                                 * @example 2024-12-01T00:00:00Z
+                                 */
+                                startDate: string | null;
+                                /**
                                  * @description Whether the task is completed
                                  * @example false
                                  */
@@ -1030,6 +1040,11 @@ export interface paths {
                          */
                         dueDate: string;
                         /**
+                         * @description Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it
+                         * @example 2030-11-02
+                         */
+                        startDate?: string | null;
+                        /**
                          * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
                          * @example status-1
                          */
@@ -1128,6 +1143,11 @@ export interface paths {
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
+                            /**
+                             * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                             * @example 2024-12-01T00:00:00Z
+                             */
+                            startDate: string | null;
                             /**
                              * @description Whether the task is completed
                              * @example false
@@ -1538,6 +1558,11 @@ export interface paths {
                                  * @example 2024-12-31T23:59:59Z
                                  */
                                 dueDate: string;
+                                /**
+                                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                                 * @example 2024-12-01T00:00:00Z
+                                 */
+                                startDate: string | null;
                                 /**
                                  * @description Whether the task is completed
                                  * @example false
@@ -2097,6 +2122,11 @@ export interface paths {
                                  */
                                 dueDate: string;
                                 /**
+                                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                                 * @example 2024-12-01T00:00:00Z
+                                 */
+                                startDate: string | null;
+                                /**
                                  * @description Whether the task is completed
                                  * @example false
                                  */
@@ -2363,6 +2393,11 @@ export interface paths {
                          */
                         dueDate?: string;
                         /**
+                         * @description Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it
+                         * @example 2030-11-02
+                         */
+                        startDate?: string | null;
+                        /**
                          * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
                          * @example status-1
                          */
@@ -2461,6 +2496,11 @@ export interface paths {
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
+                            /**
+                             * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                             * @example 2024-12-01T00:00:00Z
+                             */
+                            startDate: string | null;
                             /**
                              * @description Whether the task is completed
                              * @example false
@@ -2873,6 +2913,11 @@ export interface paths {
                                  */
                                 dueDate: string;
                                 /**
+                                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                                 * @example 2024-12-01T00:00:00Z
+                                 */
+                                startDate: string | null;
+                                /**
                                  * @description Whether the task is completed
                                  * @example false
                                  */
@@ -3122,6 +3167,11 @@ export interface paths {
                              * @example 2024-12-31T23:59:59Z
                              */
                             dueDate: string;
+                            /**
+                             * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                             * @example 2024-12-01T00:00:00Z
+                             */
+                            startDate: string | null;
                             /**
                              * @description Whether the task is completed
                              * @example false
@@ -6154,6 +6204,11 @@ export interface components {
              */
             dueDate: string;
             /**
+             * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+             * @example 2024-12-01T00:00:00Z
+             */
+            startDate: string | null;
+            /**
              * @description Whether the task is completed
              * @example false
              */
@@ -6383,6 +6438,11 @@ export interface components {
              */
             dueDate: string;
             /**
+             * @description Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it
+             * @example 2030-11-02
+             */
+            startDate?: string | null;
+            /**
              * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
              * @example status-1
              */
@@ -6412,6 +6472,11 @@ export interface components {
              * @example 2030-12-31
              */
             dueDate?: string;
+            /**
+             * @description Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it
+             * @example 2030-11-02
+             */
+            startDate?: string | null;
             /**
              * @description A status of the project (`GET /projects/{projectId}/statuses`): the task takes its category
              * @example status-1
@@ -6770,6 +6835,11 @@ export interface components {
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
+                /**
+                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                 * @example 2024-12-01T00:00:00Z
+                 */
+                startDate: string | null;
                 /**
                  * @description Whether the task is completed
                  * @example false
@@ -7265,6 +7335,11 @@ export interface components {
                  * @example 2024-12-31T23:59:59Z
                  */
                 dueDate: string;
+                /**
+                 * @description Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)
+                 * @example 2024-12-01T00:00:00Z
+                 */
+                startDate: string | null;
                 /**
                  * @description Whether the task is completed
                  * @example false
