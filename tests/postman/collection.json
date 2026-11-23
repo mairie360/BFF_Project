@@ -8091,6 +8091,7 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(Object.keys(body)).to.eql(['error']);",
                   "    pm.expect(body.error.code).to.be.a('string').and.not.empty;",
+                  "    pm.expect(body.error.message).to.be.a('string').and.not.empty;",
                   "});"
                 ]
               }
