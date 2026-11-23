@@ -136,6 +136,7 @@ export const ProjectTask = z.object({
     priorityLabel: z.string().openapi({ description: 'Label of the task priority', example: 'Moyenne' }),
     labels: z.array(z.string()).openapi({ description: 'Labels of the task', example: ['backend', 'important'] }),
     dueDate: z.string().openapi({ description: 'Due date of the task, ISO 8601', example: '2024-12-31T23:59:59Z' }),
+    startDate: z.string().nullable().openapi({ description: 'Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)', example: '2024-12-01T00:00:00Z' }),
     completed: z.boolean().openapi({ description: 'Whether the task is completed', example: false }),
     createdAt: z.string().openapi({ description: 'Creation date of the task, ISO 8601', example: '2024-01-01T12:00:00Z' }),
     updatedAt: z.string().optional().openapi({ description: 'Date of the last update of the task, ISO 8601', example: '2024-01-15T15:30:00Z' }),
@@ -305,6 +306,12 @@ const DueDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an
   example: '2030-12-31',
 });
 
+// Start date of a task (MAIR-1087): same formats as the due date; empty or `null` for none. At or before the due date.
+const StartDate = z.string().refine(isDueDate, 'Expected a date (YYYY-MM-DD) or an ISO 8601 date-time').nullable().optional().openapi({
+  description: 'Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it',
+  example: '2030-11-02',
+});
+
 export const CreateProjectTaskInput = z.object({
   title: Title('Scan task'),
 
@@ -387,6 +394,8 @@ export const CreateTaskBody = z.object({
   labels: Labels,
 
   dueDate: DueDate,
+
+  startDate: StartDate,
 
   statusId: StatusIdField.optional(),
 });

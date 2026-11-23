@@ -2407,3 +2407,132 @@ describe('MAIR-1086 milestones of a project', () => {
     expect(projectApi.requests).toEqual([]);
   });
 });
+
+describe('MAIR-1087 start date of a task', () => {
+  const taskBody = {
+    title: 'Réserver la salle', status: 'todo', priority: 'high',
+    responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-11-20',
+  };
+
+  test('every task read carries its start date, null without one', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [
+      taskView(2, { start_date: '2026-09-01T00:00:00Z' }), taskView(3),
+    ], [admin]) } });
+    projectApi.on('get', PROJECT.archivedTasks, { body: { tasks: [taskView(4, { status: 'Completed', start_date: '2026-08-01T00:00:00Z' })], total: 1 } });
+
+    const detail = await as(request(app).get('/projects/project-1'), admin);
+    const archived = await as(request(app).get('/projects/project-1/archived-tasks'), admin);
+
+    expect([detail.status, archived.status]).toEqual([200, 200]);
+    expectBffContract('get', '/projects/project-1', detail);
+    expectBffContract('get', '/projects/project-1/archived-tasks', archived);
+    expect(detail.body.taskItems.map((task: { startDate: string | null }) => task.startDate)).toEqual(['2026-09-01T00:00:00Z', null]);
+    expect(archived.body.tasks[0].startDate).toBe('2026-08-01T00:00:00Z');
+  });
+
+  test('POST /projects/:id/tasks sends the start date as midnight UTC of that day', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles, createdTaskId: 30 });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30, { start_date: '2026-11-02T00:00:00.000Z', due_date: '2026-11-20T00:00:00.000Z' }));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: '2026-11-02' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/tasks', response);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({
+      start_date: '2026-11-02T00:00:00.000Z', due_date: '2026-11-20T00:00:00.000Z',
+    });
+    expect(response.body.startDate).toBe('2026-11-02T00:00:00.000Z');
+  });
+
+  test('POST without a start date sends none', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: null });
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).not.toHaveProperty('start_date');
+    expect(response.body.startDate).toBeNull();
+  });
+
+  test.each([
+    ['POST', 'post', '/projects/project-1/tasks', { ...taskBody, startDate: '2026-11-21' }],
+    ['PATCH', 'patch', '/projects/project-1/tasks/task-2', { startDate: '2026-12-01', dueDate: '2026-11-30' }],
+  ] as const)('%s refuses a start date after the due date with a 400 naming the field, before any write', async (_name, method, uri, body) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin, alice]) } });
+
+    const response = await as(request(app)[method](uri), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract(method, uri, response);
+    expect(response.body.error.details).toEqual([{ path: 'body.startDate', message: 'startDate must be at or before dueDate' }]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('POST refuses a start date that is not a date', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, startDate: 'demain' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/tasks', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain('body.startDate');
+    expect(projectApi.calls(PROJECT.tasks, 'POST')).toHaveLength(0);
+  });
+
+  test.each([
+    ['sets', { startDate: '2026-10-01' }, { start_date: '2026-10-01T00:00:00.000Z' }],
+    ['clears with null', { startDate: null }, { start_date: null }],
+    ['clears with an empty string', { startDate: '' }, { start_date: null }],
+    ['keeps when absent', { title: 'Autre titre' }, { name: 'Autre titre' }],
+  ] as const)('PATCH %s the start date', async (_name, body, expected) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send(body);
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual(expected);
+  });
+
+  test("PATCH relays Project API's 400 for a start date after the stored due date", async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+    projectApi.on('patch', PROJECT.task, textError(400, 'Invalid `start_date`: must be at or before `due_date`'));
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send({ startDate: '2027-01-01' });
+
+    expect(response.status).toBe(400);
+    expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    expect(JSON.stringify(response.body)).not.toContain('start_date');
+  });
+
+  test('duplicating a project copies the start date of a task that has a due date', async () => {
+    signIn(admin);
+    const source = projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [
+      taskView(2, { start_date: '2026-09-01T00:00:00Z', due_date: '2026-10-01T00:00:00Z' }),
+      taskView(3, { start_date: '2026-09-01T00:00:00Z', due_date: null }),
+    ], [admin]);
+    mockProjectApi({ bundles: { 1: source, 12: projectBundle(projetView(12), [], [admin]) }, createdProjectId: 12 });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+    expect(response.status).toBe(201);
+    const created = projectApi.calls(PROJECT.tasks, 'POST').map((call) => (call.body as { start_date?: string }).start_date);
+    expect(created).toEqual(['2026-09-01T00:00:00.000Z', undefined]);
+  });
+});

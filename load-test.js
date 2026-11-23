@@ -233,10 +233,14 @@ const handlers = {
     check(
       request({
         path: { projectId: need(state.projectId, 'working project'), taskId: need(state.taskId, 'working task') },
-        body: { title: unique('k6 patched task'), priority: 'high' },
+        // MAIR-1087: the start date, before the due date of taskBody().
+        body: { title: unique('k6 patched task'), priority: 'high', startDate: '2030-12-01' },
         headers: data.admin,
       }),
-      { 'patch task 200': (r) => r.status === 200 },
+      {
+        'patch task 200': (r) => r.status === 200,
+        'patch task plans its start': (r) => r.status === 200 && String(r.json('startDate')).startsWith('2030-12-01'),
+      },
     ),
   // The duplicate is deleted by cleanup().
   'POST /projects/{projectId}/duplicate': ({ request, data }) => {

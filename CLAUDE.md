@@ -152,6 +152,9 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
   (`milestones`, first 100, + `milestonesTotal`) and from `src/routes/Project/milestones.ts`: `GET` / `POST
   /projects/{projectId}/milestones`, `PATCH` / `DELETE /projects/{projectId}/milestones/{milestoneId}` (reads need the
   project visible, writes `requireProjectManagement`; Project API's 404 for an unknown milestone is relayed).
+- MAIR-1087: tasks carry `startDate` (Project API `start_date`, `null` without one) on every read; `POST …/tasks` and
+  `PATCH …/tasks/{taskId}` take it (absent keeps, `null` / `""` clears on update); `requireStartBeforeDue` answers the
+  400 on `body.startDate` when both dates are sent, Project API's 400 otherwise.
 
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 

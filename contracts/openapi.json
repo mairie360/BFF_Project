@@ -883,6 +883,14 @@
             "description": "Due date of the task, ISO 8601",
             "example": "2024-12-31T23:59:59Z"
           },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+            "example": "2024-12-01T00:00:00Z"
+          },
           "completed": {
             "type": "boolean",
             "description": "Whether the task is completed",
@@ -947,6 +955,7 @@
           "priorityLabel",
           "labels",
           "dueDate",
+          "startDate",
           "completed",
           "createdAt",
           "permissions"
@@ -1404,6 +1413,14 @@
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
           },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+            "example": "2030-11-02"
+          },
           "statusId": {
             "type": "string",
             "pattern": "^status-\\d+$",
@@ -1476,6 +1493,14 @@
             "type": "string",
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+            "example": "2030-11-02"
           },
           "statusId": {
             "type": "string",
@@ -2168,6 +2193,14 @@
                   "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
+                "startDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                  "example": "2024-12-01T00:00:00Z"
+                },
                 "completed": {
                   "type": "boolean",
                   "description": "Whether the task is completed",
@@ -2232,6 +2265,7 @@
                 "priorityLabel",
                 "labels",
                 "dueDate",
+                "startDate",
                 "completed",
                 "createdAt",
                 "permissions"
@@ -3289,6 +3323,14 @@
                   "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
+                "startDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                  "example": "2024-12-01T00:00:00Z"
+                },
                 "completed": {
                   "type": "boolean",
                   "description": "Whether the task is completed",
@@ -3353,6 +3395,7 @@
                 "priorityLabel",
                 "labels",
                 "dueDate",
+                "startDate",
                 "completed",
                 "createdAt",
                 "permissions"
@@ -4125,6 +4168,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -4189,6 +4240,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -4883,6 +4935,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -4947,6 +5007,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -5125,6 +5186,14 @@
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
                   },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+                    "example": "2030-11-02"
+                  },
                   "statusId": {
                     "type": "string",
                     "pattern": "^status-\\d+$",
@@ -5275,6 +5344,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -5339,6 +5416,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
@@ -6144,6 +6222,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -6208,6 +6294,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -6758,6 +6845,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -6822,6 +6917,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -7116,6 +7212,14 @@
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
                   },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+                    "example": "2030-11-02"
+                  },
                   "statusId": {
                     "type": "string",
                     "pattern": "^status-\\d+$",
@@ -7257,6 +7361,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -7321,6 +7433,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
@@ -7864,6 +7977,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -7928,6 +8049,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -8217,6 +8339,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -8281,6 +8411,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
