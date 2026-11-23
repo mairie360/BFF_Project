@@ -227,6 +227,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -682,6 +692,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -1336,6 +1356,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -1688,7 +1718,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a project
-         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.
          */
         patch: {
             parameters: {
@@ -1751,6 +1781,16 @@ export interface paths {
                              */
                             dueDate: string;
                         }[];
+                        /**
+                         * @description Budget voted by the council, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)
+                         * @example 1250000
+                         */
+                        budgetVoted?: number | null;
+                        /**
+                         * @description Budget already committed, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)
+                         * @example 430000
+                         */
+                        budgetCommitted?: number | null;
                         /**
                          * @description New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid
                          * @example group-3
@@ -1867,6 +1907,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -2626,6 +2676,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -3355,6 +3415,16 @@ export interface paths {
                                  * @example 2024-01-01T12:00:00Z
                                  */
                                 createdAt: string;
+                                /**
+                                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                                 * @example 1250000
+                                 */
+                                budgetVoted: number | null;
+                                /**
+                                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                                 * @example 430000
+                                 */
+                                budgetCommitted: number | null;
                                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                                 tasks: {
                                     /**
@@ -5238,6 +5308,16 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
+            /**
+             * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+             * @example 1250000
+             */
+            budgetVoted: number | null;
+            /**
+             * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+             * @example 430000
+             */
+            budgetCommitted: number | null;
             /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
             tasks: {
                 /**
@@ -5392,6 +5472,16 @@ export interface components {
              * @example 2024-01-01T12:00:00Z
              */
             createdAt: string;
+            /**
+             * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+             * @example 1250000
+             */
+            budgetVoted: number | null;
+            /**
+             * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+             * @example 430000
+             */
+            budgetCommitted: number | null;
             /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
             tasks: {
                 /**
@@ -5734,6 +5824,16 @@ export interface components {
                 dueDate: string;
             }[];
             /**
+             * @description Budget voted by the council, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)
+             * @example 1250000
+             */
+            budgetVoted?: number | null;
+            /**
+             * @description Budget already committed, in cents of euro: absent keeps it, `null` clears it, an integer from 0 replaces it (a negative amount is a 400)
+             * @example 430000
+             */
+            budgetCommitted?: number | null;
+            /**
              * @description New group of the project (`GET /project-groups`). Omitted, the group is not changed (a project created before groups were required may still have none); `null` is invalid
              * @example group-3
              */
@@ -5983,6 +6083,16 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
+                /**
+                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                 * @example 1250000
+                 */
+                budgetVoted: number | null;
+                /**
+                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                 * @example 430000
+                 */
+                budgetCommitted: number | null;
                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**
@@ -6347,6 +6457,16 @@ export interface components {
                  * @example 2024-01-01T12:00:00Z
                  */
                 createdAt: string;
+                /**
+                 * @description Budget voted by the council, in cents of euro (MAIR-1085: `1250000` is 12 500,00 €), `null` when not filled in
+                 * @example 1250000
+                 */
+                budgetVoted: number | null;
+                /**
+                 * @description Budget already committed (orders placed), in cents of euro, `null` when not filled in; it may exceed `budgetVoted`
+                 * @example 430000
+                 */
+                budgetCommitted: number | null;
                 /** @description Task counts of the project: `progress` is `completed / total`; `active + archived = total` */
                 tasks: {
                     /**

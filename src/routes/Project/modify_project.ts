@@ -28,7 +28,7 @@ registry.registerPath({
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.',
 
     request: {
         params: ProjectIdParams,
@@ -98,6 +98,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         if (
             body.title !== undefined || body.description !== undefined || body.status !== undefined
             || body.priority !== undefined || body.groupId !== undefined
+            || body.budgetVoted !== undefined || body.budgetCommitted !== undefined
         ) {
             await updateProjectRecord(caller, projectId, {
                 groupId,
@@ -105,6 +106,8 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
                 description: body.description,
                 status: body.status === undefined ? undefined : mapProjectStatusToBackend(body.status),
                 priority: body.priority === undefined ? undefined : mapPriorityToBackend(body.priority),
+                budgetVoted: body.budgetVoted,
+                budgetCommitted: body.budgetCommitted,
             });
         }
     };

@@ -212,10 +212,14 @@ const handlers = {
     check(
       request({
         path: { projectId: need(state.projectId, 'working project') },
-        body: { title: unique('k6 patched project'), priority: 'high' },
+        // MAIR-1085: the budget, in cents of euro, is part of the update.
+        body: { title: unique('k6 patched project'), priority: 'high', budgetVoted: 1250000, budgetCommitted: 430000 },
         headers: data.admin,
       }),
-      { 'patch project 200': (r) => r.status === 200 },
+      {
+        'patch project 200': (r) => r.status === 200,
+        'patch project stores the budget': (r) => r.status === 200 && r.json('project.budgetVoted') === 1250000,
+      },
     ),
   'DELETE /projects/{projectId}/tasks/{taskId}': ({ request, data }) =>
     check(

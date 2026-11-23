@@ -482,6 +482,7 @@ export function mapProjectToDto(
     dueDate: deriveProjectDueDate(tasks),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
+    ...budgetOf(project),
     tasks: {
       total: tasks.length + archivedTasks,
       completed: tasks.filter((task) => mapTaskStatus(task.status) === "done").length + archivedTasks,
@@ -491,6 +492,14 @@ export function mapProjectToDto(
     group: project.group ? { id: groupPublicId(project.group.id), name: project.group.name } : null,
     permissions,
   };
+}
+
+/** Budget of a project in cents of euro (MAIR-1085), `null` when not filled in. */
+function budgetOf(project: Pick<ProjetView, 'budget_voted' | 'budget_committed'>): {
+  budgetVoted: number | null;
+  budgetCommitted: number | null;
+} {
+  return { budgetVoted: project.budget_voted ?? null, budgetCommitted: project.budget_committed ?? null };
 }
 
 /**
@@ -525,6 +534,7 @@ export function mapProjectListItemToDto(
     dueDate: project.due_date ?? nowIso(),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
+    ...budgetOf(project),
     // A task is archived exactly when it is completed (MAIR-502): the completed ones are the archived ones.
     tasks: {
       total: project.tasks_total,
