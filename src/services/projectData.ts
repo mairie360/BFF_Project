@@ -1,5 +1,5 @@
 import type {
-  CreateMilestoneView, GetProjectsParams, ProjectMemberRole, GetProjectsResultView, MilestoneView, PatchMilestoneView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
+  ActivityItemView, BulkDeleteResultItem, CreateMilestoneView, GetProjectsParams, ProjectMemberRole, GetProjectsResultView, MilestoneView, PatchMilestoneView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
 import {
   asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
@@ -260,6 +260,25 @@ export async function updateProjectMemberRole(caller: Caller, projectId: number,
 /** Removes a member from a project (MAIR-1088: 409 for the owner). */
 export async function removeProjectMember(caller: Caller, projectId: number, userId: number): Promise<void> {
   await projectCall(caller, (options) => projectApi.removeUserFromProject(projectId, userId, options));
+}
+
+/** One page of the activity of a project (MAIR-1089): its comments and the history of its tasks, newest first. */
+export async function listProjectActivity(
+  caller: Caller,
+  projectId: number,
+  page: PageParams,
+): Promise<{ items: ActivityItemView[]; total: number }> {
+  return (await projectCall(caller, (options) => projectApi.getProjectActivity(projectId, page, options), true)).data;
+}
+
+/** Adds a comment to a project, signed by the caller (any viewer, MAIR-1089); Project API answers the activity item. */
+export async function addProjectComment(caller: Caller, projectId: number, message: string): Promise<ActivityItemView> {
+  return (await projectCall(caller, (options) => projectApi.addProjectComment(projectId, { message }, options))).data;
+}
+
+/** Deletes projects one by one in Project API (MAIR-1089), each with the rule of a single deletion. */
+export async function bulkDeleteProjects(caller: Caller, ids: number[]): Promise<BulkDeleteResultItem[]> {
+  return (await projectCall(caller, (options) => projectApi.bulkDeleteProjects({ ids }, options))).data.results;
 }
 
 /**

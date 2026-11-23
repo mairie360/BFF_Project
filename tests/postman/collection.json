@@ -6007,6 +6007,346 @@
       "description": "Comments and history of the task (Project API writes the history itself, MAIR-393)."
     },
     {
+      "name": "MAIR-1089 Activity and comments",
+      "item": [
+        {
+          "name": "MAIR-1089 The member comments the project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{project_id}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{project_id}}",
+                "comments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"  Newman project comment {{run_id}}  \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The comment is an activity entry signed by the agent\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.kind).to.eql('comment');",
+                  "    pm.expect(body.id).to.match(/^comment-\\d+$/);",
+                  "    pm.expect(body.message).to.eql(`Newman project comment ${pm.environment.get('run_id')}`);",
+                  "    pm.expect(body.author.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(body.taskId).to.eql(null);",
+                  "    pm.environment.set('project_comment_id', body.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 A blank comment answers 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{project_id}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{project_id}}",
+                "comments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});",
+                  "pm.test(\"The message field is named\", function () {",
+                  "    pm.expect(pm.response.json().error.details.map((detail) => detail.path)).to.include('body.message');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 The member reads the activity of the project",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{project_id}}/activity?page=1&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{project_id}}",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The comment and the task history are listed, newest first\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items.map((item) => item.id)).to.include(pm.environment.get('project_comment_id'));",
+                  "    const history = body.items.filter((item) => item.kind !== 'comment');",
+                  "    pm.expect(history.length).to.be.at.least(1);",
+                  "    history.forEach((item) => pm.expect(item.taskId).to.match(/^task-\\d+$/));",
+                  "    pm.expect(body.pagination.total).to.be.at.least(body.items.length);",
+                  "    const dates = body.items.map((item) => item.createdAt);",
+                  "    pm.expect(dates).to.eql([...dates].sort().reverse());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 The activity is paged",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{project_id}}/activity?page=1&limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{project_id}}",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"One entry and a next page\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.items).to.have.lengthOf(1);",
+                  "    pm.expect(body.pagination.hasNextPage).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 The activity of an unknown project answers 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/project-999999/activity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "project-999999",
+                "activity"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 A comment on an unknown project answers 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/project-999999/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "project-999999",
+                "comments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Newman comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Archiving and duplication",
       "item": [
         {
@@ -7076,10 +7416,15 @@
           "response": []
         },
         {
-          "name": "Delete the duplicate",
+          "name": "MAIR-1089 A bulk deletion needs at least one project",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{jwt_admin}}",
@@ -7087,14 +7432,23 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/projects/{{duplicate_project_id}}",
+              "raw": "{{baseUrl}}/projects/bulk-delete",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "projects",
-                "{{duplicate_project_id}}"
+                "bulk-delete"
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -7103,8 +7457,125 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 204\", function () {",
-                  "    pm.response.to.have.status(204);",
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error, 'error').to.be.an('object');",
+                  "    pm.expect(body.error.code).to.be.a('string');",
+                  "    pm.expect(body.error.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 A plain member cannot bulk-delete the duplicate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/bulk-delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "bulk-delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectIds\": [\n    \"{{duplicate_project_id}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The duplicate is refused, not deleted\", function () {",
+                  "    pm.expect(pm.response.json().results).to.eql([{ projectId: pm.environment.get('duplicate_project_id'), status: 'forbidden' }]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1089 Bulk-delete the duplicate and an unknown project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/bulk-delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "bulk-delete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectIds\": [\n    \"{{duplicate_project_id}}\",\n    \"project-999999\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"One result per project\", function () {",
+                  "    const results = pm.response.json().results;",
+                  "    pm.expect(results).to.deep.include({ projectId: pm.environment.get('duplicate_project_id'), status: 'deleted' });",
+                  "    pm.expect(results).to.deep.include({ projectId: 'project-999999', status: 'not_found' });",
+                  "    pm.expect(results).to.have.lengthOf(2);",
                   "});"
                 ]
               }

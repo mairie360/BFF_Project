@@ -5384,6 +5384,334 @@ export interface paths {
         };
         trace?: never;
     };
+    "/projects/{projectId}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the activity of a project
+         * @description One page of the comments of the project and of the history of all its tasks (archived ones included), newest first (MAIR-1089). Open to whoever sees the project (`404` otherwise).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Entries of the page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectActivity"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Comments a project
+         * @description Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`
+                         * @example Comment posted by the ZAP scan
+                         */
+                        message: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description The comment, as an activity entry */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityItem"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deletes several projects
+         * @description Deletes each project the caller may delete, one by one (MAIR-1089), and answers one result per project: `deleted`, `not_found` (unknown or not visible) or `forbidden` (visible but not managed by the caller).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once
+                         * @example [
+                         *       "project-999999"
+                         *     ]
+                         */
+                        projectIds: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description One result per project */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BulkDeleteProjectsResult"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/project-templates": {
         parameters: {
             query?: never;
@@ -7691,6 +8019,22 @@ export interface components {
         UpdateProjectMemberBody: {
             role: components["schemas"]["ProjectMemberRole"];
         };
+        ProjectCommentBody: {
+            /**
+             * @description Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`
+             * @example Comment posted by the ZAP scan
+             */
+            message: string;
+        };
+        BulkDeleteProjectsBody: {
+            /**
+             * @description Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once
+             * @example [
+             *       "project-999999"
+             *     ]
+             */
+            projectIds: string[];
+        };
         CreateMilestoneBody: {
             /** @example Scan milestone */
             title: string;
@@ -7916,6 +8260,80 @@ export interface components {
         ProjectMembers: {
             /** @description Every member of the project, as re-read from Project API */
             members: components["schemas"]["ProjectMember"][];
+        };
+        ProjectActivity: {
+            /** @description Entries of the page, newest first */
+            items: components["schemas"]["ActivityItem"][];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of entries of the project (its comments and the history of all its tasks) */
+                total: number;
+                hasNextPage: boolean;
+            };
+        };
+        /** @description An entry of the activity of a project (MAIR-1089) */
+        ActivityItem: {
+            kind: components["schemas"]["ActivityKind"];
+            /**
+             * @description `comment-<n>` for a comment, `history-<n>` for a history entry (two id spaces)
+             * @example comment-12
+             */
+            id: string;
+            /**
+             * @description Task the history entry is about, `null` for a comment
+             * @example task-4
+             */
+            taskId: string | null;
+            /**
+             * @description Current title of that task, `null` for a comment
+             * @example Commander le mobilier
+             */
+            taskTitle: string | null;
+            /** @description Author of the entry, `null` for a write of the platform itself or an author who no longer exists */
+            author: {
+                /** @example user-2 */
+                id: string;
+                /** @example Alice Martin */
+                name: string;
+            } | null;
+            /**
+             * @description Text of a comment, `null` for a history entry
+             * @example Devis reçu.
+             */
+            message: string | null;
+            /** @description Changed fields of a history entry, `{ "<field>": { "from", "to" } }`; `null` for a comment and a task creation */
+            changes: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * @description Human-readable label (`Comment` for a comment)
+             * @example Status changed: À faire → En cours
+             */
+            label: string;
+            /**
+             * @description Date of the entry, ISO 8601
+             * @example 2026-11-20T08:00:00.000Z
+             */
+            createdAt: string;
+        };
+        /**
+         * @description A comment on the project, or an entry of the history of one of its tasks
+         * @example comment
+         * @enum {string}
+         */
+        ActivityKind: "comment" | "task_created" | "task_updated" | "status_changed";
+        BulkDeleteProjectsResult: {
+            /** @description One result per project, in the order Project API handled them */
+            results: {
+                /** @example project-9 */
+                projectId: string;
+                /**
+                 * @description `deleted`; `not_found` for a project unknown or not visible to the caller; `forbidden` for one they see but may not delete
+                 * @enum {string}
+                 */
+                status: "deleted" | "not_found" | "forbidden";
+            }[];
         };
         ProjectTemplates: {
             templates: components["schemas"]["ProjectTemplate"][];
