@@ -7,6 +7,7 @@ import type {
   CreateTaskResultView,
   CreateTaskView,
   DynamicTaskField,
+  MilestoneView,
   GetProjectsResultView,
   ProjectListItemView,
   ProjetView,
@@ -17,6 +18,7 @@ import type {
   User as ApiUser,
 } from "@mairie360/project-api-openapi/model";
 import {
+  Milestone as MilestoneSchema,
   Person as PersonSchema,
   ProjectListItem as ProjectListItemSchema,
   ProjectDetail as ProjectDetailSchema,
@@ -46,6 +48,7 @@ export type BffPerson = z.infer<typeof PersonSchema>;
 export type BffProjectListItem = z.infer<typeof ProjectListItemSchema>;
 export type BffProjectDetail = z.infer<typeof ProjectDetailSchema>;
 export type BffProjectTask = z.infer<typeof ProjectTaskSchema>;
+export type BffMilestone = z.infer<typeof MilestoneSchema>;
 
 // A member's name may be missing in Project API (deleted user): the BFF contract replaces it.
 export type User = ApiUser;
@@ -315,7 +318,7 @@ export async function deleteTaskOnApi(
 }
 
 // Public ids are `<prefix>-<digits>` and nothing else: `user-5` is not a project and `abc12` is not 12.
-function parsePrefixedId(prefix: "project" | "task" | "user", value: string | undefined): number | null {
+function parsePrefixedId(prefix: "project" | "task" | "user" | "milestone", value: string | undefined): number | null {
   if (!value) return null;
   const match = new RegExp(`^${prefix}-(\\d+)$`).exec(value);
   if (!match) return null;
@@ -456,6 +459,8 @@ export function mapProjectToDto(
     canAssignMembers: true,
     canClose: true,
   },
+  // Its first milestones (MAIR-1086) and their total.
+  milestones: { items: MilestoneView[]; total: number } = { items: [], total: 0 },
 ): BffProjectDetail {
   const status = mapProjectStatus(project.status);
   // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
@@ -490,7 +495,28 @@ export function mapProjectToDto(
       archived: archivedTasks,
     },
     group: project.group ? { id: groupPublicId(project.group.id), name: project.group.name } : null,
+    milestones: milestones.items.map(mapMilestone),
+    milestonesTotal: milestones.total,
     permissions,
+  };
+}
+
+/** `milestone-<id>` → id, `null` for anything else. */
+export function parseMilestoneId(value: string | undefined): number | null {
+  return parsePrefixedId("milestone", value);
+}
+
+export function milestonePublicId(milestoneId: number): string {
+  return `milestone-${milestoneId}`;
+}
+
+/** A milestone of Project API (MAIR-1086) as the BFF returns it. */
+export function mapMilestone(milestone: MilestoneView): BffMilestone {
+  return {
+    id: milestonePublicId(milestone.id),
+    title: milestone.title,
+    dueDate: milestone.due_date,
+    reached: milestone.reached,
   };
 }
 
@@ -802,9 +828,12 @@ export function buildPagination(
   };
 }
 
-export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectListItem {
+export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectDetail {
   // The project comes from a bundle already read: it is visible to the caller.
-  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, getProjectPermissions(user, true));
+  return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, getProjectPermissions(user, true), {
+    items: bundle.milestones,
+    total: bundle.milestonesTotal,
+  });
 }
 
 export function buildTaskDtoForUser(

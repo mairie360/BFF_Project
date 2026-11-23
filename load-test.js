@@ -340,6 +340,40 @@ const handlers = {
     });
   },
 
+  // --- Milestones of a project (MAIR-1086) ---
+  // The hot project's milestones, read by a Responsable who sees it (the volume seed has none: an empty page).
+  'GET /projects/{projectId}/milestones': ({ request }) =>
+    check(request({ path: { projectId: HOT_PROJECT_ID }, query: { page: 1, limit: 20 }, headers: randomHotManager() }), {
+      'milestones 200': (r) => r.status === 200,
+      'milestones are a page': (r) => r.status === 200 && Array.isArray(r.json('milestones'))
+        && r.json('pagination.total') === r.json('milestones').length,
+    }),
+  // Disposable milestone of the working project, removed by DELETE .../milestones/{milestoneId}.
+  'POST /projects/{projectId}/milestones': ({ request, data }) => {
+    const res = request({
+      path: { projectId: need(state.projectId, 'working project') },
+      body: { title: unique('k6 disposable milestone'), dueDate: '2030-06-30' },
+      headers: data.admin,
+    });
+    check(res, { 'create milestone 201': (r) => r.status === 201 });
+    state.disposableMilestoneId = (json(res) || {}).id;
+  },
+  'DELETE /projects/{projectId}/milestones/{milestoneId}': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project'), milestoneId: need(state.disposableMilestoneId, 'disposable milestone') },
+      headers: data.admin,
+    }), { 'delete milestone 204': (r) => r.status === 204 }),
+  // The working milestone created by prepare(), deleted with the working project by cleanup().
+  'PATCH /projects/{projectId}/milestones/{milestoneId}': ({ request, data }) =>
+    check(request({
+      path: { projectId: need(state.projectId, 'working project'), milestoneId: need(state.milestoneId, 'working milestone') },
+      body: { reached: true },
+      headers: data.admin,
+    }), {
+      'patch milestone 200': (r) => r.status === 200,
+      'patch milestone reaches it': (r) => r.status === 200 && r.json('reached') === true,
+    }),
+
   // --- Groups a project can be linked to: the agent's own groups (possibly none), read by any agent ---
   'GET /project-groups': ({ request }) =>
     check(request({ headers: randomAgent() }), {
@@ -395,7 +429,7 @@ const handlers = {
 const coverage = createCoverage(handlers);
 const readOperations = coverage.operations.filter((o) => o.method === 'GET');
 
-// Creates the working project (with one task) and the working template of a `crud` iteration. The created tasks come back
+// Creates the working project (with one task and one milestone) and the working template of a `crud` iteration. The created tasks come back
 // in the top-level `taskItems` of the answer.
 function prepare(data) {
   const body = projectBody(unique('k6 working project'));
@@ -413,6 +447,15 @@ function prepare(data) {
     tags: { op: 'POST /project-templates' },
   });
   state.templateId = (json(template) || {}).id;
+  // The working milestone PATCH /projects/{projectId}/milestones/{milestoneId} updates (MAIR-1086).
+  if (state.projectId) {
+    const milestone = http.post(
+      coverage.url('POST /projects/{projectId}/milestones', { projectId: state.projectId }),
+      JSON.stringify({ title: unique('k6 working milestone'), dueDate: '2030-06-30' }),
+      { headers: Object.assign({ 'Content-Type': 'application/json' }, data.admin), tags: { op: 'POST /projects/{projectId}/milestones' } },
+    );
+    state.milestoneId = (json(milestone) || {}).id;
+  }
 }
 
 // Deletes the working project and its duplicate (their tasks and statuses go with them), and the working template.

@@ -148,6 +148,10 @@ project detail maps Project API's `group` to `{ id: 'group-<id>', name }`, or `n
 - MAIR-1085: `budgetVoted` / `budgetCommitted` (integer cents of euro, `null` when not filled in) are read from Project
   API's `budget_voted` / `budget_committed` on the page items and the detail, and written by `PATCH /projects/{projectId}`
   (absent keeps, `null` clears, a negative or fractional amount is a BFF 400).
+- MAIR-1086: milestones (`milestone-<n>`, `{ id, title, dueDate (YYYY-MM-DD), reached }`) come embedded in the bundle
+  (`milestones`, first 100, + `milestonesTotal`) and from `src/routes/Project/milestones.ts`: `GET` / `POST
+  /projects/{projectId}/milestones`, `PATCH` / `DELETE /projects/{projectId}/milestones/{milestoneId}` (reads need the
+  project visible, writes `requireProjectManagement`; Project API's 404 for an unknown milestone is relayed).
 
 Project API `dev-5f825ca` (`@mairie360/project-api-openapi` `0.0.0-dev-5f825ca`) is the minimum: the aggregated, filtered projects list and the single task read (MAIR-474), and the archived tasks (MAIR-502, Database `dev-99f6127`).
 

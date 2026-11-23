@@ -303,6 +303,13 @@ export interface paths {
                                      */
                                     name: string;
                                 } | null;
+                                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                                milestones: components["schemas"]["Milestone"][];
+                                /**
+                                 * @description Number of milestones of the project
+                                 * @example 3
+                                 */
+                                milestonesTotal: number;
                             };
                             taskItems: {
                                 /**
@@ -768,6 +775,13 @@ export interface paths {
                                      */
                                     name: string;
                                 } | null;
+                                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                                milestones: components["schemas"]["Milestone"][];
+                                /**
+                                 * @description Number of milestones of the project
+                                 * @example 3
+                                 */
+                                milestonesTotal: number;
                             };
                             taskItems: {
                                 /**
@@ -1432,6 +1446,13 @@ export interface paths {
                                      */
                                     name: string;
                                 } | null;
+                                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                                milestones: components["schemas"]["Milestone"][];
+                                /**
+                                 * @description Number of milestones of the project
+                                 * @example 3
+                                 */
+                                milestonesTotal: number;
                             };
                             taskItems: {
                                 /**
@@ -1983,6 +2004,13 @@ export interface paths {
                                      */
                                     name: string;
                                 } | null;
+                                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                                milestones: components["schemas"]["Milestone"][];
+                                /**
+                                 * @description Number of milestones of the project
+                                 * @example 3
+                                 */
+                                milestonesTotal: number;
                             };
                             taskItems: {
                                 /**
@@ -2752,6 +2780,13 @@ export interface paths {
                                      */
                                     name: string;
                                 } | null;
+                                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                                milestones: components["schemas"]["Milestone"][];
+                                /**
+                                 * @description Number of milestones of the project
+                                 * @example 3
+                                 */
+                                milestonesTotal: number;
                             };
                             taskItems: {
                                 /**
@@ -4431,6 +4466,460 @@ export interface paths {
         };
         trace?: never;
     };
+    "/projects/{projectId}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the milestones of a project
+         * @description One page of the milestones of the project (MAIR-1086), by due date then id; deleted ones are left out. Open to whoever sees the project (`404` otherwise).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Milestones of the page */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectMilestones"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Adds a milestone to a project
+         * @description Reserved to the project managers. `reached` defaults to `false`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan milestone */
+                        title: string;
+                        /**
+                         * @description Day the milestone is due, `YYYY-MM-DD`
+                         * @example 2027-03-15
+                         */
+                        dueDate: string;
+                        /**
+                         * @description Already reached; absent: `false`
+                         * @example false
+                         */
+                        reached?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description The created milestone */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Milestone"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/milestones/{milestoneId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Deletes a milestone
+         * @description Reserved to the project managers. `404` for an unknown or already deleted milestone.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                    /** @description Id of the milestone */
+                    milestoneId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Milestone deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Updates a milestone
+         * @description Reserved to the project managers; an absent field is left unchanged (`reached: false` reopens it). `404` for a milestone of another project or a deleted one.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Id of the project */
+                    projectId: string;
+                    /** @description Id of the milestone */
+                    milestoneId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Scan milestone */
+                        title?: string;
+                        /**
+                         * @description Day the milestone is due, `YYYY-MM-DD`
+                         * @example 2027-03-15
+                         */
+                        dueDate?: string;
+                        /**
+                         * @description Already reached; absent: `false`
+                         * @example false
+                         */
+                        reached?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description The updated milestone */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Milestone"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Insufficient rights */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project or task not found or not visible */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is unreachable or failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/project-templates": {
         parameters: {
             query?: never;
@@ -5548,6 +6037,36 @@ export interface components {
                  */
                 name: string;
             } | null;
+            /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+            milestones: components["schemas"]["Milestone"][];
+            /**
+             * @description Number of milestones of the project
+             * @example 3
+             */
+            milestonesTotal: number;
+        };
+        /** @description A milestone of a project (MAIR-1086) */
+        Milestone: {
+            /**
+             * @description Id of the milestone
+             * @example milestone-1
+             */
+            id: string;
+            /**
+             * @description Title of the milestone
+             * @example Vote du conseil municipal
+             */
+            title: string;
+            /**
+             * @description Day the milestone is due, `YYYY-MM-DD`
+             * @example 2027-03-15
+             */
+            dueDate: string;
+            /**
+             * @description Whether the milestone is reached
+             * @example false
+             */
+            reached: boolean;
         };
         /** @description A task of a project */
         ProjectTask: {
@@ -6159,6 +6678,13 @@ export interface components {
                      */
                     name: string;
                 } | null;
+                /** @description Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all) */
+                milestones: components["schemas"]["Milestone"][];
+                /**
+                 * @description Number of milestones of the project
+                 * @example 3
+                 */
+                milestonesTotal: number;
             };
             taskItems: {
                 /**
@@ -6600,6 +7126,34 @@ export interface components {
                 category: "todo" | "in-progress" | "done";
             }[];
         };
+        CreateMilestoneBody: {
+            /** @example Scan milestone */
+            title: string;
+            /**
+             * @description Day the milestone is due, `YYYY-MM-DD`
+             * @example 2027-03-15
+             */
+            dueDate: string;
+            /**
+             * @description Already reached; absent: `false`
+             * @example false
+             */
+            reached?: boolean;
+        };
+        UpdateMilestoneBody: {
+            /** @example Scan milestone */
+            title?: string;
+            /**
+             * @description Day the milestone is due, `YYYY-MM-DD`
+             * @example 2027-03-15
+             */
+            dueDate?: string;
+            /**
+             * @description Already reached; absent: `false`
+             * @example false
+             */
+            reached?: boolean;
+        };
         ErrorResponse: {
             error: {
                 /** @enum {string} */
@@ -6777,6 +7331,17 @@ export interface components {
              * @example 3
              */
             taskCount: number;
+        };
+        ProjectMilestones: {
+            /** @description Milestones of the page, by due date then id */
+            milestones: components["schemas"]["Milestone"][];
+            pagination: {
+                page: number;
+                limit: number;
+                /** @description Number of milestones of the project */
+                total: number;
+                hasNextPage: boolean;
+            };
         };
         ProjectTemplates: {
             templates: components["schemas"]["ProjectTemplate"][];

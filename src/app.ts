@@ -29,6 +29,7 @@ import closeProjectRouter from './routes/Project/close_project';
 import taskCollaborationRouter from './routes/Project/task_collaboration';
 import archivedTasksRouter from './routes/Project/archived_tasks';
 import statusesRouter from './routes/Project/statuses';
+import milestonesRouter from './routes/Project/milestones';
 import templatesRouter from './routes/Project/templates';
 import projectGroupsRouter from './routes/Project/groups';
 import { projectUserContextMiddleware } from './auth/project-user';
@@ -74,6 +75,7 @@ app.use('/projects', closeProjectRouter);
 app.use('/projects', taskCollaborationRouter);
 app.use('/projects', archivedTasksRouter);
 app.use('/projects', statusesRouter);
+app.use('/projects', milestonesRouter);
 app.use('/project-templates', templatesRouter);
 app.use('/project-groups', projectGroupsRouter);
 

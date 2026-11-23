@@ -161,9 +161,21 @@ registry.register('ProjectGroups', ProjectGroups);
 registry.register('ProjectsWithoutGroup', ProjectsWithoutGroup);
 registry.register('ProjectListItem', ProjectListItem);
 
-// A project as the detail answers return it: the list item plus its group (not in `GET /projects-page`).
+// A milestone of a project (MAIR-1086).
+export const Milestone = z.object({
+  id: z.string().openapi({ description: 'Id of the milestone', example: 'milestone-1' }),
+  title: z.string().openapi({ description: 'Title of the milestone', example: 'Vote du conseil municipal' }),
+  dueDate: z.string().openapi({ description: 'Day the milestone is due, `YYYY-MM-DD`', example: '2027-03-15' }),
+  reached: z.boolean().openapi({ description: 'Whether the milestone is reached', example: false }),
+}).openapi('Milestone', { description: 'A milestone of a project (MAIR-1086)' });
+
+// A project as the detail answers return it: the list item plus its group and milestones (not in `GET /projects-page`).
 export const ProjectDetail = ProjectListItem.extend({
   group: ProjectGroup.nullable().openapi({ description: 'Group linked to the project, `null` without one' }),
+  milestones: z.array(Milestone).openapi({
+    description: 'Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)',
+  }),
+  milestonesTotal: z.number().int().openapi({ description: 'Number of milestones of the project', example: 3 }),
 });
 registry.register('ProjectDetail', ProjectDetail);
 registry.register('ProjectTask', ProjectTask);
@@ -699,6 +711,51 @@ export const DeletedProjectTemplateParams = ProjectTemplateParams.extend({
   // Not seeded: a scan replaying the example gets a 404 and deletes nothing.
   templateId: ProjectTemplateParams.shape.templateId.openapi({ example: 'template-999999' }),
 });
+
+// =====================
+// MILESTONES (MAIR-1086)
+// =====================
+
+export const ProjectMilestoneParams = z.object({
+  projectId: ProjectIdParams.shape.projectId,
+  milestoneId: z.string().openapi({ description: 'Id of the milestone', example: 'milestone-1' }),
+});
+
+export const DeletedProjectMilestoneParams = ProjectMilestoneParams.extend({
+  // Not seeded: a scan replaying the example gets a 404 and deletes nothing.
+  milestoneId: ProjectMilestoneParams.shape.milestoneId.openapi({ example: 'milestone-999999' }),
+});
+
+/** Page of the milestones: `page` from 1, `limit` from 1 to 500 (100 by default). */
+export const MilestonesQuery = z.object({
+  page: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_PAGE).optional().openapi({ example: 1 }),
+  limit: z.coerce.number().int().min(1).max(PROJECTS_PAGE_MAX_LIMIT).optional().openapi({ example: 100 }),
+});
+
+// A day alone, a valid calendar date: Project API stores a DATE.
+const MilestoneDueDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a date (YYYY-MM-DD)')
+  .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value), 'Expected a date (YYYY-MM-DD)')
+  .openapi({ description: 'Day the milestone is due, `YYYY-MM-DD`', example: '2027-03-15' });
+
+export const CreateMilestoneBody = z.object({
+  title: Title('Scan milestone'),
+  dueDate: MilestoneDueDate,
+  reached: z.boolean().optional().openapi({ description: 'Already reached; absent: `false`', example: false }),
+}).strict();
+registry.register('CreateMilestoneBody', CreateMilestoneBody);
+
+export const UpdateMilestoneBody = CreateMilestoneBody.partial().strict();
+registry.register('UpdateMilestoneBody', UpdateMilestoneBody);
+
+export const ProjectMilestones = z.object({
+  milestones: z.array(Milestone).openapi({ description: 'Milestones of the page, by due date then id' }),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number().openapi({ description: 'Number of milestones of the project' }),
+    hasNextPage: z.boolean(),
+  }),
+}).openapi('ProjectMilestones');
 
 // =====================
 // ERROR

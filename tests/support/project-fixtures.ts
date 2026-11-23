@@ -14,6 +14,7 @@ import {
   type GetProjectResultView,
   type GetProjectUsersResultView,
   type GetProjectsResultView,
+  type MilestoneView,
   type ProjectListItemView,
   ProjectStatus,
   type ProjetView,
@@ -128,6 +129,14 @@ export function projectsResult(
     },
   };
 }
+/** A milestone of `GET /api/v1/projects/{projectId}/milestones/` (MAIR-1086). */
+export function milestoneView(id: number, overrides: Partial<MilestoneView> = {}): MilestoneView {
+  return {
+    id, project_id: 1, title: `Jalon ${id}`, due_date: '2027-01-15', reached: false, created_by: 1, updated_by: 1,
+    created_at: '2026-11-01T08:00:00Z', updated_at: '2026-11-01T08:00:00Z', ...overrides,
+  };
+}
+
 export const createProjectResult = (project_id: number): CreateProjectResultView => ({ project_id });
 
 export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskView {

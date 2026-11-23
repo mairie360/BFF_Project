@@ -9,7 +9,7 @@ import type { GetProjectResultView, ProjectListItemView } from '@mairie360/proje
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
   agents, bearer, collaboration, member, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
-  projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
+  milestoneView, projectListItem, projectUsersResult, projectsResult, projetView, coreMe, taskComment, taskHistoryEntry, taskView, type Agent,
 } from './support/project-fixtures';
 import { captureLogs } from './support/logs';
 
@@ -38,6 +38,8 @@ const PROJECT = {
   comments: '/api/v1/projects/{projectId}/tasks/{taskId}/comments',
   statuses: '/api/v1/projects/{projectId}/statuses/',
   status: '/api/v1/projects/{projectId}/statuses/{statusId}/',
+  milestones: '/api/v1/projects/{projectId}/milestones/',
+  milestone: '/api/v1/projects/{projectId}/milestones/{milestoneId}/',
   templates: '/api/v1/project-templates/',
   template: '/api/v1/project-templates/{templateId}/',
   health: '/health',
@@ -2263,5 +2265,145 @@ describe('MAIR-683 project linked to a group', () => {
     expect(response.status).toBe(403);
     expectBffContract('post', '/projects/project-1/duplicate', response);
     expect(projectApi.calls(PROJECT.projects, 'POST')).toHaveLength(0);
+  });
+});
+
+describe('MAIR-1086 milestones of a project', () => {
+  const vote = milestoneView(7, { title: 'Vote du conseil', due_date: '2027-03-15' });
+
+  test('the detail embeds the first milestones and their total', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice], { milestones: [vote], milestones_total: 3 }) } });
+
+    const response = await as(request(app).get('/projects/project-1'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.milestones).toEqual([{ id: 'milestone-7', title: 'Vote du conseil', dueDate: '2027-03-15', reached: false }]);
+    expect(response.body.project.milestonesTotal).toBe(3);
+  });
+
+  test('GET pages the milestones for whoever sees the project', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [alice]) } });
+    projectApi.on('get', PROJECT.milestones, { body: { milestones: [vote, milestoneView(8, { reached: true })], total: 5 } });
+
+    const response = await as(request(app).get('/projects/project-1/milestones?page=2&limit=2'), alice);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1/milestones', response);
+    expect(response.body.milestones.map((milestone: { id: string; reached: boolean }) => [milestone.id, milestone.reached]))
+      .toEqual([['milestone-7', false], ['milestone-8', true]]);
+    expect(response.body.pagination).toEqual({ page: 2, limit: 2, total: 5, hasNextPage: true });
+    expect(pageOf(projectApi.calls(PROJECT.milestones, 'GET')[0].url)).toEqual({ limit: 2, offset: 2 });
+  });
+
+  test('GET answers 404 for a project the caller does not see, without reading the milestones', async () => {
+    signIn(alice);
+    mockProjectApi();
+
+    const response = await as(request(app).get('/projects/project-1/milestones'), alice);
+
+    expect(response.status).toBe(404);
+    expectBffContract('get', '/projects/project-1/milestones', response);
+    expect(projectApi.calls(PROJECT.milestones, 'GET')).toHaveLength(0);
+  });
+
+  test('POST creates a milestone for a manager and answers it', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('post', PROJECT.milestones, { status: 201, body: vote });
+
+    const response = await as(request(app).post('/projects/project-1/milestones'), marie)
+      .send({ title: 'Vote du conseil', dueDate: '2027-03-15' });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/milestones', response);
+    expect(projectApi.calls(PROJECT.milestones, 'POST')[0].body).toEqual({ title: 'Vote du conseil', due_date: '2027-03-15' });
+    expect(response.body).toEqual({ id: 'milestone-7', title: 'Vote du conseil', dueDate: '2027-03-15', reached: false });
+  });
+
+  test.each([
+    ['a date-time', { title: 'Jalon', dueDate: '2027-03-15T00:00:00Z' }, 'body.dueDate'],
+    ['an impossible date', { title: 'Jalon', dueDate: '2027-02-30' }, 'body.dueDate'],
+    ['a blank title', { title: '   ', dueDate: '2027-03-15' }, 'body.title'],
+    ['an unknown field', { title: 'Jalon', dueDate: '2027-03-15', owner: 'user-1' }, 'body'],
+  ])('POST refuses %s with a 400 before any write', async (_name, body, path) => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+
+    const response = await as(request(app).post('/projects/project-1/milestones'), marie).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract('post', '/projects/project-1/milestones', response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain(path);
+    expect(projectApi.calls(PROJECT.milestones, 'POST')).toHaveLength(0);
+  });
+
+  test('a plain member cannot write the milestones (403 before any write)', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [], [alice]) } });
+
+    const responses = await Promise.all([
+      as(request(app).post('/projects/project-1/milestones'), alice).send({ title: 'Jalon', dueDate: '2027-03-15' }),
+      as(request(app).patch('/projects/project-1/milestones/milestone-7'), alice).send({ reached: true }),
+      as(request(app).delete('/projects/project-1/milestones/milestone-7'), alice),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
+    expectBffContract('post', '/projects/project-1/milestones', responses[0]);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-7', responses[1]);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-7', responses[2]);
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('PATCH sends the given fields only and answers the updated milestone', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('patch', PROJECT.milestone, { body: { ...vote, reached: true } });
+
+    const response = await as(request(app).patch('/projects/project-1/milestones/milestone-7'), marie).send({ reached: true });
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-7', response);
+    expect(projectApi.calls(PROJECT.milestone, 'PATCH')[0]).toMatchObject({ pathParams: { projectId: '1', milestoneId: '7' }, body: { reached: true } });
+    expect(response.body.reached).toBe(true);
+  });
+
+  test('PATCH and DELETE relay the 404 of an unknown milestone', async () => {
+    signIn(marie);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [marie]) } });
+    projectApi.on('patch', PROJECT.milestone, textError(404, 'Unknown milestone.'));
+    projectApi.on('delete', PROJECT.milestone, textError(404, 'Unknown milestone.'));
+
+    const patched = await as(request(app).patch('/projects/project-1/milestones/milestone-9'), marie).send({ title: 'Autre' });
+    const deleted = await as(request(app).delete('/projects/project-1/milestones/milestone-9'), marie);
+
+    expect([patched.status, deleted.status]).toEqual([404, 404]);
+    expectBffContract('patch', '/projects/project-1/milestones/milestone-9', patched);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-9', deleted);
+  });
+
+  test('DELETE removes a milestone with 204', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [], [admin]) } });
+    projectApi.on('delete', PROJECT.milestone, { status: 204 });
+
+    const response = await as(request(app).delete('/projects/project-1/milestones/milestone-7'), admin);
+
+    expect(response.status).toBe(204);
+    expectBffContract('delete', '/projects/project-1/milestones/milestone-7', response);
+    expect(projectApi.calls(PROJECT.milestone, 'DELETE')).toHaveLength(1);
+  });
+
+  test('a milestone id that is not milestone-<id> is a 400 before any call', async () => {
+    signIn(admin);
+    mockProjectApi();
+
+    const response = await as(request(app).delete('/projects/project-1/milestones/task-7'), admin);
+
+    expect(response.status).toBe(400);
+    expectBffContract('delete', '/projects/project-1/milestones/task-7', response);
+    expect(projectApi.requests).toEqual([]);
   });
 });

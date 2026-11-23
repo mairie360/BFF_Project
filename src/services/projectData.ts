@@ -1,5 +1,5 @@
 import type {
-  GetProjectsParams, GetProjectsResultView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
+  CreateMilestoneView, GetProjectsParams, GetProjectsResultView, MilestoneView, PatchMilestoneView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
 import {
   asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
@@ -79,6 +79,9 @@ export type ProjectBundle = {
   users: User[];
   /** Number of its archived (completed) tasks, listed by `listArchivedTasks`. */
   archivedTasks: number;
+  /** Its first 100 milestones (MAIR-1086), by due date, and their total (`listProjectMilestones` pages them all). */
+  milestones: MilestoneView[];
+  milestonesTotal: number;
 };
 
 /** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
@@ -120,7 +123,14 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
     tasks.push(...page.tasks);
   }
 
-  return { project: first.project, tasks, users, archivedTasks: first.tasks_archived };
+  return {
+    project: first.project,
+    tasks,
+    users,
+    archivedTasks: first.tasks_archived,
+    milestones: first.milestones,
+    milestonesTotal: first.milestones_total,
+  };
 }
 
 /**
@@ -189,6 +199,35 @@ export async function listProjectUsers(caller: Caller, projectId: number): Promi
     total: (page) => page.total,
   });
   return pages.flatMap((page) => page.users);
+}
+
+/** One page of the milestones of a project (MAIR-1086), by due date then id; deleted ones are left out. */
+export async function listProjectMilestones(
+  caller: Caller,
+  projectId: number,
+  page: PageParams,
+): Promise<{ milestones: MilestoneView[]; total: number }> {
+  return (await projectCall(caller, (options) => projectApi.getProjectMilestones(projectId, page, options), true)).data;
+}
+
+/** Adds a milestone to a project (managers; Project API answers the created row). */
+export async function createProjectMilestone(caller: Caller, projectId: number, body: CreateMilestoneView): Promise<MilestoneView> {
+  return (await projectCall(caller, (options) => projectApi.createProjectMilestone(projectId, body, options))).data;
+}
+
+/** Changes the sent fields of a milestone (managers; 404 for a milestone of another project or a deleted one). */
+export async function updateProjectMilestone(
+  caller: Caller,
+  projectId: number,
+  milestoneId: number,
+  body: PatchMilestoneView,
+): Promise<MilestoneView> {
+  return (await projectCall(caller, (options) => projectApi.updateProjectMilestone(projectId, milestoneId, body, options))).data;
+}
+
+/** Deletes a milestone (soft delete in Project API; 404 for an unknown one). */
+export async function deleteProjectMilestone(caller: Caller, projectId: number, milestoneId: number): Promise<void> {
+  await projectCall(caller, (options) => projectApi.deleteProjectMilestone(projectId, milestoneId, options));
 }
 
 /** Rights on a project the caller can see (`visible`): managing it needs a manager role. */
