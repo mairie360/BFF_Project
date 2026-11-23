@@ -314,6 +314,26 @@
             "description": "Creation date of the project, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMemberSummary"
+            },
+            "description": "Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only"
+          },
+          "myRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "manager",
+              "contributor",
+              "reader",
+              null
+            ],
+            "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+          },
           "budgetVoted": {
             "type": [
               "integer",
@@ -423,12 +443,58 @@
           "progress",
           "dueDate",
           "createdAt",
+          "members",
+          "myRole",
           "budgetVoted",
           "budgetCommitted",
           "tasks",
           "permissions"
         ],
         "description": "A project for the card, table or kanban views"
+      },
+      "ProjectMemberSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique id of the person",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the person",
+            "example": "John Doe"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "URL of the person's avatar",
+            "example": "https://example.com/avatar.jpg"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectMemberRole"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatarUrl",
+          "role"
+        ],
+        "description": "A member of a project and their role in it (MAIR-1088)"
+      },
+      "ProjectMemberRole": {
+        "type": "string",
+        "enum": [
+          "manager",
+          "contributor",
+          "reader"
+        ],
+        "description": "Role of a member in the project: `manager` manages it (like the Responsable, Maire and Admin roles), `contributor` and `reader` have the rights of a member. The owner of the project is always `manager`",
+        "example": "contributor"
       },
       "ProjectDetail": {
         "type": "object",
@@ -572,6 +638,26 @@
             "description": "Creation date of the project, ISO 8601",
             "example": "2024-01-01T12:00:00Z"
           },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMember"
+            },
+            "description": "Every member of the project, their role and their load (MAIR-1088)"
+          },
+          "myRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "manager",
+              "contributor",
+              "reader",
+              null
+            ],
+            "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+          },
           "budgetVoted": {
             "type": [
               "integer",
@@ -688,6 +774,18 @@
               "name"
             ],
             "description": "Group linked to the project, `null` without one"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Milestone"
+            },
+            "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+          },
+          "milestonesTotal": {
+            "type": "integer",
+            "description": "Number of milestones of the project",
+            "example": 3
           }
         },
         "required": [
@@ -704,13 +802,85 @@
           "progress",
           "dueDate",
           "createdAt",
+          "members",
+          "myRole",
           "budgetVoted",
           "budgetCommitted",
           "tasks",
           "permissions",
-          "group"
+          "group",
+          "milestones",
+          "milestonesTotal"
         ],
         "description": "A project for the card, table or kanban views"
+      },
+      "ProjectMember": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProjectMemberSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "load": {
+                "type": "object",
+                "properties": {
+                  "tasksOpen": {
+                    "type": "integer",
+                    "description": "Active tasks of the project assigned to the member that are not done",
+                    "example": 3
+                  },
+                  "tasksTotal": {
+                    "type": "integer",
+                    "description": "Active tasks of the project assigned to the member. Archived (done) tasks are not counted: the detail only holds their total",
+                    "example": 3
+                  }
+                },
+                "required": [
+                  "tasksOpen",
+                  "tasksTotal"
+                ],
+                "description": "Load of the member in the project, counted on its active tasks"
+              }
+            },
+            "required": [
+              "load"
+            ]
+          }
+        ],
+        "description": "A member of a project, their role and their load in it (MAIR-1088)"
+      },
+      "Milestone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the milestone",
+            "example": "milestone-1"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the milestone",
+            "example": "Vote du conseil municipal"
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "Day the milestone is due, `YYYY-MM-DD`",
+            "example": "2027-03-15"
+          },
+          "reached": {
+            "type": "boolean",
+            "description": "Whether the milestone is reached",
+            "example": false
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "dueDate",
+          "reached"
+        ],
+        "description": "A milestone of a project (MAIR-1086)"
       },
       "ProjectTask": {
         "type": "object",
@@ -837,6 +1007,14 @@
             "description": "Due date of the task, ISO 8601",
             "example": "2024-12-31T23:59:59Z"
           },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+            "example": "2024-12-01T00:00:00Z"
+          },
           "completed": {
             "type": "boolean",
             "description": "Whether the task is completed",
@@ -901,6 +1079,7 @@
           "priorityLabel",
           "labels",
           "dueDate",
+          "startDate",
           "completed",
           "createdAt",
           "permissions"
@@ -1358,6 +1537,14 @@
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
           },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+            "example": "2030-11-02"
+          },
           "statusId": {
             "type": "string",
             "pattern": "^status-\\d+$",
@@ -1430,6 +1617,14 @@
             "type": "string",
             "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
             "example": "2030-12-31"
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+            "example": "2030-11-02"
           },
           "statusId": {
             "type": "string",
@@ -1841,6 +2036,26 @@
                 "description": "Creation date of the project, ISO 8601",
                 "example": "2024-01-01T12:00:00Z"
               },
+              "members": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProjectMember"
+                },
+                "description": "Every member of the project, their role and their load (MAIR-1088)"
+              },
+              "myRole": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "manager",
+                  "contributor",
+                  "reader",
+                  null
+                ],
+                "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+              },
               "budgetVoted": {
                 "type": [
                   "integer",
@@ -1957,6 +2172,18 @@
                   "name"
                 ],
                 "description": "Group linked to the project, `null` without one"
+              },
+              "milestones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Milestone"
+                },
+                "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+              },
+              "milestonesTotal": {
+                "type": "integer",
+                "description": "Number of milestones of the project",
+                "example": 3
               }
             },
             "required": [
@@ -1973,11 +2200,15 @@
               "progress",
               "dueDate",
               "createdAt",
+              "members",
+              "myRole",
               "budgetVoted",
               "budgetCommitted",
               "tasks",
               "permissions",
-              "group"
+              "group",
+              "milestones",
+              "milestonesTotal"
             ],
             "description": "A project for the card, table or kanban views"
           },
@@ -2108,6 +2339,14 @@
                   "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
+                "startDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                  "example": "2024-12-01T00:00:00Z"
+                },
                 "completed": {
                   "type": "boolean",
                   "description": "Whether the task is completed",
@@ -2172,6 +2411,7 @@
                 "priorityLabel",
                 "labels",
                 "dueDate",
+                "startDate",
                 "completed",
                 "createdAt",
                 "permissions"
@@ -2620,6 +2860,26 @@
                   "description": "Creation date of the project, ISO 8601",
                   "example": "2024-01-01T12:00:00Z"
                 },
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectMemberSummary"
+                  },
+                  "description": "Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only"
+                },
+                "myRole": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "manager",
+                    "contributor",
+                    "reader",
+                    null
+                  ],
+                  "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                },
                 "budgetVoted": {
                   "type": [
                     "integer",
@@ -2729,6 +2989,8 @@
                 "progress",
                 "dueDate",
                 "createdAt",
+                "members",
+                "myRole",
                 "budgetVoted",
                 "budgetCommitted",
                 "tasks",
@@ -2944,6 +3206,131 @@
             "minItems": 1,
             "maxItems": 30,
             "description": "Statuses in order; at least one per category (todo, in-progress, done)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AddProjectMemberBody": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^user-\\d{1,15}$",
+            "example": "user-3",
+            "description": "Agent to add (`user-<id>`, one the caller may assign)"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProjectMemberRole"
+              },
+              {
+                "description": "Role in the project; absent: `contributor`"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateProjectMemberBody": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ProjectMemberRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectCommentBody": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "^[^<>]*$",
+            "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+            "example": "Comment posted by the ZAP scan"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "BulkDeleteProjectsBody": {
+        "type": "object",
+        "properties": {
+          "projectIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^project-\\d{1,15}$",
+              "example": "project-999999"
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once",
+            "example": [
+              "project-999999"
+            ]
+          }
+        },
+        "required": [
+          "projectIds"
+        ],
+        "additionalProperties": false
+      },
+      "CreateMilestoneBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan milestone"
+          },
+          "dueDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Day the milestone is due, `YYYY-MM-DD`",
+            "example": "2027-03-15"
+          },
+          "reached": {
+            "type": "boolean",
+            "description": "Already reached; absent: `false`",
+            "example": false
+          }
+        },
+        "required": [
+          "title",
+          "dueDate"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateMilestoneBody": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Scan milestone"
+          },
+          "dueDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Day the milestone is due, `YYYY-MM-DD`",
+            "example": "2027-03-15"
+          },
+          "reached": {
+            "type": "boolean",
+            "description": "Already reached; absent: `false`",
+            "example": false
           }
         },
         "additionalProperties": false
@@ -3181,6 +3568,14 @@
                   "description": "Due date of the task, ISO 8601",
                   "example": "2024-12-31T23:59:59Z"
                 },
+                "startDate": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                  "example": "2024-12-01T00:00:00Z"
+                },
                 "completed": {
                   "type": "boolean",
                   "description": "Whether the task is completed",
@@ -3245,6 +3640,7 @@
                 "priorityLabel",
                 "labels",
                 "dueDate",
+                "startDate",
                 "completed",
                 "createdAt",
                 "permissions"
@@ -3342,6 +3738,234 @@
           "taskCount"
         ],
         "description": "A task status of a project: a Kanban column"
+      },
+      "ProjectMilestones": {
+        "type": "object",
+        "properties": {
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Milestone"
+            },
+            "description": "Milestones of the page, by due date then id"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number",
+                "description": "Number of milestones of the project"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "hasNextPage"
+            ]
+          }
+        },
+        "required": [
+          "milestones",
+          "pagination"
+        ]
+      },
+      "ProjectMembers": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMember"
+            },
+            "description": "Every member of the project, as re-read from Project API"
+          }
+        },
+        "required": [
+          "members"
+        ]
+      },
+      "ProjectActivity": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "description": "Entries of the page, newest first"
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number",
+                "description": "Number of entries of the project (its comments and the history of all its tasks)"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "hasNextPage"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "pagination"
+        ]
+      },
+      "ActivityItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ActivityKind"
+          },
+          "id": {
+            "type": "string",
+            "description": "`comment-<n>` for a comment, `history-<n>` for a history entry (two id spaces)",
+            "example": "comment-12"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Task the history entry is about, `null` for a comment",
+            "example": "task-4"
+          },
+          "taskTitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Current title of that task, `null` for a comment",
+            "example": "Commander le mobilier"
+          },
+          "author": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "user-2"
+              },
+              "name": {
+                "type": "string",
+                "example": "Alice Martin"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Author of the entry, `null` for a write of the platform itself or an author who no longer exists"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Text of a comment, `null` for a history entry",
+            "example": "Devis reçu."
+          },
+          "changes": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {},
+            "description": "Changed fields of a history entry, `{ \"<field>\": { \"from\", \"to\" } }`; `null` for a comment and a task creation"
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label (`Comment` for a comment)",
+            "example": "Status changed: À faire → En cours"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Date of the entry, ISO 8601",
+            "example": "2026-11-20T08:00:00.000Z"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "taskId",
+          "taskTitle",
+          "author",
+          "message",
+          "changes",
+          "label",
+          "createdAt"
+        ],
+        "description": "An entry of the activity of a project (MAIR-1089)"
+      },
+      "ActivityKind": {
+        "type": "string",
+        "enum": [
+          "comment",
+          "task_created",
+          "task_updated",
+          "status_changed"
+        ],
+        "description": "A comment on the project, or an entry of the history of one of its tasks",
+        "example": "comment"
+      },
+      "BulkDeleteProjectsResult": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "example": "project-9"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "deleted",
+                    "not_found",
+                    "forbidden"
+                  ],
+                  "description": "`deleted`; `not_found` for a project unknown or not visible to the caller; `forbidden` for one they see but may not delete"
+                }
+              },
+              "required": [
+                "projectId",
+                "status"
+              ]
+            },
+            "description": "One result per project, in the order Project API handled them"
+          }
+        },
+        "required": [
+          "results"
+        ]
       },
       "ProjectTemplates": {
         "type": "object",
@@ -3696,6 +4320,26 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ProjectMember"
+                          },
+                          "description": "Every member of the project, their role and their load (MAIR-1088)"
+                        },
+                        "myRole": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "manager",
+                            "contributor",
+                            "reader",
+                            null
+                          ],
+                          "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                        },
                         "budgetVoted": {
                           "type": [
                             "integer",
@@ -3812,6 +4456,18 @@
                             "name"
                           ],
                           "description": "Group linked to the project, `null` without one"
+                        },
+                        "milestones": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Milestone"
+                          },
+                          "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+                        },
+                        "milestonesTotal": {
+                          "type": "integer",
+                          "description": "Number of milestones of the project",
+                          "example": 3
                         }
                       },
                       "required": [
@@ -3828,11 +4484,15 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "members",
+                        "myRole",
                         "budgetVoted",
                         "budgetCommitted",
                         "tasks",
                         "permissions",
-                        "group"
+                        "group",
+                        "milestones",
+                        "milestonesTotal"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -3963,6 +4623,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -4027,6 +4695,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -4440,6 +5109,26 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ProjectMember"
+                          },
+                          "description": "Every member of the project, their role and their load (MAIR-1088)"
+                        },
+                        "myRole": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "manager",
+                            "contributor",
+                            "reader",
+                            null
+                          ],
+                          "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                        },
                         "budgetVoted": {
                           "type": [
                             "integer",
@@ -4556,6 +5245,18 @@
                             "name"
                           ],
                           "description": "Group linked to the project, `null` without one"
+                        },
+                        "milestones": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Milestone"
+                          },
+                          "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+                        },
+                        "milestonesTotal": {
+                          "type": "integer",
+                          "description": "Number of milestones of the project",
+                          "example": 3
                         }
                       },
                       "required": [
@@ -4572,11 +5273,15 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "members",
+                        "myRole",
                         "budgetVoted",
                         "budgetCommitted",
                         "tasks",
                         "permissions",
-                        "group"
+                        "group",
+                        "milestones",
+                        "milestonesTotal"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -4707,6 +5412,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -4771,6 +5484,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -4949,6 +5663,14 @@
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
                   },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+                    "example": "2030-11-02"
+                  },
                   "statusId": {
                     "type": "string",
                     "pattern": "^status-\\d+$",
@@ -5099,6 +5821,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -5163,6 +5893,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
@@ -5687,6 +6418,26 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ProjectMember"
+                          },
+                          "description": "Every member of the project, their role and their load (MAIR-1088)"
+                        },
+                        "myRole": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "manager",
+                            "contributor",
+                            "reader",
+                            null
+                          ],
+                          "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                        },
                         "budgetVoted": {
                           "type": [
                             "integer",
@@ -5803,6 +6554,18 @@
                             "name"
                           ],
                           "description": "Group linked to the project, `null` without one"
+                        },
+                        "milestones": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Milestone"
+                          },
+                          "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+                        },
+                        "milestonesTotal": {
+                          "type": "integer",
+                          "description": "Number of milestones of the project",
+                          "example": 3
                         }
                       },
                       "required": [
@@ -5819,11 +6582,15 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "members",
+                        "myRole",
                         "budgetVoted",
                         "budgetCommitted",
                         "tasks",
                         "permissions",
-                        "group"
+                        "group",
+                        "milestones",
+                        "milestonesTotal"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -5954,6 +6721,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -6018,6 +6793,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -6287,6 +7063,26 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ProjectMember"
+                          },
+                          "description": "Every member of the project, their role and their load (MAIR-1088)"
+                        },
+                        "myRole": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "manager",
+                            "contributor",
+                            "reader",
+                            null
+                          ],
+                          "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                        },
                         "budgetVoted": {
                           "type": [
                             "integer",
@@ -6403,6 +7199,18 @@
                             "name"
                           ],
                           "description": "Group linked to the project, `null` without one"
+                        },
+                        "milestones": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Milestone"
+                          },
+                          "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+                        },
+                        "milestonesTotal": {
+                          "type": "integer",
+                          "description": "Number of milestones of the project",
+                          "example": 3
                         }
                       },
                       "required": [
@@ -6419,11 +7227,15 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "members",
+                        "myRole",
                         "budgetVoted",
                         "budgetCommitted",
                         "tasks",
                         "permissions",
-                        "group"
+                        "group",
+                        "milestones",
+                        "milestonesTotal"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -6554,6 +7366,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -6618,6 +7438,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -6912,6 +7733,14 @@
                     "description": "Due date: a date (`YYYY-MM-DD`, read as midnight UTC), an ISO 8601 date-time, or an empty string for none",
                     "example": "2030-12-31"
                   },
+                  "startDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Start date (MAIR-1087): a date (`YYYY-MM-DD`, read as midnight UTC) or an ISO 8601 date-time, at or before the due date (400 otherwise). On creation, absent, empty or `null` means none; on update, absent keeps it, `null` or an empty string clears it",
+                    "example": "2030-11-02"
+                  },
                   "statusId": {
                     "type": "string",
                     "pattern": "^status-\\d+$",
@@ -7053,6 +7882,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -7117,6 +7954,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
@@ -7379,6 +8217,26 @@
                           "description": "Creation date of the project, ISO 8601",
                           "example": "2024-01-01T12:00:00Z"
                         },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ProjectMember"
+                          },
+                          "description": "Every member of the project, their role and their load (MAIR-1088)"
+                        },
+                        "myRole": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "manager",
+                            "contributor",
+                            "reader",
+                            null
+                          ],
+                          "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                        },
                         "budgetVoted": {
                           "type": [
                             "integer",
@@ -7495,6 +8353,18 @@
                             "name"
                           ],
                           "description": "Group linked to the project, `null` without one"
+                        },
+                        "milestones": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Milestone"
+                          },
+                          "description": "Its first 100 milestones, by due date then id (`GET /projects/{projectId}/milestones` pages them all)"
+                        },
+                        "milestonesTotal": {
+                          "type": "integer",
+                          "description": "Number of milestones of the project",
+                          "example": 3
                         }
                       },
                       "required": [
@@ -7511,11 +8381,15 @@
                         "progress",
                         "dueDate",
                         "createdAt",
+                        "members",
+                        "myRole",
                         "budgetVoted",
                         "budgetCommitted",
                         "tasks",
                         "permissions",
-                        "group"
+                        "group",
+                        "milestones",
+                        "milestonesTotal"
                       ],
                       "description": "A project for the card, table or kanban views"
                     },
@@ -7646,6 +8520,14 @@
                             "description": "Due date of the task, ISO 8601",
                             "example": "2024-12-31T23:59:59Z"
                           },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                            "example": "2024-12-01T00:00:00Z"
+                          },
                           "completed": {
                             "type": "boolean",
                             "description": "Whether the task is completed",
@@ -7710,6 +8592,7 @@
                           "priorityLabel",
                           "labels",
                           "dueDate",
+                          "startDate",
                           "completed",
                           "createdAt",
                           "permissions"
@@ -7999,6 +8882,14 @@
                       "description": "Due date of the task, ISO 8601",
                       "example": "2024-12-31T23:59:59Z"
                     },
+                    "startDate": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Start date of the task, ISO 8601, `null` when it has none (MAIR-1087)",
+                      "example": "2024-12-01T00:00:00Z"
+                    },
                     "completed": {
                       "type": "boolean",
                       "description": "Whether the task is completed",
@@ -8063,6 +8954,7 @@
                     "priorityLabel",
                     "labels",
                     "dueDate",
+                    "startDate",
                     "completed",
                     "createdAt",
                     "permissions"
@@ -8704,6 +9596,26 @@
                             "description": "Creation date of the project, ISO 8601",
                             "example": "2024-01-01T12:00:00Z"
                           },
+                          "members": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/ProjectMemberSummary"
+                            },
+                            "description": "Members of the project and their role (MAIR-1088); in the projects page, its first 5 members only"
+                          },
+                          "myRole": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "manager",
+                              "contributor",
+                              "reader",
+                              null
+                            ],
+                            "description": "Role of the caller in the project (MAIR-1088), `null` when they are not a member. `permissions` already counts it: a `manager` member manages the project"
+                          },
                           "budgetVoted": {
                             "type": [
                               "integer",
@@ -8813,6 +9725,8 @@
                           "progress",
                           "dueDate",
                           "createdAt",
+                          "members",
+                          "myRole",
                           "budgetVoted",
                           "budgetCommitted",
                           "tasks",
@@ -10033,6 +10947,1350 @@
           },
           "409": {
             "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/milestones": {
+      "get": {
+        "tags": [
+          "Milestones"
+        ],
+        "summary": "Lists the milestones of a project",
+        "description": "One page of the milestones of the project (MAIR-1086), by due date then id; deleted ones are left out. Open to whoever sees the project (`404` otherwise).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "example": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Milestones of the page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMilestones"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Milestones"
+        ],
+        "summary": "Adds a milestone to a project",
+        "description": "Reserved to the project managers. `reached` defaults to `false`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan milestone"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Day the milestone is due, `YYYY-MM-DD`",
+                    "example": "2027-03-15"
+                  },
+                  "reached": {
+                    "type": "boolean",
+                    "description": "Already reached; absent: `false`",
+                    "example": false
+                  }
+                },
+                "required": [
+                  "title",
+                  "dueDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created milestone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/milestones/{milestoneId}": {
+      "patch": {
+        "tags": [
+          "Milestones"
+        ],
+        "summary": "Updates a milestone",
+        "description": "Reserved to the project managers; an absent field is left unchanged (`reached: false` reopens it). `404` for a milestone of another project or a deleted one.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the milestone",
+              "example": "milestone-1"
+            },
+            "required": true,
+            "description": "Id of the milestone",
+            "name": "milestoneId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Scan milestone"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Day the milestone is due, `YYYY-MM-DD`",
+                    "example": "2027-03-15"
+                  },
+                  "reached": {
+                    "type": "boolean",
+                    "description": "Already reached; absent: `false`",
+                    "example": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated milestone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Milestones"
+        ],
+        "summary": "Deletes a milestone",
+        "description": "Reserved to the project managers. `404` for an unknown or already deleted milestone.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the milestone",
+              "example": "milestone-999999"
+            },
+            "required": true,
+            "description": "Id of the milestone",
+            "name": "milestoneId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Milestone deleted"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/members": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Adds a member to a project",
+        "description": "Reserved to the project managers (a `manager` member included). The agent must be one the caller may assign (403 otherwise). `role` defaults to `contributor`; `409` when Project API refuses the member (already one).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "pattern": "^user-\\d{1,15}$",
+                    "example": "user-3",
+                    "description": "Agent to add (`user-<id>`, one the caller may assign)"
+                  },
+                  "role": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/ProjectMemberRole"
+                      },
+                      {
+                        "description": "Role in the project; absent: `contributor`"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "userId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Members of the project, the new one included",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMembers"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/members/{userId}": {
+      "patch": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Changes the role of a member",
+        "description": "Reserved to the project managers. `404` for a user who is not a member, `409` for the owner of the project (always `manager`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^user-\\d{1,15}$",
+              "example": "user-3",
+              "description": "Id of the member"
+            },
+            "required": true,
+            "description": "Id of the member",
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "$ref": "#/components/schemas/ProjectMemberRole"
+                  }
+                },
+                "required": [
+                  "role"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Members of the project, as re-read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMembers"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Removes a member from a project",
+        "description": "Reserved to the project managers. Their tasks of the project are unassigned by Project API. `409` for the owner of the project.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^user-\\d{1,15}$",
+              "example": "user-999999",
+              "description": "Id of the member"
+            },
+            "required": true,
+            "description": "Id of the member",
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Member removed"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/activity": {
+      "get": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Lists the activity of a project",
+        "description": "One page of the comments of the project and of the history of all its tasks (archived ones included), newest first (MAIR-1089). Open to whoever sees the project (`404` otherwise).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "example": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entries of the page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectActivity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/comments": {
+      "post": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Comments a project",
+        "description": "Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Id of the project",
+              "example": "project-1"
+            },
+            "required": true,
+            "description": "Id of the project",
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000,
+                    "pattern": "^[^<>]*$",
+                    "description": "Text of the comment: 1 to 2000 characters once trimmed, no `<` or `>`",
+                    "example": "Comment posted by the ZAP scan"
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The comment, as an activity entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project or task not found or not visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project API or Core API rate limit reached: retry after the Retry-After header (seconds)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Project API or Core API is unreachable or failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Project API or Core API is not configured (PROJECT_API_URL, CORE_API_URL)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/bulk-delete": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Deletes several projects",
+        "description": "Deletes each project the caller may delete, one by one (MAIR-1089), and answers one result per project: `deleted`, `not_found` (unknown or not visible) or `forbidden` (visible but not managed by the caller).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^project-\\d{1,15}$",
+                      "example": "project-999999"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "description": "Projects to delete, 1 to 100 (`project-<id>`); a repeated id is handled once",
+                    "example": [
+                      "project-999999"
+                    ]
+                  }
+                },
+                "required": [
+                  "projectIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One result per project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkDeleteProjectsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired session",
             "content": {
               "application/json": {
                 "schema": {

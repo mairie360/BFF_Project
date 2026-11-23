@@ -1,5 +1,5 @@
 import type {
-  GetProjectsParams, GetProjectsResultView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
+  ActivityItemView, BulkDeleteResultItem, CreateMilestoneView, GetProjectsParams, ProjectMemberRole, GetProjectsResultView, MilestoneView, PatchMilestoneView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
 import {
   asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
@@ -79,6 +79,9 @@ export type ProjectBundle = {
   users: User[];
   /** Number of its archived (completed) tasks, listed by `listArchivedTasks`. */
   archivedTasks: number;
+  /** Its first 100 milestones (MAIR-1086), by due date, and their total (`listProjectMilestones` pages them all). */
+  milestones: MilestoneView[];
+  milestonesTotal: number;
 };
 
 /** Page size asked of Project API's paginated lists: its maximum (a list defaults to 100 items). */
@@ -120,7 +123,31 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
     tasks.push(...page.tasks);
   }
 
-  return { project: first.project, tasks, users, archivedTasks: first.tasks_archived };
+  return {
+    project: first.project,
+    tasks,
+    users,
+    archivedTasks: first.tasks_archived,
+    milestones: first.milestones,
+    milestonesTotal: first.milestones_total,
+  };
+}
+
+/**
+ * Whether the caller manages a project they see (MAIR-1088): their role, without any call, or else Project API's
+ * `can_manage` for them (a member with the `manager` role, the owner), read with a single task. `false` when the
+ * project is not visible.
+ */
+export async function callerManagesProject(caller: Caller, user: ProjectUserContext, projectId: number): Promise<boolean> {
+  if (canManageProjects(user.role)) return true;
+  return projectCall(caller, async (options) => {
+    try {
+      return (await projectApi.getProject(projectId, { limit: 1, offset: 0 }, options)).data.project.can_manage;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) return false;
+      throw error;
+    }
+  }, true);
 }
 
 /**
@@ -191,9 +218,75 @@ export async function listProjectUsers(caller: Caller, projectId: number): Promi
   return pages.flatMap((page) => page.users);
 }
 
-/** Rights on a project the caller can see (`visible`): managing it needs a manager role. */
-export function getProjectPermissions(user: ProjectUserContext, visible: boolean): ProjectPermissions {
-  const canManage = visible && canManageProjects(user.role);
+/** One page of the milestones of a project (MAIR-1086), by due date then id; deleted ones are left out. */
+export async function listProjectMilestones(
+  caller: Caller,
+  projectId: number,
+  page: PageParams,
+): Promise<{ milestones: MilestoneView[]; total: number }> {
+  return (await projectCall(caller, (options) => projectApi.getProjectMilestones(projectId, page, options), true)).data;
+}
+
+/** Adds a milestone to a project (managers; Project API answers the created row). */
+export async function createProjectMilestone(caller: Caller, projectId: number, body: CreateMilestoneView): Promise<MilestoneView> {
+  return (await projectCall(caller, (options) => projectApi.createProjectMilestone(projectId, body, options))).data;
+}
+
+/** Changes the sent fields of a milestone (managers; 404 for a milestone of another project or a deleted one). */
+export async function updateProjectMilestone(
+  caller: Caller,
+  projectId: number,
+  milestoneId: number,
+  body: PatchMilestoneView,
+): Promise<MilestoneView> {
+  return (await projectCall(caller, (options) => projectApi.updateProjectMilestone(projectId, milestoneId, body, options))).data;
+}
+
+/** Deletes a milestone (soft delete in Project API; 404 for an unknown one). */
+export async function deleteProjectMilestone(caller: Caller, projectId: number, milestoneId: number): Promise<void> {
+  await projectCall(caller, (options) => projectApi.deleteProjectMilestone(projectId, milestoneId, options));
+}
+
+/** Adds a member to a project, with a role (MAIR-1088; absent, Project API makes them a contributor). */
+export async function addProjectMember(caller: Caller, projectId: number, userId: number, role?: ProjectMemberRole): Promise<void> {
+  await projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId, ...(role ? { role } : {}) }, options));
+}
+
+/** Changes the role of a member (MAIR-1088): 404 for a user who is not a member, 409 for the owner. */
+export async function updateProjectMemberRole(caller: Caller, projectId: number, userId: number, role: ProjectMemberRole): Promise<void> {
+  await projectCall(caller, (options) => projectApi.updateMemberRole(projectId, userId, { role }, options));
+}
+
+/** Removes a member from a project (MAIR-1088: 409 for the owner). */
+export async function removeProjectMember(caller: Caller, projectId: number, userId: number): Promise<void> {
+  await projectCall(caller, (options) => projectApi.removeUserFromProject(projectId, userId, options));
+}
+
+/** One page of the activity of a project (MAIR-1089): its comments and the history of its tasks, newest first. */
+export async function listProjectActivity(
+  caller: Caller,
+  projectId: number,
+  page: PageParams,
+): Promise<{ items: ActivityItemView[]; total: number }> {
+  return (await projectCall(caller, (options) => projectApi.getProjectActivity(projectId, page, options), true)).data;
+}
+
+/** Adds a comment to a project, signed by the caller (any viewer, MAIR-1089); Project API answers the activity item. */
+export async function addProjectComment(caller: Caller, projectId: number, message: string): Promise<ActivityItemView> {
+  return (await projectCall(caller, (options) => projectApi.addProjectComment(projectId, { message }, options))).data;
+}
+
+/** Deletes projects one by one in Project API (MAIR-1089), each with the rule of a single deletion. */
+export async function bulkDeleteProjects(caller: Caller, ids: number[]): Promise<BulkDeleteResultItem[]> {
+  return (await projectCall(caller, (options) => projectApi.bulkDeleteProjects({ ids }, options))).data.results;
+}
+
+/**
+ * Rights on a project the caller can see (`visible`): managing it needs a manager role, or Project API's `can_manage`
+ * for the caller (`apiCanManage`, MAIR-1088: its owner or a member with the `manager` role manages it too).
+ */
+export function getProjectPermissions(user: ProjectUserContext, visible: boolean, apiCanManage = false): ProjectPermissions {
+  const canManage = visible && (canManageProjects(user.role) || apiCanManage);
 
   return {
     canView: visible,
@@ -206,9 +299,16 @@ export function getProjectPermissions(user: ProjectUserContext, visible: boolean
   };
 }
 
-/** Rights on a task of a project the caller can see, given the agent it is assigned to. */
-export function getTaskPermissions(user: ProjectUserContext, assignedUserId: number | null | undefined): TaskPermissions {
-  const canManage = getProjectPermissions(user, true).canEdit;
+/**
+ * Rights on a task of a project the caller can see, given the agent it is assigned to and whether Project API lets the
+ * caller manage the project (`apiCanManage`, MAIR-1088).
+ */
+export function getTaskPermissions(
+  user: ProjectUserContext,
+  assignedUserId: number | null | undefined,
+  apiCanManage = false,
+): TaskPermissions {
+  const canManage = getProjectPermissions(user, true, apiCanManage).canEdit;
   const assignedToCurrentUser = assignedUserId === user.id;
 
   return {

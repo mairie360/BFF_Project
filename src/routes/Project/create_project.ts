@@ -109,7 +109,7 @@ router.post('/', async (req: Request, res: Response) => {
   // from the tasks).
   res.status(201).json({
     project: buildProjectDtoForUser(user, bundle),
-    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users)),
+    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
   });
 });
 

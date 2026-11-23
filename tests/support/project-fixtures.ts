@@ -14,6 +14,7 @@ import {
   type GetProjectResultView,
   type GetProjectUsersResultView,
   type GetProjectsResultView,
+  type MilestoneView,
   type ProjectListItemView,
   ProjectStatus,
   type ProjetView,
@@ -87,7 +88,8 @@ export function bearer(sub: string | number, claims: object = {}): string {
 export function projetView(id: number, overrides: Partial<ProjetView> = {}): ProjetView {
   return {
     id, name: `Projet ${id}`, description: `Description du projet ${id}`, status: ProjectStatus.Active,
-    priority: TaskPriority.Medium, can_manage: true, ...overrides,
+    // Project API's `can_manage` for the caller (MAIR-1088): the BFF adds it to the rights of the caller's role.
+    priority: TaskPriority.Medium, can_manage: false, ...overrides,
   };
 }
 
@@ -96,7 +98,7 @@ export function projectListItem(id: number, overrides: Partial<ProjectListItemVi
   return {
     ...projetView(id),
     tasks_total: 0, tasks_completed: 0, priority: TaskPriority.Medium, due_date: null, members: [], members_total: 0,
-    can_manage: true,
+    can_manage: false,
     ...overrides,
   };
 }
@@ -128,6 +130,14 @@ export function projectsResult(
     },
   };
 }
+/** A milestone of `GET /api/v1/projects/{projectId}/milestones/` (MAIR-1086). */
+export function milestoneView(id: number, overrides: Partial<MilestoneView> = {}): MilestoneView {
+  return {
+    id, project_id: 1, title: `Jalon ${id}`, due_date: '2027-01-15', reached: false, created_by: 1, updated_by: 1,
+    created_at: '2026-11-01T08:00:00Z', updated_at: '2026-11-01T08:00:00Z', ...overrides,
+  };
+}
+
 export const createProjectResult = (project_id: number): CreateProjectResultView => ({ project_id });
 
 export function taskView(id: number, overrides: Partial<TaskView> = {}): TaskView {

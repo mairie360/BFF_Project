@@ -9,7 +9,7 @@ import {
 } from './project_helpers';
 import { requireAssignableUsers, requireTaskManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { callerOf, getTaskWithMembers } from '../../services/projectData';
+import { callerOf, listProjectUsers, getTaskWithMembers } from '../../services/projectData';
 
 const router = Router();
 
@@ -71,11 +71,12 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
     const { projectId, taskId } = requireTaskParams(params);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user } = await requireTaskManagement(caller, getProjectUserContext(res), projectId, taskId);
+    const { user, projectCanManage } = await requireTaskManagement(caller, getProjectUserContext(res), projectId, taskId);
     await requireAssignableUsers(caller, user, [
         ...(body.responsibleId ? [body.responsibleId] : []),
         ...(body.assigneeIds ?? []),
-    ]);
+    // The members of the project can be assigned by whoever manages it (MAIR-1088).
+    ], async () => (await listProjectUsers(caller, projectId)).map((member) => member.id));
     const backendPayload = mapTaskUpdateBodyToBackend(body);
     if (Object.keys(backendPayload).length > 0) {
         await patchTaskOnApi(caller, projectId, taskId, backendPayload);
@@ -85,7 +86,7 @@ router.patch('/:projectId/tasks/:taskId', async (req: Request, res: Response) =>
     const updated = await getTaskWithMembers(caller, projectId, taskId);
     if (!updated) throw new HttpError(404, 'Task not found after update');
 
-    res.status(200).json(buildTaskDtoForUser(user, updated.task, updated.users));
+    res.status(200).json(buildTaskDtoForUser(user, updated.task, updated.users, projectCanManage));
 });
 
 export default router;
