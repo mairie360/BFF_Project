@@ -119,7 +119,7 @@ export async function requireOpenProjectManagement(caller: Caller, user: Project
  */
 async function loadTaskAccess(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
   // A manager role needs no project read; another caller may still manage it as a `manager` member (MAIR-1088).
-  // The project is read with a single task whatever the role: whether it is closed decides the writes.
+  // That read tells whether the project is closed (409 here); for a manager role Project API answers the 409.
   const [task, rights] = await Promise.all([
     getProjectTask(caller, projectId, taskId),
     callerProjectRights(caller, user, projectId),

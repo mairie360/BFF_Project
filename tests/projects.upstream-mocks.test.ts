@@ -3409,10 +3409,6 @@ describe('MAIR-1200 a closed project is read-only', () => {
     ['DELETE /projects/:id/members/:userId', 'delete', '/projects/project-1/members/user-3', undefined],
     ['POST /projects/:id/milestones', 'post', '/projects/project-1/milestones', { title: 'Vote du conseil', dueDate: '2027-03-15' }],
     ['POST /projects/:id/statuses', 'post', '/projects/project-1/statuses', { name: 'À valider', color: '#D97706', category: 'in-progress', position: 2 }],
-    ['PATCH /projects/:id/tasks/:taskId', 'patch', '/projects/project-1/tasks/task-2', { title: 'Renommée' }],
-    ['PATCH /projects/:id/tasks/:taskId/status', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'done' }],
-    ['POST /projects/:id/tasks/:taskId/comments', 'post', '/projects/project-1/tasks/task-2/comments', { message: 'Vu.' }],
-    ['DELETE /projects/:id/tasks/:taskId', 'delete', '/projects/project-1/tasks/task-2', undefined],
   ] as const)('mair_1200 %s on a closed project answers 409 without writing', async (_name, method, url, body) => {
     signIn(admin);
     mockProjectApi({ bundles: { 1: closedBundle() } });
@@ -3423,6 +3419,36 @@ describe('MAIR-1200 a closed project is read-only', () => {
     expect(closedError(response)).toEqual([409, 'CONFLICT', 'Project is closed.']);
     expectBffContract(method, url, response);
     expect(nonGetCalls()).toEqual([]);
+  });
+
+  // A manager role reads no project to write a task (MAIR-399): Project API's 409 is relayed.
+  test.each([
+    ['PATCH /projects/:id/tasks/:taskId', 'patch', '/projects/project-1/tasks/task-2', { title: 'Renommée' }, 'patch', PROJECT.task],
+    ['PATCH /projects/:id/tasks/:taskId/status', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'done' }, 'patch', PROJECT.task],
+    ['POST /projects/:id/tasks/:taskId/comments', 'post', '/projects/project-1/tasks/task-2/comments', { message: 'Vu.' }, 'post', PROJECT.comments],
+    ['DELETE /projects/:id/tasks/:taskId', 'delete', '/projects/project-1/tasks/task-2', undefined, 'delete', PROJECT.task],
+  ] as const)('mair_1200 %s by a manager role on a closed project relays Project API\'s 409', async (_name, method, url, body, upstreamMethod, upstream) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+    projectApi.on(upstreamMethod, upstream, textError(409, 'Project is closed.'));
+
+    const call = as(request(app)[method](url), admin);
+    const response = body === undefined ? await call : await call.send(body);
+
+    expect(closedError(response)).toEqual([409, 'CONFLICT', 'Project is closed.']);
+    expectBffContract(method, url, response);
+    expect(projectApi.calls(PROJECT.project, 'GET')).toHaveLength(0);
+  });
+
+  test('mair_1200 another conflict of Project API keeps the generic message', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [alice]) } });
+    projectApi.on('patch', PROJECT.task, textError(409, 'Status does not belong to the project.'));
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send({ title: 'Renommée' });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.message).not.toBe('Project is closed.');
   });
 
   test('mair_1200 the assignee changing the status of her task in a closed project gets 409', async () => {
@@ -3452,9 +3478,8 @@ describe('MAIR-1200 a closed project is read-only', () => {
 
     const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: 'Vu.' });
 
-    expect(response.status).toBe(409);
+    expect(closedError(response)).toEqual([409, 'CONFLICT', 'Project is closed.']);
     expectBffContract('post', '/projects/project-1/comments', response);
-    expect(response.body.error.code).toBe('CONFLICT');
   });
 
   test('mair_1200 a status alone reopens a closed project and gives the rights back', async () => {

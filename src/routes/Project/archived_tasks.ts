@@ -68,7 +68,7 @@ router.get('/:projectId/archived-tasks', async (req: Request, res: Response) => 
       throw error;
     }),
     // Whether the project is closed too: its archived tasks are then read-only.
-    callerProjectRights(caller, user, projectId),
+    callerProjectRights(caller, user, projectId, true),
   ]);
   if (!archived) throw new HttpError(404, 'Project not found or not visible.');
 
