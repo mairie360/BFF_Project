@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: mairie360/CICD
-          ref: v5.10.0
+          ref: v5.14.3
           path: cicd-repo
           sparse-checkout: actions
       - id: check
@@ -58,7 +58,7 @@ jobs:
     with:
       stack: bffs
       package_name: bff-project
-      cicd_version: v5.12.0
+      cicd_version: v5.14.3
       sha: ${{ needs.check.outputs.sha }}
       openapi_spec_path: contracts/openapi.json
       dry_run: true
@@ -75,7 +75,7 @@ jobs:
     with:
       stack: bffs
       package_name: bff-project
-      cicd_version: v5.12.0
+      cicd_version: v5.14.3
       sha: ${{ needs.check.outputs.sha }}
       openapi_spec_path: contracts/openapi.json
       dry_run: true
