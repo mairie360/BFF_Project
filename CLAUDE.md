@@ -199,7 +199,8 @@ Task categories: BFF `todo` / `in-progress` / `done` ↔ Project API `Todo` / `I
 `review`) ↔ DB `todo` / `in_progress` / `completed`. A task refuses `review` and `on-hold`, which are project statuses only.
 
 Priorities: BFF `high|medium|low` ↔ Project API `High` (and `Urgent`) / `Medium` / `Low`. All the `*Map` tables are in
-`project_helpers.ts`. A project's progress and dueDate are **derived from its tasks**, not stored.
+`project_helpers.ts`. A project's progress is **derived from its tasks**; its dueDate is Project API's `deadline`
+(MAIR-1199), else the earliest task due date.
 
 ### Permissions & roles
 

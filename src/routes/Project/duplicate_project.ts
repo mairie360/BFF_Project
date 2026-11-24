@@ -76,6 +76,8 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
         group_id: sourceGroup.id,
         // The copy keeps the responsible of its source (Project API makes them a `manager` member).
         ...(source.project.responsible ? { responsible_id: source.project.responsible.id } : {}),
+        // And its deadline.
+        ...(source.project.deadline ? { deadline: source.project.deadline } : {}),
     });
     const duplicateId = createdProject.project_id;
 

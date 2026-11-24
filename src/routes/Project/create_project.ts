@@ -26,7 +26,7 @@ registry.registerPath({
   path: '/projects',
   tags: ['Projects'],
   summary: 'Create a project',
-  description: 'Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.',
+  description: 'Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `dueDate` is recorded by Project API as the deadline of the project (the day it was written for) and read back as entered; `labels` are accepted but not persisted: the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.',
 
   request: {
     body: {
@@ -106,8 +106,7 @@ router.post('/', async (req: Request, res: Response) => {
     return fetchProjectBundle(caller, projectId);
   });
 
-  // Only the state Project API persisted is returned: labels and dueDate are not stored (dueDate is derived
-  // from the tasks).
+  // Only the state Project API persisted is returned: labels are not stored.
   res.status(201).json({
     project: buildProjectDtoForUser(user, bundle),
     taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),

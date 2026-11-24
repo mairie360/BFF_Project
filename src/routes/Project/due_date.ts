@@ -31,3 +31,18 @@ export function toBackendDueDate(value: string): string | null {
   if (value === '') return null;
   return dateOnlyToIso(value) ?? dateTimeToIso(value);
 }
+
+/**
+ * The day Project API records as the deadline of a project (`YYYY-MM-DD`) for a due date accepted by `isDueDate`,
+ * `null` when it is empty. A date-time keeps the day it was written for (`2027-06-30T00:00:00+02:00` is the 30th),
+ * not its UTC day.
+ */
+export function toBackendDeadline(value: string): string | null {
+  if (value === '') return null;
+  return dateOnlyToIso(value.slice(0, 10)) ? value.slice(0, 10) : null;
+}
+
+/** The project due date the contract returns for a recorded deadline: midnight UTC of that day. */
+export function deadlineToIso(deadline: string): string {
+  return `${deadline}T00:00:00.000Z`;
+}

@@ -4791,7 +4791,7 @@
           "Projects"
         ],
         "summary": "Create a project",
-        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `labels` and `dueDate` are accepted but not persisted by Project API (the due date is derived from the tasks): the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.",
+        "description": "Creates the project with its status and priority (stored as chosen, MAIR-558), then its members and its tasks. `dueDate` is recorded by Project API as the deadline of the project (the day it was written for) and read back as entered; `labels` are accepted but not persisted: the response is the re-read state. If a step fails, the project is deleted again. `groupId` links a group whose current and future members all see the project: an unknown group, or one the caller may not link, answers `404` and creates nothing.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6082,7 +6082,7 @@
           "Projects"
         ],
         "summary": "Partially update a project",
-        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `labels`, `dueDate` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.",
+        "description": "Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `dueDate` replaces the deadline Project API records (an empty one keeps it); `labels` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.",
         "parameters": [
           {
             "schema": {
