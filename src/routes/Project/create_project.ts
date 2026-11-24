@@ -84,7 +84,8 @@ router.post('/', async (req: Request, res: Response) => {
   // project is deleted again if one of them fails. The status and the priority go with the creation (MAIR-558).
   const bundle = await withCreatedProjectRollback(caller, projectId, async () => {
     const memberIds = [body.responsibleId, ...body.assigneeIds].filter(Boolean);
-    if (memberIds.length > 0) await syncProjectUsersOnApi(caller, projectId, memberIds);
+    // The responsible is written as a `manager`: the project reads its first manager as its responsible.
+    if (memberIds.length > 0) await syncProjectUsersOnApi(caller, projectId, memberIds, undefined, [body.responsibleId]);
     for (const task of body.taskItems ?? []) {
       // Sequential on purpose: Project API numbers the tasks in creation order, which must be the order given.
       // eslint-disable-next-line no-await-in-loop

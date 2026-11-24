@@ -132,6 +132,8 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
   projectApi.on('delete', PROJECT.project, { status: 204 });
   projectApi.on('get', PROJECT.users, ({ pathParams }) => ({ body: projectUsersResult(bundles[Number(pathParams.projectId)]?.users ?? []) }));
   projectApi.on('post', PROJECT.users, { status: 200 });
+  // A responsible already member of the project is promoted to manager.
+  projectApi.on('patch', PROJECT.user, { status: 204 });
   projectApi.on('delete', PROJECT.user, { status: 204 });
   projectApi.on('post', PROJECT.tasks, { body: createTaskResult(createdTaskId) });
   // GET …/tasks/{taskId}/: the task alone, 404 when the project or the task is unknown (MAIR-474).
@@ -815,9 +817,12 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       // The chosen status and priority go with the creation (MAIR-558).
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toEqual({
         name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium', group_id: 3,
+        // Project API records the responsible.
+        responsible_id: alice.id,
       });
+      // The responsible is written as a manager, the other members with Project API's default role.
       expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
-        .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id }]));
+        .toEqual(expect.arrayContaining([{ user_id: alice.id, role: 'manager' }, { user_id: marie.id }]));
       expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ name: 'Réserver la salle' });
       expect(response.body.project.title).toBe('Fête du village');
     });
@@ -1457,10 +1462,10 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(200);
       expectBffContract('patch', '/projects/project-1', response);
-      expect(addedMembers()).toEqual([{ user_id: admin.id }]);
+      expect(addedMembers()).toEqual([{ user_id: admin.id, role: 'manager' }]);
       expect(removedMembers()).toEqual([]);
-      // Nothing to change on the project record itself.
-      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      // The project record only gets its responsible.
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ responsible_id: admin.id }]);
     });
 
     test('a PATCH with only other fields leaves the members untouched', async () => {
@@ -1493,7 +1498,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-1', assigneeIds: ['user-3'] });
 
       expect(response.status).toBe(200);
-      expect(addedMembers()).toEqual([{ user_id: admin.id }]);
+      expect(addedMembers()).toEqual([{ user_id: admin.id, role: 'manager' }]);
       expect(removedMembers()).toEqual([memberUrl(1, alice.id)]);
     });
 
@@ -2825,6 +2830,177 @@ describe('MAIR-1088 member roles', () => {
       expect(memberIds).toEqual(expect.arrayContaining(['user-1', 'user-3']));
       expect(memberIds).not.toContain('user-2');
     });
+  });
+});
+
+describe('MAIR-1196 adding a member does not replace the responsible of the project', () => {
+  // Project API sorts the members by name: "Alice Martin" (a contributor) comes before "Marie Durand" (the manager).
+  const managedByMarie = () => ({
+    ...projectBundle(projetView(1), [], [alice, marie]),
+    users: [member(alice, 'contributor'), member(marie, 'manager')],
+  });
+
+  test('the detail reads the manager member as the responsible, not the first member', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: managedByMarie() } });
+
+    const response = await as(request(app).get('/projects/project-1'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.responsible).toEqual({ id: 'user-3', name: 'Marie Durand', avatarUrl: null });
+  });
+
+  test('the projects page reads the manager member as the responsible, else the first member', async () => {
+    signIn(admin);
+    mockProjectApi({ projects: [
+      projectListItem(1, { members: [member(alice, 'contributor'), member(marie, 'manager')], members_total: 2 }),
+      projectListItem(2, { members: [member(alice, 'reader'), member(marie, 'contributor')], members_total: 2 }),
+    ] });
+
+    const response = await as(request(app).get('/projects-page'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects-page', response);
+    expect(response.body.projects.map((project: { responsible: { id: string } }) => project.responsible.id))
+      .toEqual(['user-3', 'user-2']);
+  });
+
+  test('adding, removing then adding back a member keeps the responsible in the detail and the page', async () => {
+    signIn(admin);
+    const bundle = projectBundle(projetView(1), [], [marie]);
+    bundle.users = [member(marie, 'manager')];
+    mockProjectApi({ bundles: { 1: bundle } });
+    const listItem = () => projectListItem(1, { members: bundle.users, members_total: bundle.users.length });
+    projectApi.on('post', PROJECT.users, ({ body }) => {
+      const { user_id: id, role } = body as { user_id: number; role?: 'manager' };
+      // Alice sorts before Marie, like Project API's order by name.
+      bundle.users = [{ id, name: 'Alice Martin', role: role ?? 'contributor' }, ...bundle.users];
+      return { status: 200 };
+    });
+    projectApi.on('delete', PROJECT.user, ({ pathParams }) => {
+      bundle.users = bundle.users.filter((entry) => String(entry.id) !== pathParams.userId);
+      return { status: 204 };
+    });
+    projectApi.on('get', PROJECT.projects, () => ({ body: projectsResult([listItem()]) }));
+
+    const responsibles: string[] = [];
+    const readBack = async () => {
+      const [detail, page] = await Promise.all([
+        as(request(app).get('/projects/project-1'), admin),
+        as(request(app).get('/projects-page'), admin),
+      ]);
+      expect([detail.status, page.status]).toEqual([200, 200]);
+      responsibles.push(detail.body.project.responsible.id, page.body.projects[0].responsible.id);
+    };
+
+    expect((await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2', role: 'contributor' })).status).toBe(201);
+    await readBack();
+    expect((await as(request(app).delete('/projects/project-1/members/user-2'), admin)).status).toBe(204);
+    await readBack();
+    expect((await as(request(app).post('/projects/project-1/members'), admin).send({ userId: 'user-2' })).status).toBe(201);
+    await readBack();
+
+    expect(responsibles).toEqual(Array(6).fill('user-3'));
+  });
+
+  test('PATCH with responsibleId promotes a member already in the project to manager', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: managedByMarie() } });
+
+    const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-2' });
+
+    expect(response.status).toBe(200);
+    expect(projectApi.calls(PROJECT.users, 'POST')).toHaveLength(0);
+    expect(projectApi.calls(PROJECT.user, 'PATCH').map((call) => [call.pathParams.userId, call.body])).toEqual([['2', { role: 'manager' }]]);
+  });
+
+  test('PATCH with assigneeIds keeps the manager as the responsible, not the first member', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: managedByMarie() } });
+
+    const response = await as(request(app).patch('/projects/project-1'), admin).send({ assigneeIds: [] });
+
+    expect(response.status).toBe(200);
+    // Marie, the manager, stays; Alice, first by name, is removed.
+    expect(projectApi.calls(PROJECT.user, 'DELETE').map((call) => call.pathParams.userId)).toEqual(['2']);
+    expect(projectApi.calls(PROJECT.user, 'PATCH')).toHaveLength(0);
+  });
+
+  test('the responsible Project API records wins over the member rule, in the detail and the page', async () => {
+    signIn(admin);
+    // Alice, a contributor, is the recorded responsible; Marie is a manager member.
+    mockProjectApi({
+      bundles: { 1: { ...managedByMarie(), project: projetView(1, { responsible: { id: alice.id, name: 'Alice Martin' } }) } },
+      projects: [projectListItem(1, {
+        members: [member(alice, 'contributor'), member(marie, 'manager')], members_total: 2,
+        responsible: { id: alice.id, name: 'Alice Martin' },
+      })],
+    });
+
+    const [detail, page] = await Promise.all([
+      as(request(app).get('/projects/project-1'), admin),
+      as(request(app).get('/projects-page'), admin),
+    ]);
+
+    expect([detail.status, page.status]).toEqual([200, 200]);
+    expectBffContract('get', '/projects/project-1', detail);
+    expect(detail.body.project.responsible).toEqual({ id: 'user-2', name: 'Alice Martin', avatarUrl: null });
+    expect(page.body.projects[0].responsible.id).toBe('user-2');
+  });
+
+  test('a recorded responsible outside the first members of the page is still read', async () => {
+    signIn(admin);
+    mockProjectApi({ projects: [projectListItem(1, {
+      members: [member(alice, 'contributor')], members_total: 6, responsible: { id: 42, name: 'Zoé Vidal' },
+    })] });
+
+    const page = await as(request(app).get('/projects-page'), admin);
+
+    expect(page.status).toBe(200);
+    expect(page.body.projects[0].responsible).toEqual({ id: 'user-42', name: 'Zoé Vidal', avatarUrl: null });
+  });
+
+  test('PATCH with responsibleId writes the members first, then records the responsible with the project', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: managedByMarie() } });
+
+    const response = await as(request(app).patch('/projects/project-1'), admin)
+      .send({ title: 'Voirie', responsibleId: 'user-3', assigneeIds: [] });
+
+    expect(response.status).toBe(200);
+    const writes = projectApi.requests.filter((call) => call.method !== 'GET').map((call) => `${call.method} ${call.template}`);
+    expect(writes).toEqual([`DELETE ${PROJECT.user}`, `PATCH ${PROJECT.project}`]);
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ name: 'Voirie', responsible_id: marie.id }]);
+  });
+
+  test('a duplicate keeps the recorded responsible of its source', async () => {
+    signIn(admin);
+    mockProjectApi({ createdProjectId: 12, bundles: {
+      1: { ...managedByMarie(), project: projetView(1, { group: { id: 3, name: 'Roads' }, responsible: { id: marie.id, name: 'Marie Durand' } }) },
+      12: projectBundle(projetView(12), [], [alice, marie]),
+    } });
+    projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ responsible_id: marie.id });
+  });
+
+  test('a duplicate keeps the managers of its source', async () => {
+    signIn(admin);
+    mockProjectApi({ createdProjectId: 12, bundles: {
+      1: { ...managedByMarie(), project: projetView(1, { name: 'Voirie', group: { id: 3, name: 'Roads' } }) },
+      12: projectBundle(projetView(12, { name: 'Voirie' }), [], [alice, marie]),
+    } });
+    projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
+      .toEqual(expect.arrayContaining([{ user_id: alice.id }, { user_id: marie.id, role: 'manager' }]));
   });
 });
 

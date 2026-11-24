@@ -74,13 +74,17 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
         name: source.project.name,
         description: source.project.description,
         group_id: sourceGroup.id,
+        // The copy keeps the responsible of its source (Project API makes them a `manager` member).
+        ...(source.project.responsible ? { responsible_id: source.project.responsible.id } : {}),
     });
     const duplicateId = createdProject.project_id;
 
     // Same compensation as POST /projects: a failed step deletes the partial duplicate.
     const bundle = await withCreatedProjectRollback(caller, duplicateId, async () => {
         const memberIds = source.users.map((member) => userPublicId(member.id));
-        if (memberIds.length > 0) await syncProjectUsersOnApi(caller, duplicateId, memberIds);
+        // The managers of the source stay managers, so the copy keeps the same responsible.
+        const managerIds = source.users.filter((member) => member.role === 'manager').map((member) => userPublicId(member.id));
+        if (memberIds.length > 0) await syncProjectUsersOnApi(caller, duplicateId, memberIds, undefined, managerIds);
 
         for (const task of source.tasks) {
             // Sequential on purpose: Project API numbers the tasks in creation order, which must match the source.
