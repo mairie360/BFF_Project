@@ -132,6 +132,8 @@ function mockProjectApi({ projects = [], bundles = {}, createdProjectId = 12, cr
   projectApi.on('delete', PROJECT.project, { status: 204 });
   projectApi.on('get', PROJECT.users, ({ pathParams }) => ({ body: projectUsersResult(bundles[Number(pathParams.projectId)]?.users ?? []) }));
   projectApi.on('post', PROJECT.users, { status: 200 });
+  // A responsible already member of the project is promoted to manager (MAIR-1196).
+  projectApi.on('patch', PROJECT.user, { status: 204 });
   projectApi.on('delete', PROJECT.user, { status: 204 });
   projectApi.on('post', PROJECT.tasks, { body: createTaskResult(createdTaskId) });
   // GET …/tasks/{taskId}/: the task alone, 404 when the project or the task is unknown (MAIR-474).
@@ -2903,7 +2905,6 @@ describe('MAIR-1196 adding a member does not replace the responsible of the proj
   test('PATCH with responsibleId promotes a member already in the project to manager', async () => {
     signIn(admin);
     mockProjectApi({ bundles: { 1: managedByMarie() } });
-    projectApi.on('patch', PROJECT.user, { status: 204 });
 
     const response = await as(request(app).patch('/projects/project-1'), admin).send({ responsibleId: 'user-2' });
 
