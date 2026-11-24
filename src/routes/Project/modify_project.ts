@@ -5,7 +5,7 @@ import { parseRequest } from '@mairie360/bffs-lib';
 import {
     addProjectUsersOnApi,
     buildProjectDtoForUser,
-    buildTaskDtoForUser,
+    buildBundleTaskDtos,
     mapPriorityToBackend,
     mapProjectStatusToBackend,
     parseGroupIdField,
@@ -17,21 +17,27 @@ import {
     syncProjectUsersOnApi,
     userPublicId,
 } from './project_helpers';
-import { requireAssignableUsers, requireProjectManagement } from './project_access';
+import { projectClosedError, requireAssignableUsers, requireProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
 import { callerOf, getProjectBundle, updateProjectRecord } from '../../services/projectData';
 
 const router = Router();
 
+/** Whether the body only reopens a project: a `status` other than `done`, no other field. */
+function onlyReopens(body: Record<string, unknown>): boolean {
+    return body.status !== undefined && body.status !== 'done'
+        && Object.entries(body).every(([field, value]) => field === 'status' || value === undefined);
+}
+
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
-const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+const ERROR_STATUSES = [400, 401, 403, 404, 409, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
     method: 'patch',
     path: '/projects/{projectId}',
     tags: ['Projects'],
     summary: 'Partially update a project',
-    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `dueDate` replaces the deadline Project API records (an empty one keeps it); `labels` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.',
+    description: 'Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `dueDate` replaces the deadline Project API records (an empty one keeps it); `labels` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. A closed project (`done`) is read-only: the only body accepted reopens it, a `status` other than `done` and no other field (`permissions.canReopen`); any other body answers `409`. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.',
 
     request: {
         params: ProjectIdParams,
@@ -86,7 +92,9 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     const projectId = requireProjectIdParam(params.projectId);
     const caller = callerOf(req, ERROR_STATUSES);
 
-    const { user, bundle: current } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    const { user, bundle: current, closed } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    // A closed project is read-only: its managers may only reopen it, with a status other than `done` and nothing else.
+    if (closed && !onlyReopens(body)) throw projectClosedError();
     await requireAssignableUsers(caller, user, [
         ...(body.responsibleId ? [body.responsibleId] : []),
         ...(body.assigneeIds ?? []),
@@ -162,7 +170,7 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     }
     res.status(200).json({
         project: buildProjectDtoForUser(user, bundle),
-        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
+        taskItems: buildBundleTaskDtos(user, bundle),
     });
 });
 

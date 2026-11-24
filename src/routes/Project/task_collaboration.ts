@@ -20,7 +20,7 @@ const router = Router();
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
 const COLLABORATION_ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 // 404: Project API answers it when the task disappears between the rights check and the comment.
-const COMMENT_ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+const COMMENT_ERROR_STATUSES = [400, 401, 403, 404, 409, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
   method: 'get',

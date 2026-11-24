@@ -12,7 +12,7 @@ import {
   UpdateProjectMemberBody,
 } from '../../openapi-registry';
 import { fetchProjectBundle, mapProjectMember, parseUserId, requireProjectIdParam } from './project_helpers';
-import { requireAssignableUsers, requireProjectManagement } from './project_access';
+import { requireAssignableUsers, requireOpenProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
 import {
   addProjectMember,
@@ -65,7 +65,7 @@ router.post('/:projectId/members', async (req: Request, res: Response) => {
   const projectId = requireProjectIdParam(params.projectId);
   const caller = callerOf(req, ERROR_STATUSES);
 
-  const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  const { user } = await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   await requireAssignableUsers(caller, user, [body.userId]);
   await addProjectMember(caller, projectId, memberIdOf(body.userId), body.role);
   await answerMembers(caller, projectId, res, 201);
@@ -90,7 +90,7 @@ router.patch('/:projectId/members/:userId', async (req: Request, res: Response) 
   const projectId = requireProjectIdParam(params.projectId);
   const caller = callerOf(req, ERROR_STATUSES);
 
-  await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   await updateProjectMemberRole(caller, projectId, memberIdOf(params.userId), body.role);
   await answerMembers(caller, projectId, res, 200);
 });
@@ -110,7 +110,7 @@ router.delete('/:projectId/members/:userId', async (req: Request, res: Response)
   const projectId = requireProjectIdParam(params.projectId);
   const caller = callerOf(req, ERROR_STATUSES);
 
-  await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   await removeProjectMember(caller, projectId, memberIdOf(params.userId));
   res.status(204).end();
 });

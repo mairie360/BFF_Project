@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, ErrorResponse, CloseProjectBody, ProjectDetailsResponse, ProjectIdParams, registry } from '../../openapi-registry';
 import { parseRequest } from '@mairie360/bffs-lib';
-import { buildProjectDtoForUser, buildTaskDtoForUser, fetchProjectBundle, requireProjectIdParam } from './project_helpers';
+import { buildProjectDtoForUser, buildBundleTaskDtos, fetchProjectBundle, requireProjectIdParam } from './project_helpers';
 import { requireProjectManagement } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
 import { callerOf, setProjectClosed } from '../../services/projectData';
@@ -44,7 +44,7 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   // The re-read status (Completed → done, Suspended → on-hold, Review → review) is returned, not the submitted one.
   res.status(200).json({
     project: buildProjectDtoForUser(user, bundle),
-    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
+    taskItems: buildBundleTaskDtos(user, bundle),
   });
 });
 

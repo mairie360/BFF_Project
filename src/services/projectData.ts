@@ -2,7 +2,7 @@ import type {
   ActivityItemView, BulkDeleteResultItem, CreateMilestoneView, GetProjectsParams, ProjectMemberRole, GetProjectsResultView, MilestoneView, PatchMilestoneView, ProjectStatus, ProjetView, TaskCollaborationView, TaskPriority, TaskView, User,
 } from '@mairie360/project-api-openapi/model';
 import {
-  asCaller, callUpstream, DEFAULT_CONCURRENCY, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
+  asCaller, callUpstream, DEFAULT_CONCURRENCY, HttpError, mapWithConcurrency, readOffsetPages, type UpstreamRequestOptions,
 } from '@mairie360/bffs-lib';
 import { isAxiosError } from 'axios';
 import type { Request } from 'express';
@@ -44,7 +44,19 @@ export function projectCall<T>(caller: Caller, call: Call<T>, retry = false): Pr
   return callUpstream('PROJECT_API', () => call(asCaller('PROJECT_API', caller.req, UPSTREAM_TIMEOUT_MS)), {
     declared: caller.declared,
     retry,
+  }).catch((error: unknown) => {
+    throw isProjectClosedRefusal(error) ? new HttpError(409, PROJECT_CLOSED_MESSAGE, { cause: error }) : error;
   });
+}
+
+/**
+ * A relayed `409` whose Project API body is `Project is closed.`: its message is kept (a relayed error otherwise gets
+ * a generic one), so that the fronts tell a closed project from the other conflicts.
+ */
+function isProjectClosedRefusal(error: unknown): boolean {
+  if (!(error instanceof HttpError) || error.status !== 409) return false;
+  const upstream = (error as { cause?: unknown }).cause;
+  return isAxiosError(upstream) && upstream.response?.data === PROJECT_CLOSED_MESSAGE;
 }
 
 function coreCall<T>(caller: Caller, call: Call<T>, retry = false): Promise<T> {
@@ -62,6 +74,8 @@ export type ProjectPermissions = {
   canCreateTask: boolean;
   canAssignMembers: boolean;
   canClose: boolean;
+  /** A closed project only: whether the caller may reopen it (its managers). */
+  canReopen: boolean;
 };
 
 export type TaskPermissions = {
@@ -133,18 +147,36 @@ export async function getProjectBundle(caller: Caller, projectId: number): Promi
   };
 }
 
+/** Body of the `409` answered for a write on a closed project, as Project API words it. */
+export const PROJECT_CLOSED_MESSAGE = 'Project is closed.';
+
+/** Whether a project is closed (`Completed`): read-only until one of its managers reopens it. */
+export function isProjectClosed(project: Pick<ProjetView, 'status'>): boolean {
+  return project.status === 'Completed';
+}
+
+/** The caller's rights on a project they see, and whether it is closed. */
+export type ProjectRights = { canManage: boolean; closed: boolean };
+
 /**
- * Whether the caller manages a project they see (MAIR-1088): their role, without any call, or else Project API's
- * `can_manage` for them (a member with the `manager` role, the owner), read with a single task. `false` when the
- * project is not visible.
+ * Whether the caller manages a project (MAIR-1088: their role, or else Project API's `can_manage` for them, a member
+ * with the `manager` role or the owner) and whether it is closed, read with a single task. A project that is not
+ * visible reads as open and unmanaged (the caller's other reads answer its 404). A manager role skips the read unless
+ * `readClosed` asks for the closed state, which then reads as open.
  */
-export async function callerManagesProject(caller: Caller, user: ProjectUserContext, projectId: number): Promise<boolean> {
-  if (canManageProjects(user.role)) return true;
+export async function callerProjectRights(
+  caller: Caller, user: ProjectUserContext, projectId: number, readClosed = false,
+): Promise<ProjectRights> {
+  const byRole = canManageProjects(user.role);
+  // A manager role needs no read to manage a task; whether the project is closed is then left to Project API, whose
+  // `409 Project is closed.` the task routes relay.
+  if (byRole && !readClosed) return { canManage: true, closed: false };
   return projectCall(caller, async (options) => {
     try {
-      return (await projectApi.getProject(projectId, { limit: 1, offset: 0 }, options)).data.project.can_manage;
+      const { project } = (await projectApi.getProject(projectId, { limit: 1, offset: 0 }, options)).data;
+      return { canManage: byRole || project.can_manage, closed: isProjectClosed(project) };
     } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 404) return false;
+      if (isAxiosError(error) && error.response?.status === 404) return { canManage: byRole, closed: false };
       throw error;
     }
   }, true);
@@ -284,39 +316,49 @@ export async function bulkDeleteProjects(caller: Caller, ids: number[]): Promise
 /**
  * Rights on a project the caller can see (`visible`): managing it needs a manager role, or Project API's `can_manage`
  * for the caller (`apiCanManage`, MAIR-1088: its owner or a member with the `manager` role manages it too).
+ * A closed project (`closed`) is read-only: its managers may still duplicate, delete or reopen it, nothing else.
  */
-export function getProjectPermissions(user: ProjectUserContext, visible: boolean, apiCanManage = false): ProjectPermissions {
+export function getProjectPermissions(
+  user: ProjectUserContext,
+  visible: boolean,
+  apiCanManage = false,
+  closed = false,
+): ProjectPermissions {
   const canManage = visible && (canManageProjects(user.role) || apiCanManage);
+  const canWrite = canManage && !closed;
 
   return {
     canView: visible,
-    canEdit: canManage,
+    canEdit: canWrite,
     canDuplicate: canManage,
     canDelete: canManage,
-    canCreateTask: canManage,
-    canAssignMembers: canManage,
-    canClose: canManage,
+    canCreateTask: canWrite,
+    canAssignMembers: canWrite,
+    canClose: canWrite,
+    canReopen: canManage && closed,
   };
 }
 
 /**
  * Rights on a task of a project the caller can see, given the agent it is assigned to and whether Project API lets the
- * caller manage the project (`apiCanManage`, MAIR-1088).
+ * caller manage the project (`apiCanManage`, MAIR-1088). The task of a closed project (`projectClosed`) is read-only.
  */
 export function getTaskPermissions(
   user: ProjectUserContext,
   assignedUserId: number | null | undefined,
   apiCanManage = false,
+  projectClosed = false,
 ): TaskPermissions {
   const canManage = getProjectPermissions(user, true, apiCanManage).canEdit;
   const assignedToCurrentUser = assignedUserId === user.id;
+  const canWrite = !projectClosed;
 
   return {
     canView: canManage || assignedToCurrentUser,
-    canEdit: canManage,
-    canDelete: canManage,
-    canUpdateStatus: canManage || assignedToCurrentUser,
-    canComment: canManage || assignedToCurrentUser,
+    canEdit: canWrite && canManage,
+    canDelete: canWrite && canManage,
+    canUpdateStatus: canWrite && (canManage || assignedToCurrentUser),
+    canComment: canWrite && (canManage || assignedToCurrentUser),
   };
 }
 

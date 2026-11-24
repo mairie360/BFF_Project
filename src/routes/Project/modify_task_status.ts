@@ -16,7 +16,7 @@ import { callerOf, getTaskWithMembers } from '../../services/projectData';
 const router = Router();
 
 // Error statuses of the contract; any other upstream status becomes a 502 (callUpstream).
-const ERROR_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+const ERROR_STATUSES = [400, 401, 403, 404, 409, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 registry.registerPath({
     method: 'patch',

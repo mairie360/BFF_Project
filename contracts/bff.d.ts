@@ -296,6 +296,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                                 /** @description Group linked to the project, `null` without one */
                                 group: {
@@ -785,6 +790,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                                 /** @description Group linked to the project, `null` without one */
                                 group: {
@@ -1250,6 +1260,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -1490,6 +1509,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                                 /** @description Group linked to the project, `null` without one */
                                 group: {
@@ -1807,7 +1831,7 @@ export interface paths {
         head?: never;
         /**
          * Partially update a project
-         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `dueDate` replaces the deadline Project API records (an empty one keeps it); `labels` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.
+         * @description Only the sent fields change. Members are rewritten only when `assigneeIds` is sent (the current responsible is kept unless `responsibleId` is sent); a `responsibleId` alone adds that member. `status` and `priority` are stored (MAIR-558); `budgetVoted` / `budgetCommitted` (cents of euro, MAIR-1085) are kept when absent, cleared by `null`, and a negative amount is a `400`; `groupId` changes the group of the project (`404` for a group the caller may not link, `400` for `null`: a project always keeps a group); `dueDate` replaces the deadline Project API records (an empty one keeps it); `labels` and `taskItems` are accepted but not persisted by Project API: the response is the re-read state. A closed project (`done`) is read-only: the only body accepted reopens it, a `status` other than `done` and no other field (`permissions.canReopen`); any other body answers `409`. When the update is saved but the re-read no longer finds the project (a caller who saw it only through the group they replaced), the answer is `204` without a body; a caller who still sees it, through another group or as a member, gets `200`.
          */
         patch: {
             parameters: {
@@ -2065,6 +2089,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                                 /** @description Group linked to the project, `null` without one */
                                 group: {
@@ -2260,6 +2289,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -2361,6 +2399,15 @@ export interface paths {
                 };
                 /** @description Project or task not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2634,6 +2681,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -2875,6 +2931,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                                 /** @description Group linked to the project, `null` without one */
                                 group: {
@@ -3322,6 +3383,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -3648,6 +3718,11 @@ export interface paths {
                                     canCreateTask: boolean;
                                     canAssignMembers: boolean;
                                     canClose: boolean;
+                                    /**
+                                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                                     * @example false
+                                     */
+                                    canReopen: boolean;
                                 };
                             }[];
                             pagination: {
@@ -3954,6 +4029,15 @@ export interface paths {
                 };
                 /** @description Project or task not found or not visible */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4292,7 +4376,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4421,7 +4505,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4553,7 +4637,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -4782,6 +4866,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -4890,6 +4983,15 @@ export interface paths {
                 };
                 /** @description Project or task not found or not visible */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5018,6 +5120,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description Project API or Core API rate limit reached: retry after the Retry-After header (seconds) */
                 429: {
                     headers: {
@@ -5139,7 +5250,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5263,7 +5374,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5381,7 +5492,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5549,7 +5660,7 @@ export interface paths {
         put?: never;
         /**
          * Comments a project
-         * @description Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry.
+         * @description Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry. A closed project is read-only: `409`.
          */
         post: {
             parameters: {
@@ -5602,6 +5713,15 @@ export interface paths {
                 };
                 /** @description Project or task not found or not visible */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5933,7 +6053,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6055,7 +6175,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6187,7 +6307,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category) */
+                /** @description Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`) */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -6704,6 +6824,11 @@ export interface components {
                 canCreateTask: boolean;
                 canAssignMembers: boolean;
                 canClose: boolean;
+                /**
+                 * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                 * @example false
+                 */
+                canReopen: boolean;
             };
         };
         /** @description A member of a project and their role in it (MAIR-1088) */
@@ -6901,6 +7026,11 @@ export interface components {
                 canCreateTask: boolean;
                 canAssignMembers: boolean;
                 canClose: boolean;
+                /**
+                 * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                 * @example false
+                 */
+                canReopen: boolean;
             };
             /** @description Group linked to the project, `null` without one */
             group: {
@@ -7589,6 +7719,11 @@ export interface components {
                     canCreateTask: boolean;
                     canAssignMembers: boolean;
                     canClose: boolean;
+                    /**
+                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                     * @example false
+                     */
+                    canReopen: boolean;
                 };
                 /** @description Group linked to the project, `null` without one */
                 group: {
@@ -7987,6 +8122,11 @@ export interface components {
                     canCreateTask: boolean;
                     canAssignMembers: boolean;
                     canClose: boolean;
+                    /**
+                     * @description Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.
+                     * @example false
+                     */
+                    canReopen: boolean;
                 };
             }[];
             pagination: {

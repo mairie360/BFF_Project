@@ -4,7 +4,7 @@ import { parseRequest } from '@mairie360/bffs-lib';
 import { buildProjectDtoForUser, buildTaskDtoForUser, requireProjectIdParam } from './project_helpers';
 import { requireProjectView } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { callerOf } from '../../services/projectData';
+import { callerOf, isProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
@@ -50,7 +50,7 @@ router.get('/:projectId', async (req: Request, res: Response) => {
 
   const { user, bundle } = await requireProjectView(caller, getProjectUserContext(res), projectId);
   const taskItems = bundle.tasks
-    .map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage))
+    .map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage, isProjectClosed(bundle.project)))
     .filter((task) => task.permissions.canView);
 
   res.status(200).json({
