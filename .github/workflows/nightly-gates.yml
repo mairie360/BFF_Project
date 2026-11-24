@@ -27,6 +27,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      packages: read   # nightly-check reads the upstream image digests (CICD v5.14.3)
     outputs:
       run: ${{ steps.check.outputs.run }}
       sha: ${{ steps.check.outputs.sha }}

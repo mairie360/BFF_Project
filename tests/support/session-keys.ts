@@ -52,7 +52,10 @@ export function eddsaToken(sub: number | string, options: EddsaTokenOptions = {}
 
 /** A historical HS256 session token signed with a shared secret: always refused since bffs-lib 3. */
 export function hs256Token(sub: number | string, secret: string, expiresIn = 3_600): string {
-  const unsigned = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${base64url({ sub: String(sub), exp: Math.floor(Date.now() / 1000) + expiresIn })}`;
+  // Well formed apart from the algorithm (Core's kid, iss, aud), so a refusal can only come from HS256 itself.
+  const header = { alg: 'HS256', typ: 'JWT', kid: keyId(corePair.publicKey) };
+  const claims = { sub: String(sub), iss: SESSION_ISSUER, aud: SESSION_AUDIENCE, exp: Math.floor(Date.now() / 1000) + expiresIn };
+  const unsigned = `${base64url(header)}.${base64url(claims)}`;
   return `${unsigned}.${createHmac('sha256', secret).update(unsigned).digest('base64url')}`;
 }
 

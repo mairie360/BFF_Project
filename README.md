@@ -17,7 +17,7 @@ Les sections ci-dessous sont un aide-mémoire en anglais ; leur version françai
 
 ## Quick start
 
-Node.js 24 and read access to the GitHub Packages of `mairie360` (`NODE_AUTH_TOKEN`, `read:packages`) are needed for the private `@mairie360/*` packages.
+Node.js 26 and read access to the GitHub Packages of `mairie360` (`NODE_AUTH_TOKEN`, `read:packages`) are needed for the private `@mairie360/*` packages.
 
 ```bash
 export NODE_AUTH_TOKEN=<token with read:packages>
