@@ -17,7 +17,7 @@ import {
 } from "./project_helpers";
 import { parseRequest } from "@mairie360/bffs-lib";
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
-import { callerOf, getProjectPermissions, listAssignableUsers, listProjectsPage } from '../../services/projectData';
+import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage } from '../../services/projectData';
 
 const router = Router();
 
@@ -93,7 +93,7 @@ router.get("/", async (req: Request, res: Response) => {
   // Every listed project is visible to the caller; Project API's `can_manage` adds the projects they manage as a
   // `manager` member (MAIR-1088).
   const projects = result.projects.map((project) =>
-    mapProjectListItemToDto(project, getProjectPermissions(user, true, project.can_manage)));
+    mapProjectListItemToDto(project, getProjectPermissions(user, true, project.can_manage, isProjectClosed(project))));
   const summary = summaryFromCounts(result);
   const members = collectMembers([assignable]);
 

@@ -195,6 +195,12 @@ Project statuses: BFF `todo` / `in-progress` / `review` / `on-hold` / `done` ↔
 `Suspended` / `Completed` (`Error`, a value Project API cannot interpret, reads as `todo`). Since MAIR-558 Project API stores
 the status and the priority chosen for a project.
 
+A closed project (`done` ↔ `Completed`) is read-only: `getProjectPermissions` / `getTaskPermissions` take whether it is
+closed (`isProjectClosed`), `permissions.canReopen` is `true` for its managers, and every write except delete, duplicate,
+close and the reopening `PATCH` (a `status` other than `done` alone) goes through `requireOpenProjectManagement` or the
+task guards, which answer `409 Project is closed.` once the rights are granted. Task guards read the project with one task
+(`callerProjectRights`) whatever the role, to know whether it is closed. Project API refuses the same writes.
+
 Task categories: BFF `todo` / `in-progress` / `done` ↔ Project API `Todo` / `InProgress` / `Completed` (`Error` reads as
 `review`) ↔ DB `todo` / `in_progress` / `completed`. A task refuses `review` and `on-hold`, which are project statuses only.
 

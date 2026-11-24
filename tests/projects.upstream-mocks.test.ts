@@ -5,7 +5,7 @@ import request from 'supertest';
 import { ContractMockServer, unreachableUrl, type MockReply } from './support/contract-mock-server';
 import { OpenApiContract } from './support/openapi-contract';
 import { loadOrvalContract } from './support/orval-contract';
-import type { GetProjectResultView, ProjectListItemView } from '@mairie360/project-api-openapi/model';
+import type { GetProjectResultView, ProjectListItemView, ProjetView } from '@mairie360/project-api-openapi/model';
 import type { ListDirectoryUsersParams } from '@mairie360/core-api-openapi/model';
 import {
   agents, bearer, collaboration, member, coreApiUrls, coreDirectory, createProjectResult, createTaskResult, projectApiUrls, projectBundle,
@@ -419,7 +419,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         responsible: { id: 'user-2', name: 'Alice Martin', avatarUrl: null },
         // The completed task is the archived one (MAIR-559).
         tasks: { total: 2, completed: 1, active: 1, archived: 1 },
-        permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true },
+        permissions: { canView: true, canEdit: true, canDuplicate: true, canDelete: true, canCreateTask: true, canAssignMembers: true, canClose: true, canReopen: false },
       })]);
       // The counts cover every matching project, the Kanban columns list the ids of the page. `todo` adds the
       // statuses Project API does not interpret; the suspended projects are on hold (MAIR-1084).
@@ -1567,9 +1567,13 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      // The status is written with the creation (MAIR-558), no longer by a PATCH after it.
-      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Completed', priority: 'High' });
-      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      // MAIR-1200: a closed project is read-only, so a project created `done` is created open, gets its members and
+      // tasks, and is closed last.
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ priority: 'High' });
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).not.toHaveProperty('status');
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ status: 'Completed' }]);
+      const writes = upstreamSequence().filter((call) => !call.startsWith('GET'));
+      expect(writes[writes.length - 1]).toBe(called('PATCH', projectApiUrls.getUpdateProjectUrl(12)));
       expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
       // The due date read back is the one Project API stored (none in this mock), not the body's.
       expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
@@ -3330,5 +3334,157 @@ describe('MAIR-1198 description of a task', () => {
     expect(response.status).toBe(201);
     const created = projectApi.calls(PROJECT.tasks, 'POST').map((call) => (call.body as { description: string | null }).description);
     expect(created).toEqual([description, '']);
+  });
+});
+
+describe('MAIR-1200 a closed project is read-only', () => {
+  /** Project 1, closed, with a task assigned to Alice (User) and Marie (Responsable) as member. */
+  const closedBundle = () => projectBundle(projetView(1, { status: 'Completed', group: { id: 3, name: 'Roads' } }), [taskView(2, { assigned_to: alice.id })], [alice, marie]);
+  const nonGetCalls = () => projectApi.requests.filter((call) => call.method !== 'GET');
+  const closedError = (response: request.Response) => [response.status, response.body.error?.code, response.body.error?.message];
+
+  test('mair_1200 the detail of a closed project keeps the reads and offers only reopen, delete and duplicate', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+
+    const response = await as(request(app).get('/projects/project-1'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects/project-1', response);
+    expect(response.body.project.status).toBe('done');
+    expect(response.body.project.permissions).toEqual({
+      canView: true, canEdit: false, canDuplicate: true, canDelete: true,
+      canCreateTask: false, canAssignMembers: false, canClose: false, canReopen: true,
+    });
+    expect(response.body.taskItems.map((task: { id: string }) => task.id)).toEqual(['task-2']);
+    expect(response.body.taskItems[0].permissions).toEqual({
+      canView: true, canEdit: false, canDelete: false, canUpdateStatus: false, canComment: false,
+    });
+  });
+
+  test('mair_1200 an open project gets canReopen false and its usual rights', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [alice]) } });
+
+    const response = await as(request(app).get('/projects/project-1'), admin);
+
+    expect(response.status).toBe(200);
+    expect(response.body.project.permissions).toMatchObject({ canEdit: true, canClose: true, canCreateTask: true, canReopen: false });
+    expect(response.body.taskItems[0].permissions).toMatchObject({ canEdit: true, canUpdateStatus: true });
+  });
+
+  test('mair_1200 the assignee of a task of a closed project reads it without any write right', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+
+    const response = await as(request(app).get('/projects/project-1'), alice);
+
+    expect(response.status).toBe(200);
+    expect(response.body.project.permissions).toMatchObject({ canEdit: false, canReopen: false, canDelete: false });
+    expect(response.body.taskItems[0].permissions).toEqual({
+      canView: true, canEdit: false, canDelete: false, canUpdateStatus: false, canComment: false,
+    });
+  });
+
+  test('mair_1200 the projects page marks a closed project read-only and reopenable', async () => {
+    signIn(admin);
+    mockProjectApi({ projects: [projectListItem(1, { status: 'Completed' }), projectListItem(2)] });
+
+    const response = await as(request(app).get('/projects-page'), admin);
+
+    expect(response.status).toBe(200);
+    expectBffContract('get', '/projects-page', response);
+    expect(response.body.projects.map((project: { permissions: { canEdit: boolean; canReopen: boolean } }) =>
+      [project.permissions.canEdit, project.permissions.canReopen])).toEqual([[false, true], [true, false]]);
+  });
+
+  test.each([
+    ['PATCH /projects/:id', 'patch', '/projects/project-1', { title: 'Renommé' }],
+    ['PATCH /projects/:id reopening and renaming at once', 'patch', '/projects/project-1', { status: 'in-progress', title: 'Renommé' }],
+    ['POST /projects/:id/tasks', 'post', '/projects/project-1/tasks', {
+      title: 'Réserver la salle', status: 'todo', priority: 'high', responsibleId: '', assigneeIds: [], labels: [], dueDate: '2026-11-05',
+    }],
+    ['POST /projects/:id/members', 'post', '/projects/project-1/members', { userId: 'user-3' }],
+    ['PATCH /projects/:id/members/:userId', 'patch', '/projects/project-1/members/user-3', { role: 'reader' }],
+    ['DELETE /projects/:id/members/:userId', 'delete', '/projects/project-1/members/user-3', undefined],
+    ['POST /projects/:id/milestones', 'post', '/projects/project-1/milestones', { title: 'Vote du conseil', dueDate: '2027-03-15' }],
+    ['POST /projects/:id/statuses', 'post', '/projects/project-1/statuses', { name: 'À valider', color: '#D97706', category: 'in-progress', position: 2 }],
+    ['PATCH /projects/:id/tasks/:taskId', 'patch', '/projects/project-1/tasks/task-2', { title: 'Renommée' }],
+    ['PATCH /projects/:id/tasks/:taskId/status', 'patch', '/projects/project-1/tasks/task-2/status', { status: 'done' }],
+    ['POST /projects/:id/tasks/:taskId/comments', 'post', '/projects/project-1/tasks/task-2/comments', { message: 'Vu.' }],
+    ['DELETE /projects/:id/tasks/:taskId', 'delete', '/projects/project-1/tasks/task-2', undefined],
+  ] as const)('mair_1200 %s on a closed project answers 409 without writing', async (_name, method, url, body) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+
+    const call = as(request(app)[method](url), admin);
+    const response = body === undefined ? await call : await call.send(body);
+
+    expect(closedError(response)).toEqual([409, 'CONFLICT', 'Project is closed.']);
+    expectBffContract(method, url, response);
+    expect(nonGetCalls()).toEqual([]);
+  });
+
+  test('mair_1200 the assignee changing the status of her task in a closed project gets 409', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2/status'), alice).send({ status: 'done' });
+
+    expect(closedError(response)).toEqual([409, 'CONFLICT', 'Project is closed.']);
+    expect(nonGetCalls()).toEqual([]);
+  });
+
+  test('mair_1200 a caller without rights on a closed project keeps the 403', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+
+    const response = await as(request(app).patch('/projects/project-1'), alice).send({ status: 'in-progress' });
+
+    expect(response.status).toBe(403);
+    expect(nonGetCalls()).toEqual([]);
+  });
+
+  test('mair_1200 the comment Project API refuses on a closed project is relayed as a 409', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: closedBundle() } });
+    projectApi.on('post', PROJECT.projectComments, textError(409, 'Project is closed.'));
+
+    const response = await as(request(app).post('/projects/project-1/comments'), alice).send({ message: 'Vu.' });
+
+    expect(response.status).toBe(409);
+    expectBffContract('post', '/projects/project-1/comments', response);
+    expect(response.body.error.code).toBe('CONFLICT');
+  });
+
+  test('mair_1200 a status alone reopens a closed project and gives the rights back', async () => {
+    signIn(admin);
+    const bundles = { 1: closedBundle() };
+    mockProjectApi({ bundles });
+    projectApi.on('patch', PROJECT.project, ({ body }) => {
+      bundles[1] = { ...bundles[1], project: { ...bundles[1].project, status: (body as { status: ProjetView['status'] }).status } };
+      return { status: 204 };
+    });
+
+    const response = await as(request(app).patch('/projects/project-1'), admin).send({ status: 'review' });
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1', response);
+    expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ status: 'Review' }]);
+    expect(response.body.project.status).toBe('review');
+    expect(response.body.project.permissions).toMatchObject({ canEdit: true, canCreateTask: true, canClose: true, canReopen: false });
+    expect(response.body.taskItems[0].permissions).toMatchObject({ canEdit: true, canUpdateStatus: true });
+  });
+
+  test('mair_1200 a closed project can still be closed again, duplicated and deleted', async () => {
+    signIn(admin);
+    mockProjectApi({ createdProjectId: 12, bundles: { 1: closedBundle(), 12: projectBundle(projetView(12), [taskView(30)], [alice, marie]) } });
+
+    const closedAgain = await as(request(app).patch('/projects/project-1/close'), admin).send({ status: 'done' });
+    const duplicated = await as(request(app).post('/projects/project-1/duplicate'), admin);
+    const deleted = await as(request(app).delete('/projects/project-1'), admin);
+
+    expect([closedAgain.status, duplicated.status, deleted.status]).toEqual([200, 201, 204]);
+    expect(closedAgain.body.project.permissions).toMatchObject({ canReopen: true, canEdit: false });
   });
 });

@@ -23,6 +23,8 @@ const router = Router();
 
 // No 403: every viewer reads the activity and comments the project.
 const ERROR_STATUSES = [400, 401, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+// A comment on a closed project is refused by Project API (409), relayed as is.
+const COMMENT_ERROR_STATUSES = [...ERROR_STATUSES, 409] as const satisfies readonly ApiErrorStatus[];
 
 type BffActivityItem = z.infer<typeof ActivityItem>;
 
@@ -71,13 +73,13 @@ registry.registerPath({
   path: '/projects/{projectId}/comments',
   tags: ['Activity'],
   summary: 'Comments a project',
-  description: 'Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry.',
+  description: 'Open to whoever sees the project (`404` otherwise), signed by the caller (MAIR-1089). Answers the new activity entry. A closed project is read-only: `409`.',
   request: {
     params: ProjectIdParams,
     body: { required: true, content: { 'application/json': { schema: ProjectCommentBody } } },
   },
   responses: {
-    ...apiErrorResponses(...ERROR_STATUSES),
+    ...apiErrorResponses(...COMMENT_ERROR_STATUSES),
     201: { description: 'The comment, as an activity entry', content: { 'application/json': { schema: ActivityItem } } },
   },
 });
@@ -86,7 +88,7 @@ router.post('/:projectId/comments', async (req: Request, res: Response) => {
   const params = parseRequest(ProjectIdParams, req.params, 'params');
   const body = parseRequest(ProjectCommentBody, req.body, 'body');
   const projectId = requireProjectIdParam(params.projectId);
-  const caller = callerOf(req, ERROR_STATUSES);
+  const caller = callerOf(req, COMMENT_ERROR_STATUSES);
 
   const created = await addProjectComment(caller, projectId, body.message);
   res.status(201).json(mapActivityItem(created));

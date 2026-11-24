@@ -15,7 +15,7 @@ import {
     UpdateProjectTaskStatusBody,
 } from '../../openapi-registry';
 import { requireProjectIdParam } from './project_helpers';
-import { requireProjectManagement, requireProjectView } from './project_access';
+import { requireOpenProjectManagement, requireProjectView } from './project_access';
 import {
     createProjectStatusOnApi,
     deleteProjectStatusOnApi,
@@ -86,7 +86,7 @@ router.post('/:projectId/statuses', async (req: Request, res: Response) => {
     const projectId = requireProjectIdParam(params.projectId);
     const caller = callerOf(req, WRITE_STATUSES);
 
-    await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
     await createProjectStatusOnApi(caller, projectId, body);
     await answerStatuses(caller, projectId, res, 201);
 });
@@ -111,7 +111,7 @@ router.patch('/:projectId/statuses/:statusId', async (req: Request, res: Respons
     const statusId = requireStatusIdParam(params.statusId);
     const caller = callerOf(req, WRITE_STATUSES);
 
-    await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
     await updateProjectStatusOnApi(caller, projectId, statusId, body);
     await answerStatuses(caller, projectId, res);
 });
@@ -135,7 +135,7 @@ router.delete('/:projectId/statuses/:statusId', async (req: Request, res: Respon
     if (moveTo === null) throw new HttpError(400, 'moveTo must be a status-<id> of the project');
     const caller = callerOf(req, WRITE_STATUSES);
 
-    await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+    await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
     await deleteProjectStatusOnApi(caller, projectId, statusId, moveTo);
     await answerStatuses(caller, projectId, res);
 });

@@ -36,6 +36,7 @@ import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
+  isProjectClosed,
   addProjectMember,
   listProjectUsers,
   projectCall,
@@ -512,6 +513,7 @@ export function mapProjectToDto(
     canCreateTask: true,
     canAssignMembers: true,
     canClose: true,
+    canReopen: false,
   },
   // Its first milestones (MAIR-1086) and their total.
   milestones: { items: MilestoneView[]; total: number } = { items: [], total: 0 },
@@ -955,19 +957,28 @@ export function buildPagination(
 
 export function buildProjectDtoForUser(user: ProjectUserContext, bundle: ProjectBundle): BffProjectDetail {
   // The project comes from a bundle already read: it is visible to the caller.
-  const permissions = getProjectPermissions(user, true, bundle.project.can_manage);
+  const permissions = getProjectPermissions(user, true, bundle.project.can_manage, isProjectClosed(bundle.project));
   return mapProjectToDto(bundle.project, bundle.tasks, bundle.users, bundle.archivedTasks, permissions, {
     items: bundle.milestones,
     total: bundle.milestonesTotal,
   });
 }
 
-/** `projectCanManage`: Project API's `can_manage` of the task's project for the caller (MAIR-1088). */
+/**
+ * `projectCanManage`: Project API's `can_manage` of the task's project for the caller (MAIR-1088); `projectClosed`:
+ * the project is closed, its tasks are read-only.
+ */
 export function buildTaskDtoForUser(
   user: ProjectUserContext,
   task: TaskView,
   users: User[],
   projectCanManage = false,
+  projectClosed = false,
 ): BffProjectTask {
-  return mapTaskToDto(task, users, getTaskPermissions(user, task.assigned_to, projectCanManage));
+  return mapTaskToDto(task, users, getTaskPermissions(user, task.assigned_to, projectCanManage, projectClosed));
+}
+
+/** The DTOs of the tasks of a bundle, with the caller's rights on them (read-only when the project is closed). */
+export function buildBundleTaskDtos(user: ProjectUserContext, bundle: ProjectBundle): BffProjectTask[] {
+  return bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage, isProjectClosed(bundle.project)));
 }

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, CreateProjectBody, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
   buildProjectDtoForUser,
-  buildTaskDtoForUser,
+  buildBundleTaskDtos,
   createProjectOnApi,
   createTaskOnApi,
   fetchProjectBundle,
@@ -14,7 +14,7 @@ import {
 import { parseRequest } from '@mairie360/bffs-lib';
 import { requireAssignableUsers, requireManagerRole } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
-import { callerOf } from '../../services/projectData';
+import { callerOf, setProjectClosed } from '../../services/projectData';
 
 const router = Router();
 
@@ -77,7 +77,11 @@ router.post('/', async (req: Request, res: Response) => {
 
   requireManagerRole(user);
   await requireAssignableUsers(caller, user, [body.responsibleId, ...body.assigneeIds]);
-  const createdProject = await createProjectOnApi(caller, mapProjectCreateBodyToBackend(body));
+  const { status, ...created } = mapProjectCreateBodyToBackend(body);
+  // A closed project is read-only (its members and tasks could no longer be written): a project created `done` is
+  // created open and closed once its members and tasks are written.
+  const closeAtTheEnd = status === 'Completed';
+  const createdProject = await createProjectOnApi(caller, closeAtTheEnd ? created : { ...created, ...(status ? { status } : {}) });
   const projectId = createdProject.project_id;
 
   // Project API has no atomic creation: the members and the tasks are written one call at a time, and the
@@ -102,6 +106,7 @@ router.post('/', async (req: Request, res: Response) => {
         }),
       );
     }
+    if (closeAtTheEnd) await setProjectClosed(caller, projectId, 'Completed');
 
     return fetchProjectBundle(caller, projectId);
   });
@@ -109,7 +114,7 @@ router.post('/', async (req: Request, res: Response) => {
   // Only the state Project API persisted is returned: labels are not stored.
   res.status(201).json({
     project: buildProjectDtoForUser(user, bundle),
-    taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
+    taskItems: buildBundleTaskDtos(user, bundle),
   });
 });
 

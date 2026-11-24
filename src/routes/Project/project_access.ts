@@ -3,12 +3,14 @@ import type { TaskView } from '@mairie360/project-api-openapi/model';
 import { parseUserId } from './project_helpers';
 import { canManageProjects, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
 import {
-  callerManagesProject,
+  callerProjectRights,
   getProjectBundle,
   getProjectTask,
   getProjectPermissions,
   getTaskPermissions,
+  isProjectClosed,
   listAssignableUsers,
+  PROJECT_CLOSED_MESSAGE,
   type Caller,
   type ProjectBundle,
   type ProjectPermissions,
@@ -24,6 +26,8 @@ export type ProjectAccess = {
   user: ProjectUserContext;
   bundle: ProjectBundle;
   permissions: ProjectPermissions;
+  /** The project is closed (`Completed`): read-only until one of its managers reopens it. */
+  closed: boolean;
 };
 
 /** What a task guard resolved: the caller, the task and the caller's rights on its project and on it. */
@@ -34,7 +38,14 @@ export type TaskAccess = {
   taskPermissions: TaskPermissions;
   /** Whether the caller manages the task's project (their role, or Project API's `can_manage`, MAIR-1088). */
   projectCanManage: boolean;
+  /** The task's project is closed: its tasks are read-only. */
+  projectClosed: boolean;
 };
+
+/** The `409` of a write on a closed project, worded like Project API's. */
+export function projectClosedError(): HttpError {
+  return new HttpError(409, PROJECT_CLOSED_MESSAGE);
+}
 
 export function requireManagerRole(user: ProjectUserContext): void {
   if (!canManageProjects(user.role)) {
@@ -75,7 +86,8 @@ export async function requireAssignableUsers(
 async function loadProjectAccess(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess | null> {
   const bundle = await getProjectBundle(caller, projectId);
   if (!bundle) return null;
-  return { user, bundle, permissions: getProjectPermissions(user, true, bundle.project.can_manage) };
+  const closed = isProjectClosed(bundle.project);
+  return { user, bundle, permissions: getProjectPermissions(user, true, bundle.project.can_manage, closed), closed };
 }
 
 export async function requireProjectView(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess> {
@@ -84,9 +96,20 @@ export async function requireProjectView(caller: Caller, user: ProjectUserContex
   return access;
 }
 
+/**
+ * The managers of a project, closed or not: what they may still do on a closed project (delete, duplicate, close
+ * again, reopen). Every other write goes through `requireOpenProjectManagement`.
+ */
 export async function requireProjectManagement(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess> {
   const access = await requireProjectView(caller, user, projectId);
-  if (!access.permissions.canEdit) throw new HttpError(403, 'You cannot manage this project.');
+  if (!access.permissions.canDelete) throw new HttpError(403, 'You cannot manage this project.');
+  return access;
+}
+
+/** The managers of a project that is not closed: `409` once the rights are granted on a closed project. */
+export async function requireOpenProjectManagement(caller: Caller, user: ProjectUserContext, projectId: number): Promise<ProjectAccess> {
+  const access = await requireProjectManagement(caller, user, projectId);
+  if (access.closed) throw projectClosedError();
   return access;
 }
 
@@ -96,17 +119,19 @@ export async function requireProjectManagement(caller: Caller, user: ProjectUser
  */
 async function loadTaskAccess(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
   // A manager role needs no project read; another caller may still manage it as a `manager` member (MAIR-1088).
-  const [task, projectCanManage] = await Promise.all([
+  // The project is read with a single task whatever the role: whether it is closed decides the writes.
+  const [task, rights] = await Promise.all([
     getProjectTask(caller, projectId, taskId),
-    callerManagesProject(caller, user, projectId),
+    callerProjectRights(caller, user, projectId),
   ]);
   if (!task) throw new HttpError(404, 'Task not found or not visible.');
   return {
     user,
-    permissions: getProjectPermissions(user, true, projectCanManage),
+    permissions: getProjectPermissions(user, true, rights.canManage, rights.closed),
     task,
-    taskPermissions: getTaskPermissions(user, task.assigned_to, projectCanManage),
-    projectCanManage,
+    taskPermissions: getTaskPermissions(user, task.assigned_to, rights.canManage, rights.closed),
+    projectCanManage: rights.canManage,
+    projectClosed: rights.closed,
   };
 }
 
@@ -118,20 +143,25 @@ export async function requireTaskView(caller: Caller, user: ProjectUserContext, 
 
 export async function requireTaskManagement(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
   const access = await requireTaskView(caller, user, projectId, taskId);
-  if (!access.taskPermissions.canEdit) throw new HttpError(403, 'You cannot edit the content of this task.');
+  if (!access.projectCanManage) throw new HttpError(403, 'You cannot edit the content of this task.');
+  if (access.projectClosed) throw projectClosedError();
   return access;
 }
 
 export async function requireTaskStatusUpdate(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
   const access = await loadTaskAccess(caller, user, projectId, taskId);
-  if (!access.taskPermissions.canUpdateStatus) {
+  if (!access.projectCanManage && access.task.assigned_to !== user.id) {
     throw new HttpError(403, 'Only the assigned agent or a manager can change this status.');
   }
+  if (access.projectClosed) throw projectClosedError();
   return access;
 }
 
 export async function requireTaskComment(caller: Caller, user: ProjectUserContext, projectId: number, taskId: number): Promise<TaskAccess> {
   const access = await loadTaskAccess(caller, user, projectId, taskId);
-  if (!access.taskPermissions.canComment) throw new HttpError(403, 'You cannot comment on this task.');
+  if (!access.projectCanManage && access.task.assigned_to !== user.id) {
+    throw new HttpError(403, 'You cannot comment on this task.');
+  }
+  if (access.projectClosed) throw projectClosedError();
   return access;
 }

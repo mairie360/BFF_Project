@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { apiErrorResponses, type ApiErrorStatus, registry, ProjectIdParams, ProjectDetailsResponse, ErrorResponse } from '../../openapi-registry';
 import {
     buildProjectDtoForUser,
-    buildTaskDtoForUser,
+    buildBundleTaskDtos,
     createProjectOnApi,
     createTaskOnApi,
     fetchProjectBundle,
@@ -113,7 +113,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
 
     res.status(201).json({
         project: buildProjectDtoForUser(user, bundle),
-        taskItems: bundle.tasks.map((task) => buildTaskDtoForUser(user, task, bundle.users, bundle.project.can_manage)),
+        taskItems: buildBundleTaskDtos(user, bundle),
     });
 });
 

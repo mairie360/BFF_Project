@@ -148,6 +148,10 @@ export const ProjectListItem = z.object({
         canCreateTask: z.boolean().openapi({ description: 'Whether the user can create tasks in the project', example: true }),
         canAssignMembers: z.boolean(),
         canClose: z.boolean(),
+        canReopen: z.boolean().openapi({
+          description: 'Whether the user can reopen the project: `true` only for the managers of a closed (`done`) project, which is read-only (`canEdit`, `canCreateTask`, `canAssignMembers` and `canClose` are then `false`). Reopening is a `PATCH /projects/{projectId}` holding only a `status` other than `done`.',
+          example: false,
+        }),
     }).openapi({ description: 'Permissions of the user on the project' }),
 }).openapi({
     description: 'A project for the card, table or kanban views',
@@ -944,7 +948,7 @@ const apiErrorDescriptions = {
   401: 'Missing, invalid or expired session',
   403: 'Insufficient rights',
   404: 'Project or task not found or not visible',
-  409: 'Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category)',
+  409: 'Conflicts with the current state (a name already taken, a status still holding tasks, the last status of its category, or a write on a closed project: `Project is closed.`)',
   429: 'Project API or Core API rate limit reached: retry after the Retry-After header (seconds)',
   500: 'Unexpected server error',
   502: 'Project API or Core API is unreachable or failed',

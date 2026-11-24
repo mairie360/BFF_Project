@@ -14,7 +14,7 @@ import {
   UpdateMilestoneBody,
 } from '../../openapi-registry';
 import { buildPagination, mapMilestone, parseMilestoneId, requireProjectIdParam } from './project_helpers';
-import { requireProjectManagement, requireProjectView } from './project_access';
+import { requireOpenProjectManagement, requireProjectView } from './project_access';
 import { getProjectUserContext } from '../../auth/project-user';
 import {
   callerOf,
@@ -30,7 +30,7 @@ import {
 const router = Router();
 
 const READ_STATUSES = [400, 401, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
-const WRITE_STATUSES = [400, 401, 403, 404, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
+const WRITE_STATUSES = [400, 401, 403, 404, 409, 500, 502, 503] as const satisfies readonly ApiErrorStatus[];
 
 const milestoneResponse = (description: string) => ({
   description,
@@ -95,7 +95,7 @@ router.post('/:projectId/milestones', async (req: Request, res: Response) => {
   const projectId = requireProjectIdParam(params.projectId);
   const caller = callerOf(req, WRITE_STATUSES);
 
-  await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   const created = await createProjectMilestone(caller, projectId, {
     title: body.title,
     due_date: body.dueDate,
@@ -123,7 +123,7 @@ router.patch('/:projectId/milestones/:milestoneId', async (req: Request, res: Re
   const { projectId, milestoneId } = requireMilestoneParams(params);
   const caller = callerOf(req, WRITE_STATUSES);
 
-  await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   const updated = await updateProjectMilestone(caller, projectId, milestoneId, {
     ...(body.title !== undefined ? { title: body.title } : {}),
     ...(body.dueDate !== undefined ? { due_date: body.dueDate } : {}),
@@ -147,7 +147,7 @@ router.delete('/:projectId/milestones/:milestoneId', async (req: Request, res: R
   const { projectId, milestoneId } = requireMilestoneParams(params);
   const caller = callerOf(req, WRITE_STATUSES);
 
-  await requireProjectManagement(caller, getProjectUserContext(res), projectId);
+  await requireOpenProjectManagement(caller, getProjectUserContext(res), projectId);
   await deleteProjectMilestone(caller, projectId, milestoneId);
   res.status(204).end();
 });
