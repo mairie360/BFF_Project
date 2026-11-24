@@ -1567,7 +1567,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(201);
       expectBffContract('post', '/projects', response);
-      // MAIR-1200: a closed project is read-only, so a project created `done` is created open, gets its members and
+      // A closed project is read-only, so a project created `done` is created open, gets its members and
       // tasks, and is closed last.
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ priority: 'High' });
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).not.toHaveProperty('status');

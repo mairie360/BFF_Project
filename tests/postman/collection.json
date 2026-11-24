@@ -8994,7 +8994,7 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.project.status).to.eql('done');",
                   "    pm.expect(body.project.statusLabel).to.eql('Terminé');",
-                  "    // MAIR-1200: a closed project is read-only; its managers may reopen it.",
+                  "    // A closed project is read-only; its managers may reopen it.",
                   "    pm.expect(body.project.permissions).to.include({ canClose: false, canEdit: false, canCreateTask: false, canAssignMembers: false, canReopen: true, canDelete: true, canDuplicate: true });",
                   "});"
                 ]
