@@ -819,6 +819,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
         name: 'Fête du village', description: 'Organisation de la fête', status: 'Todo', priority: 'Medium', group_id: 3,
         // Project API records the responsible.
         responsible_id: alice.id,
+        // And the deadline, the day the due date was written for.
+        deadline: '2026-07-14',
       });
       // The responsible is written as a manager, the other members with Project API's default role.
       expect(projectApi.calls(PROJECT.users, 'POST').map((call) => call.body))
@@ -1515,7 +1517,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.body.project).toMatchObject({
         priority: 'low', labels: [], dueDate: '2026-10-15T00:00:00.000Z', status: 'in-progress',
       });
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High' });
+      // The due date is written as the project's deadline; labels are not persisted.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High', deadline: '2030-01-01' });
     });
 
     test.each([
@@ -1568,6 +1571,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ status: 'Completed', priority: 'High' });
       expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
       expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
+      // The due date read back is the one Project API stored (none in this mock), not the body's.
       expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
     });
 
@@ -2986,6 +2990,81 @@ describe('MAIR-1196 adding a member does not replace the responsible of the proj
 
     expect(response.status).toBe(201);
     expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ responsible_id: marie.id });
+  });
+
+  describe('MAIR-1199 the deadline entered for a project is kept whatever its tasks', () => {
+    test('POST /projects sends the day the due date was written for', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: { 12: projectBundle(projetView(12), [], [alice]) } });
+      projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+      const create = (dueDate: string) => as(request(app).post('/projects'), admin).send({
+        title: 'Cantine', description: '', status: 'todo', priority: 'medium', responsibleId: '', assigneeIds: [],
+        labels: [], dueDate, groupId: 'group-3',
+      });
+
+      for (const dueDate of ['2027-06-30', '2027-06-30T00:00:00Z', '2027-06-30T00:00:00+02:00']) {
+        expect((await create(dueDate)).status).toBe(201);
+      }
+
+      expect(projectApi.calls(PROJECT.projects, 'POST').map((call) => (call.body as { deadline?: string }).deadline))
+        .toEqual(['2027-06-30', '2027-06-30', '2027-06-30']);
+    });
+
+    test('the detail and the page read the deadline over the tasks, and fall back on them without one', async () => {
+      signIn(admin);
+      const task = taskView(30, { due_date: '2027-01-15T00:00:00Z' });
+      mockProjectApi({
+        bundles: {
+          1: projectBundle(projetView(1, { deadline: '2027-06-30' }), [task], [alice]),
+          2: projectBundle(projetView(2, { deadline: null }), [taskView(31, { due_date: '2027-01-15T00:00:00Z' })], [alice]),
+        },
+        projects: [
+          projectListItem(1, { deadline: '2027-06-30', due_date: '2027-01-15T00:00:00Z' }),
+          projectListItem(2, { deadline: null, due_date: '2027-01-15T00:00:00Z' }),
+        ],
+      });
+
+      const [withDeadline, withoutDeadline, page] = await Promise.all([
+        as(request(app).get('/projects/project-1'), admin),
+        as(request(app).get('/projects/project-2'), admin),
+        as(request(app).get('/projects-page'), admin),
+      ]);
+
+      expect([withDeadline.status, withoutDeadline.status, page.status]).toEqual([200, 200, 200]);
+      expectBffContract('get', '/projects/project-1', withDeadline);
+      expectBffContract('get', '/projects-page', page);
+      expect(withDeadline.body.project.dueDate).toBe('2027-06-30T00:00:00.000Z');
+      expect(withoutDeadline.body.project.dueDate).toBe('2027-01-15T00:00:00Z');
+      const pageDueDates = Object.fromEntries(page.body.projects.map((project: { id: string; dueDate: string }) => [project.id, project.dueDate]));
+      expect(pageDueDates).toEqual({ 'project-1': '2027-06-30T00:00:00.000Z', 'project-2': '2027-01-15T00:00:00Z' });
+    });
+
+    test('PATCH /projects/:id moves the deadline, and an empty due date keeps it', async () => {
+      signIn(admin);
+      mockProjectApi({ bundles: { 1: managedByMarie() } });
+
+      const moved = await as(request(app).patch('/projects/project-1'), admin).send({ dueDate: '2027-09-01' });
+      const kept = await as(request(app).patch('/projects/project-1'), admin).send({ title: 'Voirie', dueDate: '' });
+
+      expect([moved.status, kept.status]).toEqual([200, 200]);
+      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([
+        { deadline: '2027-09-01' }, { name: 'Voirie' },
+      ]);
+    });
+
+    test('a duplicate keeps the deadline of its source', async () => {
+      signIn(admin);
+      mockProjectApi({ createdProjectId: 12, bundles: {
+        1: { ...managedByMarie(), project: projetView(1, { group: { id: 3, name: 'Roads' }, deadline: '2027-06-30' }) },
+        12: projectBundle(projetView(12), [], [alice, marie]),
+      } });
+      projectApi.on('get', PROJECT.users, { body: projectUsersResult([]) });
+
+      const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+      expect(response.status).toBe(201);
+      expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ deadline: '2027-06-30' });
+    });
   });
 
   test('a duplicate keeps the managers of its source', async () => {

@@ -35,7 +35,7 @@ The module reads and writes everything through APIs: Project API for projects, t
 
 ## Scope and limitations
 
-Public identifiers and statuses are normalized by helpers, while some project fields are derived from tasks: a project's labels and due date are not persisted by Project API (its status and priority are, MAIR-558), and write responses only return the persisted state.
+Public identifiers and statuses are normalized by helpers, while some project fields are derived from tasks: a project's labels are not persisted by Project API (its status, priority and due date are), and write responses only return the persisted state.
 
 ## Developing or operating this module
 

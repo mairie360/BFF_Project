@@ -35,7 +35,7 @@ Le module lit et écrit tout via des APIs : Project API pour les projets, tâche
 
 ## Périmètre et limites
 
-Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches : les étiquettes et l’échéance d’un projet ne sont pas persistées par Project API (son statut et sa priorité le sont, MAIR-558), et les réponses d’écriture ne renvoient que l’état persisté.
+Les identifiants publics et statuts sont normalisés par les helpers, tandis que certains champs de projet sont dérivés des tâches : les étiquettes d’un projet ne sont pas persistées par Project API (son statut, sa priorité et son échéance le sont), et les réponses d’écriture ne renvoient que l’état persisté.
 
 ## Pour développer ou exploiter ce module
 

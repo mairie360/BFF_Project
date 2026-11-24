@@ -377,6 +377,8 @@ export async function updateProjectRecord(
     budgetCommitted?: number | null;
     /** The responsible Project API records (and makes a `manager` member); absent keeps it. */
     responsibleId?: number;
+    /** The deadline of the project (`YYYY-MM-DD`); absent keeps it. */
+    deadline?: string;
   },
 ): Promise<void> {
   await projectCall(caller, (options) => projectApi.updateProject(projectId, {
@@ -389,6 +391,7 @@ export async function updateProjectRecord(
     ...(input.budgetVoted !== undefined ? { budget_voted: input.budgetVoted } : {}),
     ...(input.budgetCommitted !== undefined ? { budget_committed: input.budgetCommitted } : {}),
     ...(input.responsibleId !== undefined ? { responsible_id: input.responsibleId } : {}),
+    ...(input.deadline !== undefined ? { deadline: input.deadline } : {}),
   }, options));
 }
 

@@ -30,7 +30,7 @@ import {
 } from "../../openapi-registry";
 import type { ProjectUserContext } from "../../auth/project-user";
 import { logger } from "../../logger";
-import { toBackendDueDate } from "./due_date";
+import { deadlineToIso, toBackendDeadline, toBackendDueDate } from "./due_date";
 import { parseStatusId, parseTemplateId, statusPublicId } from "./status_helpers";
 import {
   getProjectBundle,
@@ -477,7 +477,12 @@ export function deriveProjectProgress(tasks: TaskView[], archivedTasks = 0): num
   return Math.round((completed / total) * 100);
 }
 
-export function deriveProjectDueDate(tasks: TaskView[]): string {
+/**
+ * Due date of a project: the deadline Project API records for it, else the earliest due date of its tasks, else now
+ * (projects saved before the deadline was recorded, or whose deadline was cleared).
+ */
+export function deriveProjectDueDate(tasks: TaskView[], deadline?: string | null): string {
+  if (deadline) return deadlineToIso(deadline);
   if (tasks.length === 0) {
     return nowIso();
   }
@@ -530,7 +535,7 @@ export function mapProjectToDto(
     assignees,
     labels: [],
     progress: deriveProjectProgress(tasks, archivedTasks),
-    dueDate: deriveProjectDueDate(tasks),
+    dueDate: deriveProjectDueDate(tasks, project.deadline),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
     ...budgetOf(project),
@@ -638,7 +643,8 @@ export function mapProjectListItemToDto(
     myRole: project.my_role ?? null,
     labels: [],
     progress: project.tasks_total > 0 ? Math.round((project.tasks_completed / project.tasks_total) * 100) : 0,
-    dueDate: project.due_date ?? nowIso(),
+    // The deadline Project API records, else the earliest due date of the tasks, else now.
+    dueDate: project.deadline ? deadlineToIso(project.deadline) : project.due_date ?? nowIso(),
     // Project API exposes no creation date: the contract still requires one (see docs, "Data not persisted").
     createdAt: nowIso(),
     ...budgetOf(project),
@@ -820,7 +826,14 @@ export function mapProjectCreateBodyToBackend(
     group_id: parseGroupIdField(body.groupId),
     // Recorded by Project API, which also makes them a `manager` member.
     ...responsibleIdToBackend(body.responsibleId),
+    ...deadlineToBackend(body.dueDate),
   };
+}
+
+/** `deadline` of a Project API write for a due date of the body (an empty one sends nothing). */
+export function deadlineToBackend(dueDate: string | undefined): { deadline?: string } {
+  const deadline = dueDate === undefined ? null : toBackendDeadline(dueDate);
+  return deadline === null ? {} : { deadline };
 }
 
 /** `responsible_id` of a Project API write for a `user-<id>` (an empty or malformed one sends nothing). */
