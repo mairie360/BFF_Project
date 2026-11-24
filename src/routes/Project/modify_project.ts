@@ -9,6 +9,7 @@ import {
     mapPriorityToBackend,
     mapProjectStatusToBackend,
     parseGroupIdField,
+    pickResponsible,
     requireLinkableGroup,
     requireProjectIdParam,
     syncProjectUsersOnApi,
@@ -114,15 +115,16 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     };
 
     // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
-    // the merged state (the current responsible, the first member, stays unless `responsibleId` is sent).
-    // A `responsibleId` alone only adds that member and removes nobody.
+    // the merged state (the current responsible, its first `manager` member, stays unless `responsibleId` is sent).
+    // A `responsibleId` alone only adds that member, as a `manager`, and removes nobody.
     const updateMembers = async () => {
+        const managerIds = body.responsibleId ? [body.responsibleId] : [];
         if (body.assigneeIds !== undefined) {
-            const currentResponsible = current.users[0] ? userPublicId(current.users[0].id) : '';
-            const responsible = body.responsibleId ?? currentResponsible;
-            await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users);
+            const currentResponsible = pickResponsible(current.users);
+            const responsible = body.responsibleId ?? (currentResponsible ? userPublicId(currentResponsible.id) : '');
+            await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users, managerIds);
         } else if (body.responsibleId) {
-            await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users);
+            await addProjectUsersOnApi(caller, projectId, [body.responsibleId], current.users, managerIds);
         }
     };
 

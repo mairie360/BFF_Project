@@ -4719,6 +4719,514 @@
       ]
     },
     {
+      "name": "MAIR-1196 Responsible of the project",
+      "item": [
+        {
+          "name": "MAIR-1196 Create a project the agent is responsible for",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Newman responsible {{run_id}}\",\n  \"description\": \"\",\n  \"status\": \"todo\",\n  \"priority\": \"low\",\n  \"responsibleId\": \"user-{{agent_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"\",\n  \"groupId\": \"group-4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The agent is the responsible, as a manager member\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.environment.set('responsible_project_id', project.id);",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(project.members.map((entry) => [entry.id, entry.role])).to.eql([[`user-${pm.environment.get('agent_user_id')}`, 'manager']]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Add a contributor whose name sorts first",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{bystander_user_id}}\",\n  \"role\": \"contributor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The contributor is listed before the responsible\", function () {",
+                  "    const ids = pm.response.json().members.map((entry) => entry.id);",
+                  "    pm.expect(ids[0]).to.eql(`user-${pm.environment.get('bystander_user_id')}`);",
+                  "    pm.expect(ids).to.include(`user-${pm.environment.get('agent_user_id')}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Adding a member keeps the responsible of the detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible of the project\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(project.members.find((entry) => entry.id === project.responsible.id).role).to.eql('manager');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Adding a member keeps the responsible of the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman responsible {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman responsible {{run_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible on the projects page\", function () {",
+                  "    const project = pm.response.json().projects.find((entry) => entry.id === pm.environment.get('responsible_project_id'));",
+                  "    pm.expect(project, 'project on the page').to.be.an('object');",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Remove the contributor",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}/members/user-{{bystander_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}",
+                "members",
+                "user-{{bystander_user_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Removing the member keeps the responsible",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible of the project\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(project.members.find((entry) => entry.id === project.responsible.id).role).to.eql('manager');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Add the contributor back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{bystander_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Adding the member back keeps the responsible of the detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible of the project\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(project.members.find((entry) => entry.id === project.responsible.id).role).to.eql('manager');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Adding the member back keeps the responsible of the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman responsible {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman responsible {{run_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible on the projects page\", function () {",
+                  "    const project = pm.response.json().projects.find((entry) => entry.id === pm.environment.get('responsible_project_id'));",
+                  "    pm.expect(project, 'project on the page').to.be.an('object');",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 The responsible agent sees the project as its manager",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent manages the project they are responsible for\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.expect(project.myRole).to.eql('manager');",
+                  "    pm.expect(project.permissions.canEdit).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 Delete the responsible project",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Tasks",
       "item": [
         {

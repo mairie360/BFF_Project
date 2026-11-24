@@ -36,8 +36,10 @@ import {
   getProjectBundle,
   getProjectPermissions,
   getTaskPermissions,
+  addProjectMember,
   listProjectUsers,
   projectCall,
+  updateProjectMemberRole,
   type Caller,
   type ProjectBundle,
   type ProjectPermissions,
@@ -224,29 +226,54 @@ export async function createProjectOnApi(
   return result;
 }
 
+function parseUserIds(userIds: string[]): Set<number> {
+  return new Set(
+    userIds
+      .map((userId) => parseUserId(userId))
+      .filter((userId): userId is number => userId !== null),
+  );
+}
+
+/**
+ * Writes the members `userIds` that are missing from `members`, the `managerIds` among them with the `manager` role,
+ * and gives that role to the `managerIds` already members without it: the responsible of a project is its first
+ * `manager` (`pickResponsible`), so a responsible written as a plain member would lose that place to the next one.
+ */
+function writeMissingMembers(
+  caller: Caller,
+  projectId: number,
+  userIds: Set<number>,
+  managerIds: Set<number>,
+  members: User[],
+): Promise<void>[] {
+  const currentUserIds = new Set(members.map((user) => user.id));
+  return [
+    ...Array.from(userIds)
+      .filter((userId) => !currentUserIds.has(userId))
+      .map((userId) => addProjectMember(caller, projectId, userId, managerIds.has(userId) ? "manager" : undefined)),
+    ...members
+      .filter((user) => managerIds.has(user.id) && userIds.has(user.id) && user.role !== "manager")
+      .map((user) => updateProjectMemberRole(caller, projectId, user.id, "manager")),
+  ];
+}
+
 /**
  * Makes the project's members exactly `userIds` (public `user-<id>` ids): adds the missing ones and removes
- * the others. `currentUsers` are the members already read by the caller (a fresh project has none);
- * when omitted they are read from Project API.
+ * the others; the `managerIds` among them get the `manager` role. `currentUsers` are the members already read by
+ * the caller (a fresh project has none); when omitted they are read from Project API.
  */
 export async function syncProjectUsersOnApi(
   caller: Caller,
   projectId: number,
   userIds: string[],
   currentUsers?: User[],
+  managerIds: string[] = [],
 ): Promise<void> {
-  const desiredUserIds = new Set(
-    userIds
-      .map((userId) => parseUserId(userId))
-      .filter((userId): userId is number => userId !== null),
-  );
+  const desiredUserIds = parseUserIds(userIds);
   const members = currentUsers ?? await fetchProjectUsers(caller, projectId);
-  const currentUserIds = new Set(members.map((user) => user.id));
 
   await Promise.all([
-    ...Array.from(desiredUserIds)
-      .filter((userId) => !currentUserIds.has(userId))
-      .map((userId) => projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId }, options))),
+    ...writeMissingMembers(caller, projectId, desiredUserIds, parseUserIds(managerIds), members),
     ...members
       .filter((user) => !desiredUserIds.has(user.id))
       .map((user) => removeMemberUnlessOwner(caller, projectId, user.id)),
@@ -267,22 +294,18 @@ async function removeMemberUnlessOwner(caller: Caller, projectId: number, userId
   }
 }
 
-/** Adds the given members (public `user-<id>` ids) that are not already in `currentUsers`; removes nobody. */
+/**
+ * Adds the given members (public `user-<id>` ids) that are not already in `currentUsers`, the `managerIds` among them
+ * with the `manager` role (given to them too when they are already members); removes nobody.
+ */
 export async function addProjectUsersOnApi(
   caller: Caller,
   projectId: number,
   userIds: string[],
   currentUsers: User[],
+  managerIds: string[] = [],
 ): Promise<void> {
-  const currentUserIds = new Set(currentUsers.map((user) => user.id));
-  const missing = new Set(
-    userIds
-      .map((userId) => parseUserId(userId))
-      .filter((userId): userId is number => userId !== null && !currentUserIds.has(userId)),
-  );
-  await Promise.all(Array.from(missing).map((userId) =>
-    projectCall(caller, (options) => projectApi.addUserToProject(projectId, { user_id: userId }, options)),
-  ));
+  await Promise.all(writeMissingMembers(caller, projectId, parseUserIds(userIds), parseUserIds(managerIds), currentUsers));
 }
 
 /**
@@ -487,10 +510,10 @@ export function mapProjectToDto(
   const status = mapProjectStatus(project.status);
   // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
   const priority = mapTaskPriority(project.priority);
-  const responsible =
-    users.length > 0
-      ? mapPerson(users[0])
-      : mapPerson(null, projectPublicId(project.id), project.name);
+  const responsibleUser = pickResponsible(users);
+  const responsible = responsibleUser
+    ? mapPerson(responsibleUser)
+    : mapPerson(null, projectPublicId(project.id), project.name);
   const assignees =
     users.length > 0 ? users.map((user) => mapPerson(user)) : [responsible];
 
@@ -523,6 +546,14 @@ export function mapProjectToDto(
     milestonesTotal: milestones.total,
     permissions,
   };
+}
+
+/**
+ * The responsible of a project: its first member with the `manager` role (its owner reads `manager` too), else its
+ * first member. Project API sorts the members by name, so adding a member must not change who is responsible.
+ */
+export function pickResponsible<T extends Pick<User, "role">>(members: T[]): T | undefined {
+  return members.find((member) => member.role === "manager") ?? members[0];
 }
 
 /** A member and their role in the project (MAIR-1088). */
@@ -583,10 +614,11 @@ export function mapProjectListItemToDto(
   const status = mapProjectStatus(project.status);
   const priority = mapTaskPriority(project.priority);
   const members = project.members ?? [];
-  const responsible =
-    members.length > 0
-      ? mapPerson(members[0])
-      : mapPerson(null, projectPublicId(project.id), project.name);
+  // Only the first members are listed: a project whose managers sort after them reads its first member.
+  const responsibleMember = pickResponsible(members);
+  const responsible = responsibleMember
+    ? mapPerson(responsibleMember)
+    : mapPerson(null, projectPublicId(project.id), project.name);
 
   return {
     id: projectPublicId(project.id),

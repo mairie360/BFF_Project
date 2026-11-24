@@ -16,7 +16,10 @@
 INSERT INTO users (id, first_name, last_name, email, password, status)
 VALUES
     (1, 'Security', 'Admin', 'security-admin@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active'),
-    (2, 'Perf', 'Tester', 'perf-tester@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active')
+    (2, 'Perf', 'Tester', 'perf-tester@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active'),
+    -- A third person whose last name sorts before the agent's: added to a project the agent is responsible for, they
+    -- become its first member, which must not make them its responsible. Nobody signs in as them.
+    (3, 'Newman', 'Bystander', 'newman-bystander@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active')
 ON CONFLICT (id) DO NOTHING;
 
 -- Core API >= 1.1.1 requires at least one role on the user for GET /user/me
@@ -30,7 +33,7 @@ SELECT 1, r.id FROM roles r WHERE lower(r.name) = 'admin'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_id)
-SELECT 2, r.id FROM roles r WHERE lower(r.name) = 'user'
+SELECT u.id, r.id FROM roles r CROSS JOIN (VALUES (2), (3)) AS u(id) WHERE lower(r.name) = 'user'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO projects (id, title, description, owner_id, responsible_id)
