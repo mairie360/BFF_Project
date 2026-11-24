@@ -510,7 +510,8 @@ export function mapProjectToDto(
   const status = mapProjectStatus(project.status);
   // Stored by Project API since MAIR-558, no longer the highest priority of the tasks.
   const priority = mapTaskPriority(project.priority);
-  const responsibleUser = pickResponsible(users);
+  // The responsible Project API records, else the member rule (projects saved without one).
+  const responsibleUser = project.responsible ?? pickResponsible(users);
   const responsible = responsibleUser
     ? mapPerson(responsibleUser)
     : mapPerson(null, projectPublicId(project.id), project.name);
@@ -549,8 +550,9 @@ export function mapProjectToDto(
 }
 
 /**
- * The responsible of a project: its first member with the `manager` role (its owner reads `manager` too), else its
- * first member. Project API sorts the members by name, so adding a member must not change who is responsible.
+ * The responsible of a project that Project API records none for: its first member with the `manager` role (its owner
+ * reads `manager` too), else its first member. Project API sorts the members by name, so adding a member must not
+ * change who is responsible.
  */
 export function pickResponsible<T extends Pick<User, "role">>(members: T[]): T | undefined {
   return members.find((member) => member.role === "manager") ?? members[0];
@@ -614,8 +616,9 @@ export function mapProjectListItemToDto(
   const status = mapProjectStatus(project.status);
   const priority = mapTaskPriority(project.priority);
   const members = project.members ?? [];
-  // Only the first members are listed: a project whose managers sort after them reads its first member.
-  const responsibleMember = pickResponsible(members);
+  // The responsible Project API records, else the member rule: only the first members are listed, so a project
+  // without a recorded responsible whose managers sort after them reads its first member.
+  const responsibleMember = project.responsible ?? pickResponsible(members);
   const responsible = responsibleMember
     ? mapPerson(responsibleMember)
     : mapPerson(null, projectPublicId(project.id), project.name);
@@ -815,7 +818,15 @@ export function mapProjectCreateBodyToBackend(
     ...(body.priority ? { priority: mapPriorityToBackend(body.priority) } : {}),
     ...templateIdToBackend(body.templateId),
     group_id: parseGroupIdField(body.groupId),
+    // Recorded by Project API, which also makes them a `manager` member.
+    ...responsibleIdToBackend(body.responsibleId),
   };
+}
+
+/** `responsible_id` of a Project API write for a `user-<id>` (an empty or malformed one sends nothing). */
+export function responsibleIdToBackend(responsibleId: string | undefined): { responsible_id?: number } {
+  const userId = responsibleId ? parseUserId(responsibleId) : null;
+  return userId === null ? {} : { responsible_id: userId };
 }
 
 /** Public id of a Core API group. */

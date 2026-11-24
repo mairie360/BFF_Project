@@ -5146,6 +5146,151 @@
           "response": []
         },
         {
+          "name": "MAIR-1196 The owner joins the project as a manager whose name sorts first",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}",
+                "members"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-{{admin_user_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"The owner is a manager listed before the responsible\", function () {",
+                  "    const members = pm.response.json().members;",
+                  "    pm.expect(members[0]).to.include({ id: `user-${pm.environment.get('admin_user_id')}`, role: 'manager' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 A second manager sorting first keeps the responsible of the detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{responsible_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{responsible_project_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible of the project\", function () {",
+                  "    const project = pm.response.json().project;",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "    pm.expect(project.members.find((entry) => entry.id === project.responsible.id).role).to.eql('manager');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1196 A second manager sorting first keeps the responsible of the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?q=Newman responsible {{run_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Newman responsible {{run_id}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent stays the responsible on the projects page\", function () {",
+                  "    const project = pm.response.json().projects.find((entry) => entry.id === pm.environment.get('responsible_project_id'));",
+                  "    pm.expect(project, 'project on the page').to.be.an('object');",
+                  "    pm.expect(project.responsible.id).to.eql(`user-${pm.environment.get('agent_user_id')}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "MAIR-1196 The responsible agent sees the project as its manager",
           "request": {
             "method": "GET",

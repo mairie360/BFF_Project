@@ -11,6 +11,7 @@ import {
     parseGroupIdField,
     pickResponsible,
     requireLinkableGroup,
+    responsibleIdToBackend,
     requireProjectIdParam,
     syncProjectUsersOnApi,
     userPublicId,
@@ -96,11 +97,14 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
         await requireLinkableGroup(caller, groupId, new HttpError(404, 'Unknown group.'));
     }
 
+    // The responsible Project API records (and makes a `manager` member), sent with the other fields.
+    const { responsible_id: responsibleId } = responsibleIdToBackend(body.responsibleId);
     const updateRecord = async () => {
         if (
             body.title !== undefined || body.description !== undefined || body.status !== undefined
             || body.priority !== undefined || body.groupId !== undefined
             || body.budgetVoted !== undefined || body.budgetCommitted !== undefined
+            || responsibleId !== undefined
         ) {
             await updateProjectRecord(caller, projectId, {
                 groupId,
@@ -110,17 +114,18 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
                 priority: body.priority === undefined ? undefined : mapPriorityToBackend(body.priority),
                 budgetVoted: body.budgetVoted,
                 budgetCommitted: body.budgetCommitted,
+                responsibleId,
             });
         }
     };
 
     // A PATCH is partial: the membership is only rewritten when `assigneeIds` is sent, and then from
-    // the merged state (the current responsible, its first `manager` member, stays unless `responsibleId` is sent).
-    // A `responsibleId` alone only adds that member, as a `manager`, and removes nobody.
+    // the merged state (the current responsible stays unless `responsibleId` is sent). A `responsibleId` alone only
+    // adds that member, as a `manager`, and removes nobody; Project API then records it with the project.
     const updateMembers = async () => {
         const managerIds = body.responsibleId ? [body.responsibleId] : [];
         if (body.assigneeIds !== undefined) {
-            const currentResponsible = pickResponsible(current.users);
+            const currentResponsible = current.project.responsible ?? pickResponsible(current.users);
             const responsible = body.responsibleId ?? (currentResponsible ? userPublicId(currentResponsible.id) : '');
             await syncProjectUsersOnApi(caller, projectId, [...(responsible ? [responsible] : []), ...body.assigneeIds], current.users, managerIds);
         } else if (body.responsibleId) {
@@ -129,9 +134,11 @@ router.patch('/:projectId', async (req: Request, res: Response) => {
     };
 
     // Changing the group can take the project away from a caller who saw it only through the former
-    // group: the members are then written first, while the caller still sees the project.
+    // group: the members are then written first, while the caller still sees the project. They are also written
+    // first when a responsible is sent: Project API adds the responsible as a member when it records them, and the
+    // member writes, which work from the members read before, would then add them a second time.
     const changesGroup = body.groupId !== undefined;
-    if (changesGroup) {
+    if (changesGroup || responsibleId !== undefined) {
         await updateMembers();
         await updateRecord();
     } else {
