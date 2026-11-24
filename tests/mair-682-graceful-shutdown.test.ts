@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { serve } from '../src/index';
+import { JWT_PUBLIC_KEY } from './support/session-keys';
 
 const ROOT = path.join(__dirname, '..');
 const UPSTREAMS = ['CORE_API', 'PROJECT_API', 'CALENDAR_API', 'MESSAGE_API', 'ELEARNING_API'];
@@ -41,7 +42,7 @@ describe('MAIR-682 graceful shutdown of the BFF', () => {
         NODE_ENV: 'production',
         LOG_FORMAT: 'json',
         LOG_LEVEL: 'info',
-        JWT_SECRET: 'secret',
+        JWT_PUBLIC_KEY,
         CORE_API_URL: upstream,
         PROJECT_API_URL: upstream,
         CALENDAR_API_URL: upstream,

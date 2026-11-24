@@ -72,7 +72,7 @@ in the environment; `.npmrc` references it. Never commit the value.
 1. `noStore` (`Cache-Control: no-store`) and `requireSession` from `@mairie360/bffs-lib` (>= 1.2.0, MAIR-474) —
    401 before any upstream call without an `Authorization: Bearer <token>` header (the only credential accepted)
    verified with Core's public key `JWT_PUBLIC_KEY` (EdDSA under Core's `kid`, `iss`, `aud`, `exp`, positive `sub`;
-   MAIR-680, bffs-lib >= 2.7.0); HS256 is accepted only while `JWT_SECRET` is still set (transition).
+   MAIR-680, bffs-lib >= 3.0.0 refuses HS256 and ignores `JWT_SECRET`).
    `assertStartupConfiguration()` (`src/index.ts`) refuses to start without a key or with a malformed one.
 2. `projectUserContextMiddleware` (`src/auth/project-user.ts`) — reads the role from the verified token (lib
    `sessionRole`, the `role` claim of MAIR-529) without any call, or, for a token without it, from Core
@@ -288,8 +288,8 @@ against `contracts/openapi.json` (status documented + schema).
   RS256, non-numeric `sub`) without any upstream call, and gets past the check with a genuine one. The tests sign
   their tokens (`bearer(sub)`, `tests/support/project-fixtures.ts`) with EdDSA like Core (`tests/support/session-keys.ts`,
   whose public key `tests/support/env.ts` sets); HS256, another key and a token without `aud` are refused (MAIR-680).
-- `tests/mair-680-eddsa-session.test.ts` — startup checks (no key, malformed key), EdDSA accepted, HS256 refused
-  without any upstream call, and accepted only while `JWT_SECRET` is set (transition).
+- `tests/mair-680-eddsa-session.test.ts` — startup checks (no key even with `JWT_SECRET`, malformed key), EdDSA
+  accepted, HS256 refused without any upstream call even while `JWT_SECRET` is set, 503 with `JWT_SECRET` alone.
 - `PROJECT_API_URL`/`_PORT` and `CORE_API_URL`/`_PORT` are read per request and set in `beforeEach`;
   deleting one in a test checks the 503 path.
 - Jest's coverage threshold is 80 % on functions, lines, statements and branches (MAIR-241: it was 60 %; branches stood at 77 % until `tests/mair-241-branch-coverage.test.ts` covered the helpers' fallbacks, now 83 %). Never lower it.

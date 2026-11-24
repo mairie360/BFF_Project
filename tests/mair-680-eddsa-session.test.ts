@@ -7,12 +7,12 @@ import { captureLogs } from './support/logs';
 import { JWT_PUBLIC_KEY, eddsaToken, foreignKeyPair, hs256Token, useSessionPublicKey } from './support/session-keys';
 
 // MAIR-680 (audit A1): Core is the only signer of the session JWTs (Ed25519, EdDSA). The BFF verifies them with
-// Core's public key (`JWT_PUBLIC_KEY`) and no longer needs the shared `JWT_SECRET`: once it is removed, a token
-// signed with any HMAC secret (the historical HS256 tokens, or one forged by a compromised service) is refused.
+// Core's public key (`JWT_PUBLIC_KEY`) only: since bffs-lib 3 `JWT_SECRET` is ignored, so a token signed with any
+// HMAC secret (the historical HS256 tokens, or one forged by a compromised service) is refused even when it is set.
 
 /** A session-bound route of this BFF (bffs-lib requireSession). */
 const ROUTE = '/projects-page';
-const TRANSITION_SECRET = 'mair-680-transition-secret-of-the-tests';
+const LEGACY_SECRET = 'mair-680-legacy-secret-of-the-tests';
 
 // Stands for every upstream: counts the calls and fails them, so a token that passes the session check ends in a
 // 5xx (or a 4xx on its parameters), never a 401.
@@ -54,8 +54,9 @@ describe('MAIR-680 startup with the session public key', () => {
     expect(() => assertStartupConfiguration()).not.toThrow();
   });
 
-  it('MAIR-680 refuses to start without JWT_PUBLIC_KEY nor JWT_SECRET', () => {
+  it('MAIR-680 refuses to start without JWT_PUBLIC_KEY, even with JWT_SECRET set (bffs-lib 3)', () => {
     delete process.env.JWT_PUBLIC_KEY;
+    process.env.JWT_SECRET = LEGACY_SECRET;
 
     expect(() => assertStartupConfiguration()).toThrow('Missing configuration: JWT_PUBLIC_KEY');
   });
@@ -82,7 +83,7 @@ describe(`MAIR-680 session tokens on GET ${ROUTE}`, () => {
   });
 
   it('MAIR-680 refuses an HS256 token with 401 when JWT_SECRET is unset, without calling an upstream', async () => {
-    const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${hs256Token(1, TRANSITION_SECRET)}`);
+    const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${hs256Token(1, LEGACY_SECRET)}`);
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: { code: 'UNAUTHORIZED', message: expect.any(String), details: [] } });
@@ -98,19 +99,31 @@ describe(`MAIR-680 session tokens on GET ${ROUTE}`, () => {
     expect(upstreamCalls).toBe(0);
   });
 
-  it('MAIR-680 still accepts an HS256 token while JWT_SECRET is set (transition)', async () => {
-    process.env.JWT_SECRET = TRANSITION_SECRET;
+  it('MAIR-680 refuses an HS256 token with 401 even while JWT_SECRET is set (bffs-lib 3)', async () => {
+    process.env.JWT_SECRET = LEGACY_SECRET;
 
-    const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${hs256Token(1, TRANSITION_SECRET)}`);
+    const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${hs256Token(1, LEGACY_SECRET)}`);
 
-    expect(response.status).not.toBe(401);
-    expect(upstreamCalls).toBeGreaterThan(0);
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: { code: 'UNAUTHORIZED', message: expect.any(String), details: [] } });
+    expect(upstreamCalls).toBe(0);
   });
 
   it('MAIR-680 answers 503 without calling an upstream when no session key is configured', async () => {
     delete process.env.JWT_PUBLIC_KEY;
 
     const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${eddsaToken(1)}`);
+
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(response.body)).not.toMatch(/JWT_(PUBLIC_KEY|SECRET)/);
+    expect(upstreamCalls).toBe(0);
+  });
+
+  it('MAIR-680 answers 503 when only JWT_SECRET is configured (bffs-lib 3 no longer reads it)', async () => {
+    delete process.env.JWT_PUBLIC_KEY;
+    process.env.JWT_SECRET = LEGACY_SECRET;
+
+    const response = await request(app).get(ROUTE).set('Authorization', `Bearer ${hs256Token(1, LEGACY_SECRET)}`);
 
     expect(response.status).toBe(503);
     expect(JSON.stringify(response.body)).not.toMatch(/JWT_(PUBLIC_KEY|SECRET)/);

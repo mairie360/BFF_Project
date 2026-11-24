@@ -3,7 +3,7 @@ import { createHash, createHmac, generateKeyPairSync, sign, type KeyObject } fro
 /**
  * Session keys of the tests (MAIR-680): the tests play Core, the only signer, with an Ed25519 key pair generated
  * when the test file loads (no private key is committed), and the BFF gets its public key in `JWT_PUBLIC_KEY`,
- * without `JWT_SECRET`, like a deployment once the transition is over.
+ * without `JWT_SECRET` (ignored since bffs-lib 3), like a deployment.
  */
 
 /** Claims Core signs into every EdDSA session token (`mairie360_api_lib`, `SESSION_JWT_ISSUER` / `_AUDIENCE`). */
@@ -50,13 +50,13 @@ export function eddsaToken(sub: number | string, options: EddsaTokenOptions = {}
   return `${unsigned}.${sign(null, Buffer.from(unsigned), privateKey).toString('base64url')}`;
 }
 
-/** A historical HS256 session token signed with a shared secret: refused once `JWT_SECRET` is gone. */
+/** A historical HS256 session token signed with a shared secret: always refused since bffs-lib 3. */
 export function hs256Token(sub: number | string, secret: string, expiresIn = 3_600): string {
   const unsigned = `${base64url({ alg: 'HS256', typ: 'JWT' })}.${base64url({ sub: String(sub), exp: Math.floor(Date.now() / 1000) + expiresIn })}`;
   return `${unsigned}.${createHmac('sha256', secret).update(unsigned).digest('base64url')}`;
 }
 
-/** Configures the BFF like a deployment after the transition: `JWT_PUBLIC_KEY` only, no `JWT_SECRET`. */
+/** Configures the BFF like a deployment: `JWT_PUBLIC_KEY` only, no `JWT_SECRET`. */
 export function useSessionPublicKey(): void {
   process.env.JWT_PUBLIC_KEY = JWT_PUBLIC_KEY;
   delete process.env.JWT_SECRET;
