@@ -168,7 +168,7 @@ SQL
 
 echo "==> [3/5] Database checks..."
 psql_stack -f - < "$CICD_DIR/tests/gdpr/schema.sql" > "$RUN_DIR/schema.json" || exit 1
-docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/$CICD_DIR/tests/gdpr:/engine:ro" -v "$PWD/$RUN_DIR:/run" node:24-bookworm-slim sh -c \
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/$CICD_DIR/tests/gdpr:/engine:ro" -v "$PWD/$RUN_DIR:/run" node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 sh -c \
     'mkdir -p /tmp/engine && tar -C /engine --exclude=./node_modules -cf - . | tar -C /tmp/engine -xf - && cd /tmp/engine && npm ci --omit=dev --no-audit --no-fund --loglevel=error && node simulation/sql.mjs /run/inventory.yaml /run/schema.json /run' \
     || exit 1
 for query in erasure retention content; do

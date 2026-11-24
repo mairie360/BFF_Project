@@ -64,7 +64,7 @@ services:
       - backend
 
   seeder:
-    image: postgres:18-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
+    image: postgres:19-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
     container_name: bff-project-sim-seeder
     depends_on:
       liquibase:
@@ -223,7 +223,7 @@ services:
       start_period: 40s
 
   gdpr-simulation:
-    image: node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
+    image: node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1
     container_name: bff-project-sim-marker
     user: "${GDPR_UID:-0}:${GDPR_GID:-0}"
     depends_on:
