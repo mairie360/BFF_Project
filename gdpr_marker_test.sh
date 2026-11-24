@@ -76,7 +76,7 @@ docker compose -f "$COMPOSE_FILE" down -v
 
 echo "==> [4/4] Searching the logs for the marker..."
 docker run --rm -v "$PWD/$REPORT_DIR:/report" -v "$PWD/$CICD_DIR/tests/gdpr:/engine:ro" \
-  node:24-bookworm-slim node /engine/marker/scan.mjs /report
+  node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 node /engine/marker/scan.mjs /report
 EXIT_CODE=$?
 
 # The scanner searches the marker's values and the captures marked sensitive, not the env values the

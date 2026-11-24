@@ -76,7 +76,7 @@ services:
       - backend
 
   seeder:
-    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    image: postgres:19-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
     container_name: bff-project-sec-seeder
     depends_on:
       liquibase:
@@ -227,7 +227,7 @@ services:
       start_period: 40s
 
   security-scan:
-    image: zaproxy/zap-stable@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238
+    image: zaproxy/zap-stable@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af
     container_name: bff-project-sec-zap
     depends_on:
       bff-project:
