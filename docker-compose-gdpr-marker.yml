@@ -226,7 +226,7 @@ services:
       start_period: 40s
 
   gdpr-marker:
-    image: node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+    image: node:26-bookworm-slim@sha256:3fcc4609776fc12c0079831ca6020e250ca109b8d46243d504625d0af7efda93
     container_name: bff-project-gdpr-marker
     user: "${GDPR_UID:-0}:${GDPR_GID:-0}"
     depends_on:
