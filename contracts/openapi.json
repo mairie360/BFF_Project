@@ -895,6 +895,11 @@
             "description": "Title of the task",
             "example": "New task"
           },
+          "description": {
+            "type": "string",
+            "description": "Description of the task, line breaks kept; an empty string when it has none",
+            "example": "Ask three roofers for a quote"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1071,6 +1076,7 @@
         "required": [
           "id",
           "title",
+          "description",
           "status",
           "statusLabel",
           "responsible",
@@ -1485,6 +1491,11 @@
             "pattern": "^[^<>]*$",
             "example": "Scan task"
           },
+          "description": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Task created by the ZAP scan"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1563,6 +1574,11 @@
             "type": "string",
             "pattern": "^[^<>]*$",
             "example": "Scan task"
+          },
+          "description": {
+            "type": "string",
+            "pattern": "^[^<>]*$",
+            "example": "Task created by the ZAP scan"
           },
           "status": {
             "type": "string",
@@ -2217,6 +2233,11 @@
                   "description": "Title of the task",
                   "example": "New task"
                 },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the task, line breaks kept; an empty string when it has none",
+                  "example": "Ask three roofers for a quote"
+                },
                 "status": {
                   "type": "string",
                   "enum": [
@@ -2393,6 +2414,7 @@
               "required": [
                 "id",
                 "title",
+                "description",
                 "status",
                 "statusLabel",
                 "responsible",
@@ -3446,6 +3468,11 @@
                   "description": "Title of the task",
                   "example": "New task"
                 },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the task, line breaks kept; an empty string when it has none",
+                  "example": "Ask three roofers for a quote"
+                },
                 "status": {
                   "type": "string",
                   "enum": [
@@ -3622,6 +3649,7 @@
               "required": [
                 "id",
                 "title",
+                "description",
                 "status",
                 "statusLabel",
                 "responsible",
@@ -4501,6 +4529,11 @@
                             "description": "Title of the task",
                             "example": "New task"
                           },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the task, line breaks kept; an empty string when it has none",
+                            "example": "Ask three roofers for a quote"
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -4677,6 +4710,7 @@
                         "required": [
                           "id",
                           "title",
+                          "description",
                           "status",
                           "statusLabel",
                           "responsible",
@@ -5288,6 +5322,11 @@
                             "description": "Title of the task",
                             "example": "New task"
                           },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the task, line breaks kept; an empty string when it has none",
+                            "example": "Ask three roofers for a quote"
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -5464,6 +5503,7 @@
                         "required": [
                           "id",
                           "title",
+                          "description",
                           "status",
                           "statusLabel",
                           "responsible",
@@ -5603,6 +5643,11 @@
                     "pattern": "^[^<>]*$",
                     "example": "Scan task"
                   },
+                  "description": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Task created by the ZAP scan"
+                  },
                   "status": {
                     "type": "string",
                     "enum": [
@@ -5694,6 +5739,11 @@
                       "type": "string",
                       "description": "Title of the task",
                       "example": "New task"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description of the task, line breaks kept; an empty string when it has none",
+                      "example": "Ask three roofers for a quote"
                     },
                     "status": {
                       "type": "string",
@@ -5871,6 +5921,7 @@
                   "required": [
                     "id",
                     "title",
+                    "description",
                     "status",
                     "statusLabel",
                     "responsible",
@@ -6593,6 +6644,11 @@
                             "description": "Title of the task",
                             "example": "New task"
                           },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the task, line breaks kept; an empty string when it has none",
+                            "example": "Ask three roofers for a quote"
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -6769,6 +6825,7 @@
                         "required": [
                           "id",
                           "title",
+                          "description",
                           "status",
                           "statusLabel",
                           "responsible",
@@ -7238,6 +7295,11 @@
                             "description": "Title of the task",
                             "example": "New task"
                           },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the task, line breaks kept; an empty string when it has none",
+                            "example": "Ask three roofers for a quote"
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -7414,6 +7476,7 @@
                         "required": [
                           "id",
                           "title",
+                          "description",
                           "status",
                           "statusLabel",
                           "responsible",
@@ -7669,6 +7732,11 @@
                     "pattern": "^[^<>]*$",
                     "example": "Scan task"
                   },
+                  "description": {
+                    "type": "string",
+                    "pattern": "^[^<>]*$",
+                    "example": "Task created by the ZAP scan"
+                  },
                   "status": {
                     "type": "string",
                     "enum": [
@@ -7751,6 +7819,11 @@
                       "type": "string",
                       "description": "Title of the task",
                       "example": "New task"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description of the task, line breaks kept; an empty string when it has none",
+                      "example": "Ask three roofers for a quote"
                     },
                     "status": {
                       "type": "string",
@@ -7928,6 +8001,7 @@
                   "required": [
                     "id",
                     "title",
+                    "description",
                     "status",
                     "statusLabel",
                     "responsible",
@@ -8390,6 +8464,11 @@
                             "description": "Title of the task",
                             "example": "New task"
                           },
+                          "description": {
+                            "type": "string",
+                            "description": "Description of the task, line breaks kept; an empty string when it has none",
+                            "example": "Ask three roofers for a quote"
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -8566,6 +8645,7 @@
                         "required": [
                           "id",
                           "title",
+                          "description",
                           "status",
                           "statusLabel",
                           "responsible",
@@ -8750,6 +8830,11 @@
                       "description": "Title of the task",
                       "example": "New task"
                     },
+                    "description": {
+                      "type": "string",
+                      "description": "Description of the task, line breaks kept; an empty string when it has none",
+                      "example": "Ask three roofers for a quote"
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -8926,6 +9011,7 @@
                   "required": [
                     "id",
                     "title",
+                    "description",
                     "status",
                     "statusLabel",
                     "responsible",

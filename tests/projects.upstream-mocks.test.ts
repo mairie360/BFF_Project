@@ -3208,3 +3208,127 @@ describe('MAIR-1089 activity, project comments and bulk deletion', () => {
     expect(projectApi.requests).toEqual([]);
   });
 });
+
+describe('MAIR-1198 description of a task', () => {
+  const taskBody = {
+    title: 'Demander trois devis', status: 'todo', priority: 'medium',
+    responsibleId: 'user-2', assigneeIds: [], labels: [], dueDate: '2026-12-15',
+  };
+  const description = 'Couverture du préau.\nTrois devis signés avant le conseil.';
+
+  test('every task read carries its description, an empty string without one', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [
+      taskView(2, { description }), taskView(3, { description: '' }),
+    ], [admin]) } });
+    projectApi.on('get', PROJECT.archivedTasks, { body: { tasks: [taskView(4, { status: 'Completed', description: 'Archivée' })], total: 1 } });
+
+    const detail = await as(request(app).get('/projects/project-1'), admin);
+    const archived = await as(request(app).get('/projects/project-1/archived-tasks'), admin);
+
+    expect([detail.status, archived.status]).toEqual([200, 200]);
+    expectBffContract('get', '/projects/project-1', detail);
+    expectBffContract('get', '/projects/project-1/archived-tasks', archived);
+    expect(detail.body.taskItems.map((task: { description: string }) => task.description)).toEqual([description, '']);
+    expect(archived.body.tasks[0].description).toBe('Archivée');
+  });
+
+  test('POST /projects/:id/tasks sends the description and answers it from the re-read task', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles, createdTaskId: 30 });
+    projectApi.on('post', PROJECT.tasks, (call) => {
+      bundles[1].tasks.push(taskView(30, { description: (call.body as { description: string }).description }));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send({ ...taskBody, description });
+
+    expect(response.status).toBe(201);
+    expectBffContract('post', '/projects/project-1/tasks', response);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ description });
+    expect(response.body.description).toBe(description);
+  });
+
+  test('POST without a description sends null, which Project API stores as an empty string', async () => {
+    signIn(admin);
+    const bundles = { 1: projectBundle(projetView(1), [], [admin, alice]) };
+    mockProjectApi({ bundles });
+    projectApi.on('post', PROJECT.tasks, () => {
+      bundles[1].tasks.push(taskView(30, { description: '' }));
+      return { body: createTaskResult(30) };
+    });
+
+    const response = await as(request(app).post('/projects/project-1/tasks'), admin).send(taskBody);
+
+    expect(response.status).toBe(201);
+    expect(projectApi.calls(PROJECT.tasks, 'POST')[0].body).toMatchObject({ description: null });
+    expect(response.body.description).toBe('');
+  });
+
+  test.each([
+    ['sets', { description }, { description }],
+    ['clears with an empty string', { description: '' }, { description: '' }],
+    ['keeps when absent', { title: 'Autre titre' }, { name: 'Autre titre' }],
+  ] as const)('PATCH %s the description', async (_name, body, expected) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2, { description: 'Avant' })], [admin]) } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send(body);
+
+    expect(response.status).toBe(200);
+    expectBffContract('patch', '/projects/project-1/tasks/task-2', response);
+    expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual(expected);
+  });
+
+  test.each([
+    ['POST', 'post', '/projects/project-1/tasks', { ...taskBody, description: 'x'.repeat(5001) }],
+    ['PATCH', 'patch', '/projects/project-1/tasks/task-2', { description: 'x'.repeat(5001) }],
+    ['PATCH', 'patch', '/projects/project-1/tasks/task-2', { description: '<script>' }],
+  ] as const)('%s refuses a description over 5000 characters or with markup with a 400 naming the field, before any write', async (_name, method, uri, body) => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin, alice]) } });
+
+    const response = await as(request(app)[method](uri), admin).send(body);
+
+    expect(response.status).toBe(400);
+    expectBffContract(method, uri, response);
+    expect(response.body.error.details.map((detail: { path: string }) => detail.path)).toContain('body.description');
+    expect(projectApi.requests.filter((call) => call.method !== 'GET')).toEqual([]);
+  });
+
+  test('a description of exactly 5000 characters with line breaks is accepted', async () => {
+    signIn(admin);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
+    const longest = `${'a'.repeat(2499)}\n${'b'.repeat(2500)}`;
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), admin).send({ description: longest });
+
+    expect(response.status).toBe(200);
+    expect(projectApi.calls(PROJECT.task, 'PATCH')[0].body).toEqual({ description: longest });
+  });
+
+  test('an employee may not change the description of their own task', async () => {
+    signIn(alice);
+    mockProjectApi({ bundles: { 1: projectBundle(projetView(1, { can_manage: false }), [taskView(2, { assigned_to: alice.id })], [alice]) } });
+
+    const response = await as(request(app).patch('/projects/project-1/tasks/task-2'), alice).send({ description });
+
+    expect(response.status).toBe(403);
+    expect(projectApi.calls(PROJECT.task, 'PATCH')).toHaveLength(0);
+  });
+
+  test('duplicating a project copies the description of its tasks', async () => {
+    signIn(admin);
+    const source = projectBundle(projetView(1, { group: { id: 3, name: 'Roads' } }), [
+      taskView(2, { description }), taskView(3, { description: '' }),
+    ], [admin]);
+    mockProjectApi({ bundles: { 1: source, 12: projectBundle(projetView(12), [], [admin]) }, createdProjectId: 12 });
+
+    const response = await as(request(app).post('/projects/project-1/duplicate'), admin).send({});
+
+    expect(response.status).toBe(201);
+    const created = projectApi.calls(PROJECT.tasks, 'POST').map((call) => (call.body as { description: string | null }).description);
+    expect(created).toEqual([description, '']);
+  });
+});

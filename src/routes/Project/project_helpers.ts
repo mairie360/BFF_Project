@@ -62,6 +62,8 @@ export type User = ApiUser;
 /** Body of Project API `PATCH /api/v1/projects/{project_id}/tasks/{task_id}`. */
 export interface PatchTaskView {
   name?: string;
+  /** At most 5000 characters; `""` clears it. */
+  description?: string;
   status?: ApiTaskStatus;
   priority?: ApiTaskPriority;
   assigned_to?: number | null;
@@ -74,6 +76,8 @@ export interface PatchTaskView {
 
 export interface TaskInputLike {
   title: string;
+  /** Description of the task: absent or empty for none. */
+  description?: string;
   status: BffProjectStatus;
   priority: BffProjectPriority;
   responsibleId?: string;
@@ -721,6 +725,7 @@ export function mapTaskToDto(
   return {
     id: taskPublicId(task.id),
     title: task.title,
+    description: task.description ?? "",
     status,
     statusLabel: mapTaskStatusLabel(status),
     responsible,
@@ -773,7 +778,8 @@ export function mapTaskInputToBackend(task: TaskInputLike): CreateTaskView {
     ...statusIdToBackend(task.statusId),
     priority: bffTaskPriorityToBackendMap[task.priority],
     assigned_to: assignedTo,
-    description: null,
+    // Project API stores an absent description as an empty string.
+    description: task.description ?? null,
     due_date: dueDate,
     ...(startDate ? { start_date: startDate } : {}),
     fields: [
@@ -797,6 +803,8 @@ export function mapTaskUpdateBodyToBackend(task: BffUpdateTaskInput): PatchTaskV
   const body: PatchTaskView = {};
 
   if (typeof task.title === "string") body.name = task.title;
+  // Absent keeps the description, an empty string clears it.
+  if (typeof task.description === "string") body.description = task.description;
   if (typeof task.status === "string") body.status = bffTaskStatusToBackendMap[task.status];
   const { status_id: statusId } = statusIdToBackend(task.statusId);
   if (statusId !== undefined) body.status_id = statusId;

@@ -80,6 +80,7 @@ router.post('/:projectId/tasks', async (req: Request, res: Response) => {
         projectId,
         mapTaskInputToBackend({
             title: body.title,
+            description: body.description,
             status: body.status,
             priority: body.priority,
             responsibleId: body.responsibleId,

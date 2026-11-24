@@ -330,6 +330,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
+                                 * @description Description of the task, line breaks kept; an empty string when it has none
+                                 * @example Ask three roofers for a quote
+                                 */
+                                description: string;
+                                /**
                                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
@@ -814,6 +819,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
+                                 * @description Description of the task, line breaks kept; an empty string when it has none
+                                 * @example Ask three roofers for a quote
+                                 */
+                                description: string;
+                                /**
                                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
@@ -1032,6 +1042,8 @@ export interface paths {
                     "application/json": {
                         /** @example Scan task */
                         title: string;
+                        /** @example Task created by the ZAP scan */
+                        description?: string;
                         /**
                          * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                          * @example todo
@@ -1084,6 +1096,11 @@ export interface paths {
                              * @example New task
                              */
                             title: string;
+                            /**
+                             * @description Description of the task, line breaks kept; an empty string when it has none
+                             * @example Ask three roofers for a quote
+                             */
+                            description: string;
                             /**
                              * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
@@ -1506,6 +1523,11 @@ export interface paths {
                                  * @example New task
                                  */
                                 title: string;
+                                /**
+                                 * @description Description of the task, line breaks kept; an empty string when it has none
+                                 * @example Ask three roofers for a quote
+                                 */
+                                description: string;
                                 /**
                                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
@@ -2077,6 +2099,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
+                                 * @description Description of the task, line breaks kept; an empty string when it has none
+                                 * @example Ask three roofers for a quote
+                                 */
+                                description: string;
+                                /**
                                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
@@ -2399,6 +2426,8 @@ export interface paths {
                     "application/json": {
                         /** @example Scan task */
                         title?: string;
+                        /** @example Task created by the ZAP scan */
+                        description?: string;
                         /**
                          * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
                          * @example todo
@@ -2451,6 +2480,11 @@ export interface paths {
                              * @example New task
                              */
                             title: string;
+                            /**
+                             * @description Description of the task, line breaks kept; an empty string when it has none
+                             * @example Ask three roofers for a quote
+                             */
+                            description: string;
                             /**
                              * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
@@ -2875,6 +2909,11 @@ export interface paths {
                                  */
                                 title: string;
                                 /**
+                                 * @description Description of the task, line breaks kept; an empty string when it has none
+                                 * @example Ask three roofers for a quote
+                                 */
+                                description: string;
+                                /**
                                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                                  * @example todo
                                  * @enum {string}
@@ -3129,6 +3168,11 @@ export interface paths {
                              * @example New task
                              */
                             title: string;
+                            /**
+                             * @description Description of the task, line breaks kept; an empty string when it has none
+                             * @example Ask three roofers for a quote
+                             */
+                            description: string;
                             /**
                              * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                              * @example todo
@@ -6931,6 +6975,11 @@ export interface components {
              */
             title: string;
             /**
+             * @description Description of the task, line breaks kept; an empty string when it has none
+             * @example Ask three roofers for a quote
+             */
+            description: string;
+            /**
              * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
              * @example todo
              * @enum {string}
@@ -7216,6 +7265,8 @@ export interface components {
         CreateTaskBody: {
             /** @example Scan task */
             title: string;
+            /** @example Task created by the ZAP scan */
+            description?: string;
             /**
              * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
              * @example todo
@@ -7251,6 +7302,8 @@ export interface components {
         UpdateTaskBody: {
             /** @example Scan task */
             title?: string;
+            /** @example Task created by the ZAP scan */
+            description?: string;
             /**
              * @description Category of the task status: `todo`, `in-progress` or `done` (`review` and `on-hold` are project statuses, refused with a 400)
              * @example todo
@@ -7569,6 +7622,11 @@ export interface components {
                  * @example New task
                  */
                 title: string;
+                /**
+                 * @description Description of the task, line breaks kept; an empty string when it has none
+                 * @example Ask three roofers for a quote
+                 */
+                description: string;
                 /**
                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo
@@ -8105,6 +8163,11 @@ export interface components {
                  * @example New task
                  */
                 title: string;
+                /**
+                 * @description Description of the task, line breaks kept; an empty string when it has none
+                 * @example Ask three roofers for a quote
+                 */
+                description: string;
                 /**
                  * @description Status of the project: `on-hold` is a project put on hold (Project API `Suspended`, MAIR-1084). A task is never `review` nor `on-hold`
                  * @example todo

@@ -158,6 +158,10 @@ export const ProjectListItem = z.object({
 export const ProjectTask = z.object({
     id: z.string().openapi({ description: 'Unique id of the task', example: '123e4567-e89b-12d3-a456-426614174000' }),
     title: z.string().openapi({ description: 'Title of the task', example: 'New task' }),
+    description: z.string().openapi({
+      description: 'Description of the task, line breaks kept; an empty string when it has none',
+      example: 'Ask three roofers for a quote',
+    }),
     status: ProjectStatus,
     statusLabel: z.string().openapi({ description: 'Label of the task status', example: 'À faire' }),
     responsible: Person,
@@ -419,6 +423,9 @@ registry.register('UpdateProjectBody', UpdateProjectBody);
 
 export const CreateTaskBody = z.object({
   title: Title('Scan task'),
+
+  // Optional, up to 5000 characters. On an update, absent keeps it and an empty string clears it.
+  description: Description('Task created by the ZAP scan').optional(),
 
   status: TaskStatus,
 

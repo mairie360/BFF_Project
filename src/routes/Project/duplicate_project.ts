@@ -96,6 +96,7 @@ router.post('/:projectId/duplicate', async (req: Request, res: Response) => {
                 duplicateId,
                 mapTaskInputToBackend({
                     title: task.title,
+                    description: task.description,
                     status: mapTaskStatus(task.status),
                     priority: mapTaskPriority(task.priority),
                     assigneeIds: [],
