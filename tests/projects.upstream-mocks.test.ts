@@ -1517,7 +1517,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(response.body.project).toMatchObject({
         priority: 'low', labels: [], dueDate: '2026-10-15T00:00:00.000Z', status: 'in-progress',
       });
-      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High' });
+      // The due date is written as the project's deadline; labels are not persisted.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: 'Todo', priority: 'High', deadline: '2030-01-01' });
     });
 
     test.each([
