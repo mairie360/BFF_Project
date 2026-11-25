@@ -37,3 +37,23 @@ risks:
       Audit trail of the accounts (users_audit_log): the database trigger copies the users row on every change, and only administrators read it. On erasure, anonymize_user() replaces the identity keys of the user's rows with a salted hash whose salt is never stored (the sha256: values of the findings). The 10-year retention declared in retention_policies is not applied by fn_apply_retention_policies yet, so the rows stay until then. Accepted for this release.
     date: 2026-11-25
     author: Quentintnrl
+  - fingerprint: d7fe5a4d1f2e5e4037d690e2  # projects.description
+    reason: >-
+      Free text typed by agents (descriptions, comments, history, messages, event fields, titles): the platform cannot stop an agent from writing a name, an e-mail or a phone number there. The text is visible to the members of the resource (every agent for a public event). Erasure keeps it: anonymize_user() removes the author's identity and deletes only their private events, not names written in the text, and no retention rule covers these tables. Accepted for this release.
+    date: 2026-11-25
+    author: Quentintnrl
+  - fingerprint: d05e3cbcba2aee9c4ad58658  # task_comments.message
+    reason: >-
+      Free text typed by agents (descriptions, comments, history, messages, event fields, titles): the platform cannot stop an agent from writing a name, an e-mail or a phone number there. The text is visible to the members of the resource (every agent for a public event). Erasure keeps it: anonymize_user() removes the author's identity and deletes only their private events, not names written in the text, and no retention rule covers these tables. Accepted for this release.
+    date: 2026-11-25
+    author: Quentintnrl
+  - fingerprint: f1b00c49e96f24397b2c4b07  # task_history.changes
+    reason: >-
+      Free text typed by agents (descriptions, comments, history, messages, event fields, titles): the platform cannot stop an agent from writing a name, an e-mail or a phone number there. The text is visible to the members of the resource (every agent for a public event). Erasure keeps it: anonymize_user() removes the author's identity and deletes only their private events, not names written in the text, and no retention rule covers these tables. Accepted for this release.
+    date: 2026-11-25
+    author: Quentintnrl
+  - fingerprint: a07e75fc640d6dd606a3542a  # tasks.custom_fields
+    reason: >-
+      Free text typed by agents (descriptions, comments, history, messages, event fields, titles): the platform cannot stop an agent from writing a name, an e-mail or a phone number there. The text is visible to the members of the resource (every agent for a public event). Erasure keeps it: anonymize_user() removes the author's identity and deletes only their private events, not names written in the text, and no retention rule covers these tables. Accepted for this release.
+    date: 2026-11-25
+    author: Quentintnrl
