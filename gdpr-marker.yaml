@@ -26,6 +26,7 @@ steps:
         assigneeIds: [user-1]
         labels: ["{{marker.last_name}}"]
         dueDate: "2030-12-31T00:00:00Z"
+        groupId: group-4
     expect: [201]
     capture:
       project_id: body.project.id
