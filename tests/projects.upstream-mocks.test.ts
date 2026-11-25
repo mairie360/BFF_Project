@@ -845,7 +845,6 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       // MAIR-1084: `on-hold` suspends the project and reads back as on hold; `review` is the Review status.
       ['on-hold', 'Suspended', 'En pause'],
       ['review', 'Review', 'En revue'],
-      ['done', 'Completed', 'Terminé'],
     ] as const)('PATCH /projects/:id/close with %s writes %s through Project API', async (status, stored, label) => {
       signIn(marie);
       // Starts in another status: the answer must be the re-read after the write, not the state before it.
@@ -862,6 +861,27 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('patch', '/projects/project-1/close', response);
       expect(projectApi.calls(PROJECT.project, 'PATCH')[0].body).toEqual({ status: stored });
       expect(response.body.project).toMatchObject({ status, statusLabel: label });
+    });
+
+    // MAIR-1203: `done` wrote `Completed` through PATCH /projects/{id}, which Project API refuses with a 409 on a project
+    // already closed: closing it twice answered 502. It now goes through the idempotent close route.
+    test.each(['Active', 'Completed'] as const)('MAIR-1203 PATCH /projects/:id/close with done closes a project %s through the close route', async (initial) => {
+      signIn(marie);
+      const bundle = projectBundle(projetView(1, { status: initial }), [taskView(2)], [marie]);
+      mockProjectApi({ bundles: { 1: bundle } });
+      projectApi.on('patch', PROJECT.close, () => {
+        bundle.project = { ...bundle.project, status: 'Completed' };
+        return { status: 200 };
+      });
+      projectApi.on('patch', PROJECT.project, { status: 409, raw: 'Project is closed.', contentType: 'text/plain', outOfContract: true });
+
+      const response = await as(request(app).patch('/projects/project-1/close'), marie).send({ status: 'done' });
+
+      expect(response.status).toBe(200);
+      expectBffContract('patch', '/projects/project-1/close', response);
+      expect(projectApi.calls(PROJECT.close, 'PATCH')).toHaveLength(1);
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
+      expect(response.body.project).toMatchObject({ status: 'done', statusLabel: 'Terminé' });
     });
 
     test('MAIR-1085: the budget is read on the page and the detail, in cents of euro', async () => {
@@ -1571,9 +1591,10 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       // tasks, and is closed last.
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).toMatchObject({ priority: 'High' });
       expect(projectApi.calls(PROJECT.projects, 'POST')[0].body).not.toHaveProperty('status');
-      expect(projectApi.calls(PROJECT.project, 'PATCH').map((call) => call.body)).toEqual([{ status: 'Completed' }]);
+      // Closed through the close route (MAIR-1203), the last write.
+      expect(projectApi.calls(PROJECT.project, 'PATCH')).toHaveLength(0);
       const writes = upstreamSequence().filter((call) => !call.startsWith('GET'));
-      expect(writes[writes.length - 1]).toBe(called('PATCH', projectApiUrls.getUpdateProjectUrl(12)));
+      expect(writes[writes.length - 1]).toBe(called('PATCH', projectApiUrls.getCloseProjectUrl(12)));
       expect(response.body.project).toMatchObject({ status: 'done', priority: 'low', labels: [], progress: 100 });
       // The due date read back is the one Project API stored (none in this mock), not the body's.
       expect(response.body.project.dueDate).not.toBe('2030-07-14T00:00:00Z');
