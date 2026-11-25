@@ -20,7 +20,9 @@ VALUES
     -- A third person whose last name sorts before the agent's: added to a project the agent is responsible for, they
     -- become its first member, which must not make them its responsible. Nobody signs in as them.
     (3, 'Newman', 'Bystander', 'newman-bystander@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active')
-ON CONFLICT (id) DO NOTHING;
+-- User 1 already exists: the Database image creates the first administrator ('Admin' 'User'). Its name is set here
+-- so that the ordering cases (the owner sorts before the bystander) do not depend on that image's seed.
+ON CONFLICT (id) DO UPDATE SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name;
 
 -- Core API >= 1.1.1 requires at least one role on the user for GET /user/me
 -- (otherwise Core panics with "index out of bounds" -> 502 on BFF User then BFF Project).
