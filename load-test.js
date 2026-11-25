@@ -376,8 +376,10 @@ const handlers = {
     const projectId = need(((json(created) || {}).project || {}).id, 'project to bulk-delete');
     state.bulkDeletedProjectId = projectId;
     const res = request({ body: { projectIds: [projectId] }, headers: data.admin });
-    const deleted = res.status === 200
-      && JSON.stringify((json(res) || {}).results) === JSON.stringify([{ projectId, status: 'deleted' }]);
+    // Field by field: k6's response.json() does not keep the key order, so a JSON.stringify comparison failed at random.
+    const results = (json(res) || {}).results;
+    const deleted = res.status === 200 && Array.isArray(results) && results.length === 1
+      && results[0].projectId === projectId && results[0].status === 'deleted';
     if (deleted) state.bulkDeletedProjectId = undefined;
     check(res, {
       'bulk delete 200': (r) => r.status === 200,
