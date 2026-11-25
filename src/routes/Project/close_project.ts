@@ -37,7 +37,7 @@ router.patch('/:projectId/close', async (req: Request, res: Response) => {
   const caller = callerOf(req, ERROR_STATUSES);
 
   const { user } = await requireProjectManagement(caller, getProjectUserContext(res), projectId);
-  // Every status goes through PATCH /projects/{project_id}: the close route of Project API cannot suspend.
+  // `done` goes through the close route of Project API (idempotent), the others through PATCH /projects/{project_id}.
   await setProjectClosed(caller, projectId, CLOSE_STATUS[body.status]);
 
   const bundle = await fetchProjectBundle(caller, projectId);

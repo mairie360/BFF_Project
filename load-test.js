@@ -169,8 +169,10 @@ const handlers = {
     check(request(), { 'check_apis 200': (r) => r.status === 200 }),
 
   // --- Projects (writes as admin: only Admin/Maire/Responsable manage projects) ---
+  // `review`, not `done`: Project API makes a closed project read-only (409), and the handlers after this one write to the
+  // working project.
   'PATCH /projects/{projectId}/close': ({ request, data }) =>
-    check(request({ path: { projectId: need(state.projectId, 'working project') }, body: { status: 'done' }, headers: data.admin }), {
+    check(request({ path: { projectId: need(state.projectId, 'working project') }, body: { status: 'review' }, headers: data.admin }), {
       'close project 200': (r) => r.status === 200,
     }),
   // Disposable project, removed by DELETE /projects/{projectId}.

@@ -443,6 +443,12 @@ export async function setProjectClosed(
   projectId: number,
   status: 'Completed' | 'Suspended' | 'Review',
 ): Promise<void> {
+  // Closing goes through Project API's close route, which also answers 200 for a project already closed: its PATCH
+  // refuses any write on a closed project with a 409, closing it again included.
+  if (status === 'Completed') {
+    await projectCall(caller, (options) => projectApi.closeProject(projectId, options));
+    return;
+  }
   await projectCall(caller, (options) => projectApi.updateProject(projectId, { status }, options));
 }
 
