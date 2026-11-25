@@ -168,6 +168,9 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     environment:
+      # Lift the rate limit of mairie360_api_lib (MAIR-425): only a rate of 0 disables it since 6.0.0,
+      # and the scan and the load test hammer the API as one client.
+      RATE_LIMIT_PER_SECOND: "0"
       <<: *db-env
       HOST: "0.0.0.0"
       PORT: 3001
