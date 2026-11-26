@@ -2,6 +2,7 @@ import { OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import { bearerAuth, registry } from './openapi-registry';
 import './routes/health';
 import './routes/check_apis';
+import './routes/search';
 import './routes/Project/close_project';
 import './routes/Project/create_project';
 import './routes/Project/create_task';

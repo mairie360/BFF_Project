@@ -35,6 +35,7 @@ import activityRouter from './routes/Project/activity';
 import bulkDeleteRouter from './routes/Project/bulk_delete';
 import templatesRouter from './routes/Project/templates';
 import projectGroupsRouter from './routes/Project/groups';
+import searchRouter from './routes/search';
 import { projectUserContextMiddleware } from './auth/project-user';
 
 
@@ -60,6 +61,8 @@ app.get(['/openapi.json', '/swagger.json'], (_req, res) => {
 
 app.use('/health', healthRouter);
 app.use('/check_apis', checkApis);
+// The header's global search, over every business API (noStore + requireSession in the router).
+app.use('/search', searchRouter);
 // Session-bound routes: never cached, 401 before any upstream call without a Bearer token verified with
 // Core's public key JWT_PUBLIC_KEY (EdDSA, expiry; bffs-lib requireSession, MAIR-474, MAIR-680), then the caller's roles are read from the token
 // (Core API for an older token, never BFF User: MAIR-525). Project API checks that the session was not revoked.

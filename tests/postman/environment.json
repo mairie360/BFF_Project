@@ -187,6 +187,18 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "search_term",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "search_project_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ]
 }

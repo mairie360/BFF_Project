@@ -10256,6 +10256,355 @@
       "description": "The project is suspended, closed, then deleted with its duplicate and the template."
     },
     {
+      "name": "MAIR-1229 Global search",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// A term made of letters only, unique to this run: the search matches it as a substring.",
+              "if (!pm.environment.get('search_term')) {",
+              "    const letters = Date.now().toString(36).replace(/[0-9]/g, (digit) => 'abcdefghij'[digit]);",
+              "    pm.environment.set('search_term', `Recherche${letters}`);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Create a project whose title holds a unique term",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.environment.set('search_project_id', pm.response.json().project.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{search_term}} voirie\",\n  \"description\": \"Project created by the integration tests\",\n  \"status\": \"todo\",\n  \"priority\": \"medium\",\n  \"responsibleId\": \"user-{{admin_user_id}}\",\n  \"assigneeIds\": [],\n  \"labels\": [],\n  \"dueDate\": \"2030-12-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "The global search finds the project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"No-store\", function () {",
+                  "    pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "const wanted = Number(String(pm.environment.get('search_project_id')).replace(/\\D/g, ''));",
+                  "const group = body.groups.find((entry) => entry.module === 'projects');",
+                  "const item = group && group.items.find((entry) => entry.kind === 'project' && entry.id === wanted);",
+                  "pm.test(\"The project is in the projects group, with the contract shape\", function () {",
+                  "    pm.expect(item, 'the searched item').to.be.an('object');",
+                  "    pm.expect(item.title).to.include(pm.environment.get('search_term'));",
+                  "    pm.expect(item).to.have.property('excerpt');",
+                  "    pm.expect(item).to.have.property('parent_id');",
+                  "    pm.expect(item.updated_at === null || typeof item.updated_at === 'string').to.eql(true);",
+                  "});",
+                  "pm.test(\"The modules whose API this stack does not run are unavailable, not an error\", function () {",
+                  "    pm.expect(body.unavailable).to.include.members([\"calendar\", \"messages\", \"elearning\"]);",
+                  "    pm.expect(body.unavailable).to.not.include('agents');",
+                  "    pm.expect(body.unavailable).to.not.include('projects');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/search?q={{search_term}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_term}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A one-character term is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error names the field\", function () {",
+                  "    pm.expect(pm.response.json().error.details.map((detail) => detail.path)).to.include('query.q');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/search?q=a",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "a"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A limit over 20 is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"The error names the field\", function () {",
+                  "    pm.expect(pm.response.json().error.details.map((detail) => detail.path)).to.include('query.limit');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/search?q={{search_term}}&limit=21",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_term}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "21"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Without a session the search is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Body is the error envelope\", function () {",
+                  "    pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/search?q={{search_term}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_term}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete the searched project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 2xx\", function () {",
+                  "    pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{search_project_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{search_project_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The project is no longer found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"No-store\", function () {",
+                  "    pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store');",
+                  "});",
+                  "const body = pm.response.json();",
+                  "const wanted = Number(String(pm.environment.get('search_project_id')).replace(/\\D/g, ''));",
+                  "const group = body.groups.find((entry) => entry.module === 'projects');",
+                  "const item = group && group.items.find((entry) => entry.kind === 'project' && entry.id === wanted);",
+                  "pm.test(\"The project is no longer found by a projects search that answered\", function () {",
+                  "    pm.expect(body.unavailable, 'the projects API answered').to.not.include('projects');",
+                  "    pm.expect(item).to.eql(undefined);",
+                  "});",
+                  "pm.environment.unset('search_term');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/search?q={{search_term}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_term}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "MAIR-772 A session closed in Core is refused",
       "item": [
         {

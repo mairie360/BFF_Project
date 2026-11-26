@@ -168,6 +168,17 @@ const handlers = {
   'GET /check_apis': ({ request }) =>
     check(request(), { 'check_apis 200': (r) => r.status === 200 }),
 
+  // --- Global search ---
+  // As a seeded agent: each module answers or is listed as unavailable, never an error.
+  'GET /search': ({ request }) =>
+    check(request({ query: { q: 'ag' }, headers: randomAgent() }), {
+      'search 200': (r) => r.status === 200,
+      'search is the grouped answer': (r) => {
+        const body = json(r);
+        return Boolean(body) && Array.isArray(body.groups) && Array.isArray(body.unavailable);
+      },
+    }),
+
   // --- Projects (writes as admin: only Admin/Maire/Responsable manage projects) ---
   // `review`, not `done`: Project API makes a closed project read-only (409), and the handlers after this one write to the
   // working project.
