@@ -56,6 +56,7 @@ export function coreMe(agent: Agent, fields: Partial<GetMeResponseView> = {}): G
     role: agent.role,
     roles: [agent.role],
     groups: [group(1, 'Service urbanisme')],
+    modules: ['dashboard', 'projects'],
     ...fields,
   };
 }

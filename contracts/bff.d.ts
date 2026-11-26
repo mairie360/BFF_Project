@@ -83,6 +83,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search every module
+         * @description Searches the agents, projects and tasks, events, conversations and messages, and courses the caller may see, through the business APIs. A module whose API cannot answer is listed in `unavailable`.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Searched text, 2 to 100 characters once trimmed, without control characters */
+                    q: string;
+                    /** @description Most results per module (default 8) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Results grouped by module, and the modules that could not answer */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GlobalSearchResponse"];
+                    };
+                };
+                /** @description Invalid `q` or `limit` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing or invalid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description JWT_PUBLIC_KEY is not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/close": {
         parameters: {
             query?: never;
@@ -8303,6 +8383,22 @@ export interface components {
             core_api: "Connected" | "Unreachable";
             /** @enum {string} */
             project_api: "Connected" | "Unreachable";
+        };
+        GlobalSearchResponse: {
+            groups: {
+                /** @enum {string} */
+                module: "agents" | "projects" | "calendar" | "messages" | "elearning";
+                items: {
+                    /** @enum {string} */
+                    kind: "agent" | "project" | "task" | "event" | "conversation" | "message" | "course";
+                    id: number;
+                    title: string;
+                    excerpt: string | null;
+                    parent_id: number | null;
+                    updated_at: string;
+                }[];
+            }[];
+            unavailable: ("agents" | "projects" | "calendar" | "messages" | "elearning")[];
         };
         ArchivedTasksQuery: {
             /** @example 1 */

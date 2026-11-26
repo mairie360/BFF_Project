@@ -3476,6 +3476,99 @@
           "project_api"
         ]
       },
+      "GlobalSearchResponse": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "string",
+                  "enum": [
+                    "agents",
+                    "projects",
+                    "calendar",
+                    "messages",
+                    "elearning"
+                  ]
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "agent",
+                          "project",
+                          "task",
+                          "event",
+                          "conversation",
+                          "message",
+                          "course"
+                        ]
+                      },
+                      "id": {
+                        "type": "integer"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "excerpt": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "parent_id": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id",
+                      "title",
+                      "excerpt",
+                      "parent_id",
+                      "updated_at"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "module",
+                "items"
+              ]
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "agents",
+                "projects",
+                "calendar",
+                "messages",
+                "elearning"
+              ]
+            }
+          }
+        },
+        "required": [
+          "groups",
+          "unavailable"
+        ]
+      },
       "ArchivedTasksQuery": {
         "type": "object",
         "properties": {
@@ -4183,6 +4276,93 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CheckApisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Search every module",
+        "description": "Searches the agents, projects and tasks, events, conversations and messages, and courses the caller may see, through the business APIs. A module whose API cannot answer is listed in `unavailable`.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Searched text, 2 to 100 characters once trimmed, without control characters",
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100,
+              "example": "dupont"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Most results per module (default 8)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "example": 8
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Results grouped by module, and the modules that could not answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid `q` or `limit`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "JWT_PUBLIC_KEY is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
