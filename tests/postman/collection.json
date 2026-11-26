@@ -10350,7 +10350,8 @@
                   "});",
                   "pm.test(\"The modules whose API this stack does not run are unavailable, not an error\", function () {",
                   "    pm.expect(body.unavailable).to.include.members([\"calendar\", \"messages\", \"elearning\"]);",
-                  "    pm.expect(body.unavailable).to.not.include.members([\"agents\", \"projects\"]);",
+                  "    pm.expect(body.unavailable).to.not.include('agents');",
+                  "    pm.expect(body.unavailable).to.not.include('projects');",
                   "});"
                 ]
               }
@@ -10566,7 +10567,8 @@
                   "const wanted = Number(String(pm.environment.get('search_project_id')).replace(/\\D/g, ''));",
                   "const group = body.groups.find((entry) => entry.module === 'projects');",
                   "const item = group && group.items.find((entry) => entry.kind === 'project' && entry.id === wanted);",
-                  "pm.test(\"The project is no longer found\", function () {",
+                  "pm.test(\"The project is no longer found by a projects search that answered\", function () {",
+                  "    pm.expect(body.unavailable, 'the projects API answered').to.not.include('projects');",
                   "    pm.expect(item).to.eql(undefined);",
                   "});",
                   "pm.environment.unset('search_term');"
