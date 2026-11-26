@@ -22,8 +22,9 @@ import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, 
 const router = Router();
 
 /**
- * The caller as the shell header shows them, from their Core profile. The page still loads without it when Core cannot
- * answer (the front then shows the role); a rejected session (401) is relayed.
+ * The caller as the shell header shows them, from their Core profile. For an Admin or a Maire the page still loads
+ * without it when Core cannot answer (the front then shows the role); the other roles already need that profile for
+ * their assignable users, so the page fails with it. A rejected session (401) is relayed.
  */
 async function pageUser(user: ProjectUserContext): Promise<{ id: string; name: string } | undefined> {
   try {
@@ -100,6 +101,9 @@ router.get("/", async (req: Request, res: Response) => {
     ...(query.dueAfter ? { due_after: new Date(query.dueAfter).toISOString() } : {}),
   };
   const shellUser = pageUser(user);
+  // A Core 401 may reject it while the page is still loading: handle it now so Node never reports an unhandled
+  // rejection; the 401 is still relayed by the `await shellUser` below.
+  shellUser.catch(() => undefined);
   const [result, assignable] = await Promise.all([
     listProjectsPage(caller, params),
     // The members offered come from the Core directory, restricted to what the caller may assign.

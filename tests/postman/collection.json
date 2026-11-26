@@ -683,6 +683,14 @@
                   "    pm.expect(user.name).to.be.a('string').and.not.empty;",
                   "    pm.expect(user.name).to.not.eql('Administrateur');",
                   "    pm.collectionVariables.set('mair1226_admin_name', user.name);",
+                  "});",
+                  "pm.test(\"access.user.name is the administrator's name in the Core directory\", function () {",
+                  "    const body = pm.response.json();",
+                  "    const nameIn = (id) => (body.options.members.find((member) => member.value === id) || {}).name;",
+                  "    pm.expect(body.access.user.name).to.eql(nameIn(body.access.user.id));",
+                  "    const agentName = nameIn(`user-${subOf(pm.environment.get('jwt_agent'))}`);",
+                  "    pm.expect(agentName).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('mair1226_agent_directory_name', agentName);",
                   "});"
                 ]
               }
@@ -732,6 +740,7 @@
                   "    pm.expect(user.id).to.eql(`user-${subOf(pm.environment.get('jwt_agent'))}`);",
                   "    pm.expect(user.name).to.be.a('string').and.not.empty;",
                   "    pm.expect(user.name).to.not.eql(pm.collectionVariables.get('mair1226_admin_name'));",
+                  "    pm.expect(user.name).to.eql(pm.collectionVariables.get('mair1226_agent_directory_name'));",
                   "    pm.expect(pm.response.json().access.role).to.eql('User');",
                   "});"
                 ]
