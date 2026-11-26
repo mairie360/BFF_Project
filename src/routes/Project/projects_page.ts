@@ -17,7 +17,7 @@ import {
 } from "./project_helpers";
 import { HttpError, parseRequest } from "@mairie360/bffs-lib";
 import { canManageProjects, getProjectUserContext, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
-import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage } from '../../services/projectData';
+import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage, type AssignableUser, type Caller } from '../../services/projectData';
 
 const router = Router();
 
@@ -26,6 +26,23 @@ const router = Router();
  * without it when Core cannot answer (the front then shows the role); the other roles already need that profile for
  * their assignable users, so the page fails with it. A rejected session (401) is relayed.
  */
+/**
+ * Assignable users of the page. A Responsable or an agent needs their Core profile for them: when Core cannot give it
+ * (anything but a 401), the page still loads, with no member offered, like it loads without `access.user`.
+ */
+async function pageAssignableUsers(caller: Caller, user: ProjectUserContext): Promise<AssignableUser[]> {
+  if (!isGlobalProjectRole(user.role)) {
+    try {
+      // Read once per request: `listAssignableUsers` reuses it.
+      await user.profile();
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) throw error;
+      return [];
+    }
+  }
+  return listAssignableUsers(caller, user);
+}
+
 async function pageUser(user: ProjectUserContext): Promise<{ id: string; name: string } | undefined> {
   try {
     const { name } = await user.profile();
@@ -107,7 +124,7 @@ router.get("/", async (req: Request, res: Response) => {
   const [result, assignable] = await Promise.all([
     listProjectsPage(caller, params),
     // The members offered come from the Core directory, restricted to what the caller may assign.
-    listAssignableUsers(caller, user),
+    pageAssignableUsers(caller, user),
   ]).catch(async (error: unknown) => {
     // Answer only once the profile read (retried on a transient failure) has settled: no call outlives the request.
     await shellUser.catch(() => undefined);

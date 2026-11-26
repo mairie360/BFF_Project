@@ -359,6 +359,20 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('get', '/projects-page', response);
     });
 
+    test('a Responsable still gets the page, with no member offered, when Core cannot give the profile', async () => {
+      // Their assignable users need the profile (groups): its failure is no longer fatal to the page.
+      signIn(marie, { status: 503, body: { error: 'Service unavailable' }, outOfContract: true });
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), marie);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: 'Responsable', scope: 'team' });
+      expect(response.body.access).not.toHaveProperty('user');
+      expect(response.body.options.members).toEqual([]);
+      expectBffContract('get', '/projects-page', response);
+    });
+
     test('a session Core rejects is still a 401', async () => {
       signIn(admin, { status: 401, raw: 'Token expiré', contentType: 'text/plain', outOfContract: true });
       mockProjectApi();
