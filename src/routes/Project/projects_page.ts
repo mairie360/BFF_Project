@@ -15,11 +15,43 @@ import {
   mapProjectListItemToDto,
   summaryFromCounts,
 } from "./project_helpers";
-import { parseRequest } from "@mairie360/bffs-lib";
-import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
-import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage } from '../../services/projectData';
+import { HttpError, parseRequest } from "@mairie360/bffs-lib";
+import { canManageProjects, getProjectUserContext, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
+import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage, type AssignableUser, type Caller } from '../../services/projectData';
 
 const router = Router();
+
+/**
+ * The caller as the shell header shows them, from their Core profile. For an Admin or a Maire the page still loads
+ * without it when Core cannot answer (the front then shows the role); the other roles already need that profile for
+ * their assignable users, so the page fails with it. A rejected session (401) is relayed.
+ */
+/**
+ * Assignable users of the page. A Responsable or an agent needs their Core profile for them: when Core cannot give it
+ * (anything but a 401), the page still loads, with no member offered, like it loads without `access.user`.
+ */
+async function pageAssignableUsers(caller: Caller, user: ProjectUserContext): Promise<AssignableUser[]> {
+  if (!isGlobalProjectRole(user.role)) {
+    try {
+      // Read once per request: `listAssignableUsers` reuses it.
+      await user.profile();
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) throw error;
+      return [];
+    }
+  }
+  return listAssignableUsers(caller, user);
+}
+
+async function pageUser(user: ProjectUserContext): Promise<{ id: string; name: string } | undefined> {
+  try {
+    const { name } = await user.profile();
+    return { id: `user-${user.id}`, name };
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) throw error;
+    return undefined;
+  }
+}
 
 
 // Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`; a project
@@ -85,11 +117,21 @@ router.get("/", async (req: Request, res: Response) => {
     ...(query.dueBefore ? { due_before: new Date(query.dueBefore).toISOString() } : {}),
     ...(query.dueAfter ? { due_after: new Date(query.dueAfter).toISOString() } : {}),
   };
+  const shellUser = pageUser(user);
+  // A Core 401 may reject it while the page is still loading: handle it now so Node never reports an unhandled
+  // rejection; the 401 is still relayed by the `await shellUser` below.
+  shellUser.catch(() => undefined);
   const [result, assignable] = await Promise.all([
     listProjectsPage(caller, params),
     // The members offered come from the Core directory, restricted to what the caller may assign.
-    listAssignableUsers(caller, user),
-  ]);
+    pageAssignableUsers(caller, user),
+  ]).catch(async (error: unknown) => {
+    // Answer only once the profile read (retried on a transient failure) has settled: no call outlives the request.
+    // `pageUser` rejects only with Core's 401, which wins over the page's own error.
+    await shellUser;
+    throw error;
+  });
+  const me = await shellUser;
   // Every listed project is visible to the caller; Project API's `can_manage` adds the projects they manage as a
   // `manager` member (MAIR-1088).
   const projects = result.projects.map((project) =>
@@ -106,6 +148,7 @@ router.get("/", async (req: Request, res: Response) => {
       canManageTasks: canManageProjects(user.role),
       canUpdateAssignedTaskStatus: true,
       canCommentTasks: true,
+      ...(me ? { user: me } : {}),
     },
     page: {
       title: "Projets",

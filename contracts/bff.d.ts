@@ -3481,6 +3481,16 @@ export interface paths {
                                 canManageTasks: boolean;
                                 canUpdateAssignedTaskStatus: boolean;
                                 canCommentTasks: boolean;
+                                /** @description The caller, for the shell header. Absent when Core cannot give their profile. */
+                                user?: {
+                                    /** @example user-1 */
+                                    id: string;
+                                    /**
+                                     * @description First and last name of the caller, from their Core profile.
+                                     * @example Admin User
+                                     */
+                                    name: string;
+                                };
                             };
                             page: {
                                 title: string;
@@ -7885,6 +7895,16 @@ export interface components {
                 canManageTasks: boolean;
                 canUpdateAssignedTaskStatus: boolean;
                 canCommentTasks: boolean;
+                /** @description The caller, for the shell header. Absent when Core cannot give their profile. */
+                user?: {
+                    /** @example user-1 */
+                    id: string;
+                    /**
+                     * @description First and last name of the caller, from their Core profile.
+                     * @example Admin User
+                     */
+                    name: string;
+                };
             };
             page: {
                 title: string;

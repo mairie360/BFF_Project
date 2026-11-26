@@ -2493,6 +2493,25 @@
               },
               "canCommentTasks": {
                 "type": "boolean"
+              },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "example": "user-1"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "First and last name of the caller, from their Core profile.",
+                    "example": "Admin User"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "description": "The caller, for the shell header. Absent when Core cannot give their profile."
               }
             },
             "required": [
@@ -9369,6 +9388,25 @@
                         },
                         "canCommentTasks": {
                           "type": "boolean"
+                        },
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "example": "user-1"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "First and last name of the caller, from their Core profile.",
+                              "example": "Admin User"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "description": "The caller, for the shell header. Absent when Core cannot give their profile."
                         }
                       },
                       "required": [

@@ -558,6 +558,10 @@ export const ProjectsPageResponse = z.object({
     canManageTasks: z.boolean(),
     canUpdateAssignedTaskStatus: z.boolean(),
     canCommentTasks: z.boolean(),
+    user: z.object({
+      id: z.string().openapi({ example: 'user-1' }),
+      name: z.string().openapi({ description: 'First and last name of the caller, from their Core profile.', example: 'Admin User' }),
+    }).optional().openapi({ description: 'The caller, for the shell header. Absent when Core cannot give their profile.' }),
   }),
   page: z.object({
     title: z.string(),
