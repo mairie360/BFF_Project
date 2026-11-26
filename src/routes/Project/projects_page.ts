@@ -15,11 +15,25 @@ import {
   mapProjectListItemToDto,
   summaryFromCounts,
 } from "./project_helpers";
-import { parseRequest } from "@mairie360/bffs-lib";
-import { canManageProjects, getProjectUserContext, isGlobalProjectRole } from '../../auth/project-user';
+import { HttpError, parseRequest } from "@mairie360/bffs-lib";
+import { canManageProjects, getProjectUserContext, isGlobalProjectRole, type ProjectUserContext } from '../../auth/project-user';
 import { callerOf, getProjectPermissions, isProjectClosed, listAssignableUsers, listProjectsPage } from '../../services/projectData';
 
 const router = Router();
+
+/**
+ * The caller as the shell header shows them, from their Core profile. The page still loads without it when Core cannot
+ * answer (the front then shows the role); a rejected session (401) is relayed.
+ */
+async function pageUser(user: ProjectUserContext): Promise<{ id: string; name: string } | undefined> {
+  try {
+    const { name } = await user.profile();
+    return { id: `user-${user.id}`, name };
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) throw error;
+    return undefined;
+  }
+}
 
 
 // Filters of the page as Project API's (MAIR-474). Since MAIR-558 Project API stores `Todo` and `Review`; a project
@@ -85,11 +99,17 @@ router.get("/", async (req: Request, res: Response) => {
     ...(query.dueBefore ? { due_before: new Date(query.dueBefore).toISOString() } : {}),
     ...(query.dueAfter ? { due_after: new Date(query.dueAfter).toISOString() } : {}),
   };
+  const shellUser = pageUser(user);
   const [result, assignable] = await Promise.all([
     listProjectsPage(caller, params),
     // The members offered come from the Core directory, restricted to what the caller may assign.
     listAssignableUsers(caller, user),
-  ]);
+  ]).catch(async (error: unknown) => {
+    // Answer only once the profile read (retried on a transient failure) has settled: no call outlives the request.
+    await shellUser.catch(() => undefined);
+    throw error;
+  });
+  const me = await shellUser;
   // Every listed project is visible to the caller; Project API's `can_manage` adds the projects they manage as a
   // `manager` member (MAIR-1088).
   const projects = result.projects.map((project) =>
@@ -106,6 +126,7 @@ router.get("/", async (req: Request, res: Response) => {
       canManageTasks: canManageProjects(user.role),
       canUpdateAssignedTaskStatus: true,
       canCommentTasks: true,
+      ...(me ? { user: me } : {}),
     },
     page: {
       title: "Projets",

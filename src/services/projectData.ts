@@ -383,7 +383,8 @@ export async function listAssignableUsers(caller: Caller, user: ProjectUserConte
     return toApiUsers(await listDirectoryUsers(caller));
   }
 
-  // Only these roles need the caller's Core profile (groups, name): read once, and only here (MAIR-525).
+  // These roles need the caller's Core profile (groups, name); it is read once per request, shared with the page's
+  // caller name.
   const profile = await user.profile();
   if (user.role === 'Responsable') {
     const groupIds = profile.groups.map((group) => group.id).filter((id): id is number => id !== undefined);

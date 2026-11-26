@@ -637,6 +637,112 @@
       "description": "The caller comes from the Bearer JWT: its id from `sub`, its role from the `role` claim (MAIR-529)."
     },
     {
+      "name": "MAIR-1226 Caller of the shell header",
+      "item": [
+        {
+          "name": "MAIR-1226 The projects page names the administrator",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_admin}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const subOf = (token) => JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub;",
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"access.user is the caller: id of the token and a name, never the role label\", function () {",
+                  "    const user = pm.response.json().access.user;",
+                  "    pm.expect(Object.keys(user).sort()).to.eql(['id', 'name']);",
+                  "    pm.expect(user.id).to.eql(`user-${subOf(pm.environment.get('jwt_admin'))}`);",
+                  "    pm.expect(user.name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(user.name).to.not.eql('Administrateur');",
+                  "    pm.collectionVariables.set('mair1226_admin_name', user.name);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "MAIR-1226 Each agent reads their own name on the projects page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_agent}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects-page?limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects-page"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const subOf = (token) => JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub;",
+                  "pm.test(\"Status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"The agent is named as themselves, not as the administrator\", function () {",
+                  "    const user = pm.response.json().access.user;",
+                  "    pm.expect(user.id).to.eql(`user-${subOf(pm.environment.get('jwt_agent'))}`);",
+                  "    pm.expect(user.name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(user.name).to.not.eql(pm.collectionVariables.get('mair1226_admin_name'));",
+                  "    pm.expect(pm.response.json().access.role).to.eql('User');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Project templates",
       "item": [
         {

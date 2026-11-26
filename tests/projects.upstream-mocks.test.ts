@@ -231,9 +231,9 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expectBffContract('get', '/projects-page', response);
       expect(response.body.access).toEqual({
         role: 'Responsable', scope: 'team', canCreateProject: true, canManageProjects: true, canManageTasks: true,
-        canUpdateAssignedTaskStatus: true, canCommentTasks: true,
+        canUpdateAssignedTaskStatus: true, canCommentTasks: true, user: { id: `user-${marie.id}`, name: 'Marie Durand' },
       });
-      // One Core read serves the roles and the groups of the assignable users.
+      // One Core read serves the roles, the groups of the assignable users and the caller's name.
       const [me] = coreApi.calls(CORE.me, 'get');
       expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
       expect(me.url.pathname).toBe(coreApiUrls.getGetMeUrl());
@@ -242,6 +242,8 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
     });
 
     test('MAIR-525: reads the role in the token and never calls Core for it', async () => {
+      // MAIR-1226: the projects page reads Core's profile for the caller's name only; Core's roles are ignored.
+      signIn(admin, { body: coreMe(admin, { role: 'Guest', roles: ['Guest'] }) });
       mockProjectApi({ bundles: { 1: projectBundle(projetView(1), [taskView(2)], [admin]) } });
 
       const page = await withClaims(request(app).get('/projects-page'), admin, { role: 'admin' });
@@ -250,7 +252,7 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(page.status).toBe(200);
       expect(page.body.access).toMatchObject({ role: 'Admin', scope: 'all' });
       expect(details.status).toBe(200);
-      expect(coreApi.calls(CORE.me)).toHaveLength(0);
+      expect(coreApi.calls(CORE.me)).toHaveLength(1);
     });
 
     test('MAIR-525: a token whose role is unknown is a Guest, whatever Core says', async () => {
@@ -317,6 +319,53 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
       expect(refused.body.error).toEqual({ code: 'UNAUTHORIZED', message: 'Authentication required', details: [] });
       expect(unreachable.status).toBe(502);
       expect(unreachable.body.error.message).toBe('The CORE_API service is unavailable.');
+    });
+  });
+
+  describe('MAIR-1226 caller of the shell header', () => {
+    test('the projects page names the caller from their Core profile, read once with the role', async () => {
+      signIn(admin);
+      mockProjectApi();
+
+      const response = await as(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access.user).toEqual({ id: `user-${admin.id}`, name: `${admin.first_name} ${admin.last_name}` });
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+      expectBffContract('get', '/projects-page', response);
+    });
+
+    test('with a role claim, the profile is read for the name only', async () => {
+      signIn(alice);
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), alice);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access).toMatchObject({ role: alice.role, user: { id: `user-${alice.id}`, name: `${alice.first_name} ${alice.last_name}` } });
+      expect(coreApi.calls(CORE.me, 'get')).toHaveLength(1);
+    });
+
+    test('the page still loads without the name when Core cannot give the profile', async () => {
+      // An Admin lists the directory without their profile: only the name depends on Core's /me.
+      signIn(admin, { status: 503, body: { error: 'Service unavailable' }, outOfContract: true });
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(200);
+      expect(response.body.access.role).toBe(admin.role);
+      expect(response.body.access).not.toHaveProperty('user');
+      expectBffContract('get', '/projects-page', response);
+    });
+
+    test('a session Core rejects is still a 401', async () => {
+      signIn(admin, { status: 401, raw: 'Token expiré', contentType: 'text/plain', outOfContract: true });
+      mockProjectApi();
+
+      const response = await withClaims(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(401);
     });
   });
 

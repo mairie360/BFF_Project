@@ -216,7 +216,8 @@ everything); `canManageProjects` also includes Responsable; a `manager` member o
 MAIR-1088) manages that project whatever their role. `getProjectPermissions` /
 `getTaskPermissions` compute booleans per request (SQL visibility subqueries when DB access is on);
 `src/routes/Project/project_access.ts` wraps them into `require*` guards. Every response payload
-embeds the resolved `permissions` / `access` block for the frontend.
+embeds the resolved `permissions` / `access` block for the frontend; `/projects-page`'s `access.user` (`{ id, name }`,
+optional) names the caller for the front's shell header, read from Core's profile in parallel with the page.
 
 ### Error envelope
 
