@@ -381,6 +381,16 @@ describe('Project BFF with contract-driven Project API and Core API mocks', () =
 
       expect(response.status).toBe(401);
     });
+
+    test('a session Core rejects is a 401 even when the page read fails too', async () => {
+      signIn(admin, { status: 401, raw: 'Token expiré', contentType: 'text/plain', outOfContract: true });
+      mockProjectApi();
+      projectApi.on('get', PROJECT.projects, textError(500, 'An error occurred while accessing the database.'));
+
+      const response = await withClaims(request(app).get('/projects-page'), admin);
+
+      expect(response.status).toBe(401);
+    });
   });
 
   describe('archived tasks (MAIR-502)', () => {

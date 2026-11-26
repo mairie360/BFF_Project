@@ -127,7 +127,8 @@ router.get("/", async (req: Request, res: Response) => {
     pageAssignableUsers(caller, user),
   ]).catch(async (error: unknown) => {
     // Answer only once the profile read (retried on a transient failure) has settled: no call outlives the request.
-    await shellUser.catch(() => undefined);
+    // `pageUser` rejects only with Core's 401, which wins over the page's own error.
+    await shellUser;
     throw error;
   });
   const me = await shellUser;
